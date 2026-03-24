@@ -1,0 +1,44 @@
+# =========================
+# Node / React (Frontend)
+# =========================
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# =========================
+# Python / FastAPI (Backend)
+# =========================
+venv/
+env/
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# =========================
+# C++ / Build Artifacts (Core)
+# =========================
+build/
+CMakeCache.txt
+CMakeFiles/
+*.o
+*.so
+*.pyd
+*.dylib
+*.dll
+
+# =========================
+# Environment Variables
+# =========================
+.env
+.env.*
+
+# =========================
+# OS & Editor Files
+# =========================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
