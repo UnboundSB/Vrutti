@@ -1,20 +1,15 @@
-from setuptools import setup, Extension
+import glob
+from setuptools import Extension, setup
 import pybind11
 
-ext_modules = [
-    Extension(
-        "hello",
-        ["hello.cpp"],
-        include_dirs=[pybind11.get_include()],
-        language='c++',
-        # The compiler flags (optimization and modern C++)
-        extra_compile_args=['-std=c++17', '-O3'],
-        # The long-term fix: Force static linking of C++ standard libraries
-        extra_link_args=['-static-libgcc', '-static-libstdc++'],
-    ),
-]
+cpp_sources = glob.glob("core/src/*.cpp")+glob.glob("core/bindings/*.cpp")
 
-setup(
-    name="hello",
-    ext_modules=ext_modules,
-)
+vrutti_extension = Extension(name = "vrutti_core",
+                              sources=cpp_sources,
+                                include_dirs=["core/include", pybind11.get_include()],
+                             language="c++", 
+                             #Mingw compiler Flags
+                             extra_compile_args=["-std=c++17", "-O3"],
+                             extra_link_args=["-static-libgcc", "-static-libstdc++"]
+                             )
+setup(name="vrutti_core", ext_modules=vrutti_extension, )
