@@ -56,3 +56,81 @@ std::string PieceTable::get_text() const {
 size_t PieceTable::length() const {
     return cached_length;
 }
+void PieceTable::insert_text(size_t index, const std::string& text) {
+    // If they try to insert nothing, just return early.
+    if (text.empty()) return;
+
+    // STEP 1: Save the current length of the add_buffer before we modify it.
+    // This is where our new piece will start!
+    // Python: add_start = len(add_buffer)
+    size_t add_start =  add_buffer.length();
+
+    // STEP 2: Append the new text to the very end of the add_buffer
+    // Python: add_buffer += text
+    add_buffer.append(text);
+
+    
+
+    // STEP 3: Update our cached document length
+    // Python: cached_length += len(text)
+    cached_length+=text.length();
+
+
+    // If they are inserting at the exact end of the document, we don't need to split anything!
+    if (index == cached_length - text.length()) {
+        pieces.push_back({BufferType::Add, add_start, text.length()});
+        return;
+    }
+
+    // --- THE HUNT ---
+    size_t current_offset = 0;
+    
+    // We use a standard index loop here because we need 'i' for the Iterators later
+    for (size_t i = 0; i < pieces.size(); ++i) {
+        
+        // Copy the target piece so we can read it easily
+        Piece target = pieces[i];
+
+        // Did we find the piece that contains our target index?
+        if (current_offset + target.length > index) {
+            
+            // MATH TIME. 
+            // STEP 4: Calculate the split point
+            // Python: split_point = index - current_offset
+            size_t split_point = index - current_offset;
+
+            // STEP 5: Create the three new pieces using the {} struct syntax
+            // Remember: { source, start, length }
+            
+            Piece left_piece = tree 
+            Piece new_piece = new Piece;
+            Piece right_piece = 
+
+
+            // ==========================================
+            // C++ MAGIC: Replace the old piece with the new ones
+            // (I wrote this part for you!)
+            // ==========================================
+            
+            // 1. Delete the old target piece
+            auto it = pieces.erase(pieces.begin() + i);
+
+            // 2. Insert Right, then New, then Left 
+            // (We insert backwards because 'insert' pushes elements to the right)
+            if (right_piece.length > 0) {
+                it = pieces.insert(it, right_piece);
+            }
+            it = pieces.insert(it, new_piece);
+            
+            if (left_piece.length > 0) {
+                pieces.insert(it, left_piece);
+            }
+
+            // We found it and split it, so stop looping!
+            break;
+        }
+
+        // If this wasn't the piece, add its length to our running total and check the next one
+        current_offset += target.length;
+    }
+}
