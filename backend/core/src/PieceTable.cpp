@@ -102,9 +102,14 @@ void PieceTable::insert_text(size_t index, const std::string& text) {
             // STEP 5: Create the three new pieces using the {} struct syntax
             // Remember: { source, start, length }
             
-            Piece left_piece = tree 
-            Piece new_piece = new Piece;
-            Piece right_piece = 
+            // Left Piece: Same source, same start, length is the split point
+            Piece left_piece = { target.source, target.start, split_point };
+            
+            // New Piece: Source is Add, start is where we appended, length is new text
+            Piece new_piece = { BufferType::Add, add_start, text.length() };
+            
+            // Right Piece: Same source, start is shifted by split point, length is remainder
+            Piece right_piece = { target.source, target.start + split_point, target.length - split_point };
 
 
             // ==========================================

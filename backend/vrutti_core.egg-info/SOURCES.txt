@@ -1,0 +1,8 @@
+setup.cfg
+setup.py
+core/bindings/bindings.cpp
+core/src/PieceTable.cpp
+vrutti_core.egg-info/PKG-INFO
+vrutti_core.egg-info/SOURCES.txt
+vrutti_core.egg-info/dependency_links.txt
+vrutti_core.egg-info/top_level.txt

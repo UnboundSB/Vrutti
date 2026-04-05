@@ -12,4 +12,4 @@ vrutti_extension = Extension(name = "vrutti_core",
                              extra_compile_args=["-std=c++17", "-O3"],
                              extra_link_args=["-static-libgcc", "-static-libstdc++"]
                              )
-setup(name="vrutti_core", ext_modules=vrutti_extension, )
+setup(name="vrutti_core", ext_modules=[vrutti_extension])
