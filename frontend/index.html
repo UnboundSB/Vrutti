@@ -5,9 +5,63 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>frontend</title>
+    <style>
+    body { font-family: monospace; background: #1e1e1e; color: white; padding: 40px; }
+    
+    .editor-container { 
+        position: relative; 
+        width: 800px; 
+        height: 500px; 
+        background: #2d2d2d; 
+        border-radius: 8px;
+    }
+    
+    /* BOTH LAYERS MUST BE EXACTLY THE SAME SIZE AND SHAPE */
+    #proxy-input, #display-layer {
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        padding: 20px;
+        margin: 0;
+        box-sizing: border-box;
+        
+        /* The Math Trap: Fonts must match perfectly */
+        font-family: 'Courier New', Courier, monospace; 
+        font-size: 18px;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+    
+    /* THE BACK: The Projector (Z-Index 1) */
+    #display-layer {
+        z-index: 1;
+        color: #9cdcfe; /* Light blue text so we know it's our C++ engine */
+        pointer-events: none; /* Let the mouse click right through it */
+    }
+    
+    /* THE FRONT: The Trap (Z-Index 2) */
+    #proxy-input {
+        z-index: 2;
+        background: transparent; /* See through to the background */
+        color: transparent;      /* INVISIBLE TEXT! */
+        caret-color: white;      /* KEEP THE BLINKING CURSOR! */
+        
+        /* Turn off browser borders */
+        border: none;
+        outline: none;
+        resize: none;
+    }
+    
+    /* Make the browser's native highlight color look like VS Code */
+    #proxy-input::selection {
+        background: rgba(38, 79, 120, 0.5);
+        color: transparent;
+    }
+</style>
   </head>
   <body>
-    <div id="root"></div>
+   
     <script>
       const ws = new WebSocket("ws://localhost:8000/ws/editor");
         const proxyInput = document.getElementById('proxy-input');
