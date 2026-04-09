@@ -12,7 +12,7 @@ import vrutti_core
 
 # --- APP INITIALIZATION ---
 app = FastAPI(title="Vrutti Backend Engine")
-document = vrutti_core.PieceTable("Welcome to Vrutti. Type anywhere...\n")
+document = vrutti_core.PieceTable("")
 
 # --- THE WEBSOCKET ENDPOINT ---
 @app.websocket("/ws/editor")
