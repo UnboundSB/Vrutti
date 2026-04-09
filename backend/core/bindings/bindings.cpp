@@ -24,5 +24,6 @@ PYBIND11_MODULE(vrutti_core, m) {
         // STEP 3: Bind the length method
         // Python name: "length"
         .def("length",&PieceTable::length)
+        .def("delete_text", &PieceTable::delete_text)
         ; // <-- Notice the semicolon is at the very end of the chain!
 }

@@ -14,42 +14,38 @@ import vrutti_core
 app = FastAPI(title="Vrutti Backend Engine")
 document = vrutti_core.PieceTable("Welcome to Vrutti. Type anywhere...\n")
 
-
 # --- THE WEBSOCKET ENDPOINT ---
 @app.websocket("/ws/editor")
 async def editor_websocket(websocket: WebSocket):
     
-    # STEP 1: Accept the incoming connection from the frontend
-    # Python Hint: await websocket.accept()
+    # 1. OPEN THE DOOR (The handshake)
+    await websocket.accept()
     
-    
-    # STEP 2: Send the initial text to the client so they can see the document
-    # Python Hint: await websocket.send_text(document.get_text())
-    
+    # 2. Send the initial text to the client
+    await websocket.send_text(document.get_text())
     
     try:
-        # We use an infinite loop to keep the pipe open forever
+        # 3. KEEP THE PIPE OPEN
         while True:
-            
-            # STEP 3: Wait for a message from the frontend
-            # Python Hint: data = await websocket.receive_text()
+            # Wait for the user to type
             data = await websocket.receive_text()
             
-            # STEP 4: Parse the incoming JSON string into a Python dictionary
-            # Python Hint: payload = json.loads(data)
+            # Parse the JSON string from JavaScript into a Python dictionary
             payload = json.loads(data)
             
-            # STEP 5: Feed the C++ Brain and respond!
+            # Feed the C++ Brain and respond
             if "index" in payload and "text" in payload:
                 
-                # A: Call document.insert_text() using the payload's "index" and "text"
-                document.insert_text(payload.get_index(), payload.get_text)
+                # Insert the text into C++ memory
+                document.insert_text(payload["index"], payload["text"])
                 
-                # B: Send the updated document.get_text() back down the websocket
+                # Instantly send the updated text back to the browser
                 await websocket.send_text(document.get_text())
                 
     except WebSocketDisconnect:
         print("Frontend disconnected.")
+    except Exception as e:
+        print(f"Engine Error: {e}")
 
 # --- SERVER LAUNCHER ---
 if __name__ == "__main__":

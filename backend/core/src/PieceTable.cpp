@@ -139,3 +139,70 @@ void PieceTable::insert_text(size_t index, const std::string& text) {
         current_offset += target.length;
     }
 }
+
+void PieceTable::delete_text(size_t index, size_t length) {
+    // size_t cannot be negative, so we only need to check if length is 0
+    if (length == 0) return;
+
+    size_t current_index = 0;
+    
+    // We use booleans to track if we found them, instead of -1, 
+    // because size_t cannot hold negative numbers!
+    bool found_start = false;
+    size_t start_piece_idx = 0;
+    size_t start_offset = 0;
+
+    bool found_end = false;
+    size_t end_piece_idx = 0;
+    size_t end_offset = 0;
+
+    // 1. Find where the deletion STARTS
+    for (size_t i = 0; i < pieces.size(); ++i) {
+        if (current_index + pieces[i].length > index) {
+            start_piece_idx = i;
+            start_offset = index - current_index;
+            found_start = true;
+            break;
+        }
+        current_index += pieces[i].length;
+    }
+
+    if (!found_start) return; // Out of bounds
+
+    current_index = 0;
+    // 2. Find where the deletion ENDS
+    for (size_t i = 0; i < pieces.size(); ++i) {
+        if (current_index + pieces[i].length >= index + length) {
+            end_piece_idx = i;
+            end_offset = (index + length) - current_index;
+            found_end = true;
+            break;
+        }
+        current_index += pieces[i].length;
+    }
+
+    // If deletion goes past the end of the document, cap it
+    if (!found_end) {
+        end_piece_idx = pieces.size() - 1;
+        end_offset = pieces.back().length;
+    }
+
+    // 3. The Surgery
+    Piece start_p = pieces[start_piece_idx];
+    Piece end_p = pieces[end_piece_idx];
+    std::vector<Piece> new_pieces;
+
+    if (start_offset > 0) {
+        new_pieces.push_back({start_p.source, start_p.start, start_offset});
+    }
+    if (end_offset < end_p.length) {
+        new_pieces.push_back({end_p.source, end_p.start + end_offset, end_p.length - end_offset});
+    }
+
+    // Erase the old pieces and insert the newly sliced ones
+    pieces.erase(pieces.begin() + start_piece_idx, pieces.begin() + end_piece_idx + 1);
+    pieces.insert(pieces.begin() + start_piece_idx, new_pieces.begin(), new_pieces.end());
+
+    // UPDATE THE CACHED LENGTH
+    cached_length -= length;
+}
