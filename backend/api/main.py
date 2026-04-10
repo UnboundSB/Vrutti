@@ -1,52 +1,38 @@
-import os
-import json
-import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-
-# --- THE WINDOWS BYPASS ---
-msys2_bin_path = r"C:\msys64\ucrt64\bin"
-if hasattr(os, 'add_dll_directory') and os.path.exists(msys2_bin_path):
-    os.add_dll_directory(msys2_bin_path)
-
+import json
 import vrutti_core
 
-# --- APP INITIALIZATION ---
-app = FastAPI(title="Vrutti Backend Engine")
+app = FastAPI()
+
+# 1. Initialize the C++ Engine (Starts completely empty)
 document = vrutti_core.PieceTable("")
 
-# --- THE WEBSOCKET ENDPOINT ---
 @app.websocket("/ws/editor")
-async def editor_websocket(websocket: WebSocket):
-    
-    # 1. OPEN THE DOOR (The handshake)
+async def editor_endpoint(websocket: WebSocket):
     await websocket.accept()
-    
-    # 2. Send the initial text to the client
+    print("Browser connected to Vrutti Engine.")
+
+    # 2. THE REFRESH FIX: 
+    # Immediately send the current C++ state to the browser so they match perfectly!
     await websocket.send_text(document.get_text())
-    
+
     try:
-        # 3. KEEP THE PIPE OPEN
         while True:
-            # Wait for the user to type
+            # Wait for the JSON payload from the ChatGPT frontend
             data = await websocket.receive_text()
-            
-            # Parse the JSON string from JavaScript into a Python dictionary
             payload = json.loads(data)
             
-            # Feed the C++ Brain and respond
-            if "index" in payload and "text" in payload:
-                
-                # Insert the text into C++ memory
+            action = payload.get("action")
+            
+            # 3. ROUTER: Bind the actions directly to your C++ methods
+            if action == "insert":
                 document.insert_text(payload["index"], payload["text"])
                 
-                # Instantly send the updated text back to the browser
-                await websocket.send_text(document.get_text())
-                
-    except WebSocketDisconnect:
-        print("Frontend disconnected.")
-    except Exception as e:
-        print(f"Engine Error: {e}")
+            elif action == "delete":
+                document.delete_text(payload["index"], payload["length"])
+            
+            # 4. Blast the finalized text back to the browser to ensure absolute sync
+            await websocket.send_text(document.get_text())
 
-# --- SERVER LAUNCHER ---
-if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    except WebSocketDisconnect:
+        print("Browser disconnected.")
