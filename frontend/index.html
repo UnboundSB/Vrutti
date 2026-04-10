@@ -1,137 +1,245 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Vrutti Final Sync</title>
-    <style>
-        body { background: #1e1e1e; color: white; padding: 50px; }
-        
-        .editor-container { 
-            position: relative; 
-            width: 800px; 
-            height: 500px; 
-            background: #2d2d2d; 
-        }
+<meta charset="UTF-8">
+<title>Vrutti Final Proper</title>
 
-        /* RESET EVERYTHING: No margins, no borders, exact line-height */
-        #proxy-input, #display-layer {
-            position: absolute;
-            top: 0; left: 0;
-            width: 800px;
-            height: 500px;
-            padding: 20px; /* Internal padding */
-            margin: 0;
-            border: none;
-            box-sizing: border-box;
-            
-            font-family: 'Courier New', Courier, monospace; 
-            font-size: 18px;
-            line-height: 24px; /* EXACTLY 24px */
-            overflow: hidden;
-        }
+<style>
+body {
+    background: #1e1e1e;
+    padding: 50px;
+    color: white;
+}
 
-        #display-layer { z-index: 1; pointer-events: none; }
+/* Container handles spacing */
+.editor-container {
+    position: relative;
+    width: 800px;
+    height: 500px;
+    background: #2d2d2d;
 
-        #proxy-input {
-            z-index: 2;
-            background: transparent;
-            /* DEBUG COLOR: Semi-transparent white */
-            color: rgba(255, 255, 255, 0.5); 
-            caret-color: white;
-            outline: none;
-            resize: none;
-            white-space: pre; /* Use 'pre' instead of 'pre-wrap' for pixel-perfect sync */
-        }
-    </style>
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+/* Shared styles */
+#proxy-input, #display-layer {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+
+    width: 760px;
+    height: 460px;
+
+    margin: 0;
+    border: none;
+    box-sizing: border-box;
+
+    font-family: Consolas, Menlo, monospace;
+    font-size: 18px;
+    line-height: 24px !important;
+
+    letter-spacing: 0;
+    tab-size: 4;
+
+    overflow: hidden;
+}
+
+/* Canvas */
+#display-layer {
+    z-index: 1;
+    pointer-events: none;
+}
+
+/* Textarea */
+#proxy-input {
+    z-index: 2;
+    background: transparent;
+
+    color: transparent;           /* 🔥 hide text */
+    caret-color: white;
+
+    outline: none;
+    resize: none;
+
+    white-space: pre;
+    overflow-wrap: normal;
+
+    font-variant-ligatures: none;
+}
+
+/* Optional: block selection highlight */
+#proxy-input::selection {
+    background: rgba(255,255,255,0.15);
+}
+</style>
 </head>
+
 <body>
 
-    <div class="editor-container">
-        <canvas id="display-layer" width="800" height="500"></canvas>
-        <textarea id="proxy-input" spellcheck="false" autofocus></textarea>
-    </div>
+<div class="editor-container">
+    <canvas id="display-layer"></canvas>
+    <textarea id="proxy-input" spellcheck="false" autofocus></textarea>
+</div>
 
-    <script>
-        const canvas = document.getElementById('display-layer');
-        const ctx = canvas.getContext('2d');
-        const proxyInput = document.getElementById('proxy-input');
-        const ws = new WebSocket("ws://localhost:8000/ws/editor");
+<script>
+const canvas = document.getElementById("display-layer");
+const ctx = canvas.getContext("2d");
+const input = document.getElementById("proxy-input");
 
-        function renderCanvas(text) {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            // MATCH THE CSS EXACTLY
-            ctx.font = "18px 'Courier New', Courier, monospace";
-            ctx.textBaseline = "top";
+let textState = "";
+let isRemote = false;
 
-            const lines = text.split('\n');
-            const xPadding = 20;
-            const yPadding = 20; 
-            const lineHeight = 24;
+/* ---------------- DPI FIX ---------------- */
+const dpr = window.devicePixelRatio || 1;
 
-            for (let i = 0; i < lines.length; i++) {
-                // Draw blue C++ text
-                ctx.fillStyle = "#9cdcfe";
-                ctx.fillText(lines[i], xPadding, yPadding + (i * lineHeight));
-            }
+function resizeCanvas() {
+    const w = 760;
+    const h = 460;
+
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+
+    canvas.style.width = w + "px";
+    canvas.style.height = h + "px";
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+resizeCanvas();
+
+/* ---------------- RENDER ---------------- */
+const lineHeight = 24;
+const baselineOffset = 18; // critical alignment tweak
+
+function render(text) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    ctx.font = "18px Consolas";
+    ctx.textBaseline = "alphabetic";
+
+    const lines = text.split("\n");
+
+    for (let i = 0; i < lines.length; i++) {
+        ctx.fillStyle = "#9cdcfe";
+
+        ctx.fillText(
+            lines[i],
+            0,
+            (i * lineHeight) + baselineOffset
+        );
+    }
+}
+
+/* ---------------- WS ---------------- */
+const ws = new WebSocket("ws://localhost:8000/ws/editor");
+
+ws.onmessage = (e) => {
+    const serverText = e.data;
+
+    if (serverText === textState) return;
+
+    isRemote = true;
+
+    const start = input.selectionStart;
+    const end = input.selectionEnd;
+
+    textState = serverText;
+    input.value = serverText;
+
+    input.setSelectionRange(start, end);
+
+    render(serverText);
+
+    isRemote = false;
+};
+
+/* ---------------- INSERT ---------------- */
+input.addEventListener("beforeinput", (e) => {
+    if (isRemote) return;
+
+    if (
+        e.inputType === "insertText" ||
+        e.inputType === "insertLineBreak" ||
+        e.inputType === "insertFromPaste"
+    ) {
+        e.preventDefault();
+
+        const start = input.selectionStart;
+        const end = input.selectionEnd;
+
+        let txt = e.data || "";
+        if (e.inputType === "insertLineBreak") txt = "\n";
+
+        const newText =
+            textState.slice(0, start) +
+            txt +
+            textState.slice(end);
+
+        textState = newText;
+        input.value = newText;
+
+        const cursor = start + txt.length;
+        input.setSelectionRange(cursor, cursor);
+
+        render(newText);
+
+        ws.send(JSON.stringify({
+            action: "insert",
+            index: start,
+            text: txt
+        }));
+    }
+});
+
+/* ---------------- DELETE ---------------- */
+input.addEventListener("keydown", (e) => {
+    if (isRemote) return;
+
+    if (e.key !== "Backspace" && e.key !== "Delete") return;
+
+    e.preventDefault();
+
+    const start = input.selectionStart;
+    const end = input.selectionEnd;
+
+    let delStart = start;
+    let delEnd = end;
+
+    if (start === end) {
+        if (e.key === "Backspace") {
+            if (start === 0) return;
+            delStart = start - 1;
+        } else {
+            delEnd = start + 1;
         }
+    }
 
-        ws.onmessage = function(event) {
-            const textFromCPP = event.data;
-            
-            // We only update if the text is actually different to prevent cursor jumping
-            if (proxyInput.value !== textFromCPP) {
-                const start = proxyInput.selectionStart;
-                const end = proxyInput.selectionEnd;
-                
-                proxyInput.value = textFromCPP;
-                
-                // Restore selection
-                proxyInput.setSelectionRange(start, end);
-            }
-            renderCanvas(textFromCPP);
-        };
+    const newText =
+        textState.slice(0, delStart) +
+        textState.slice(delEnd);
 
-        proxyInput.addEventListener('input', function(e) {
-            // If it's a deletion, let the keydown handler handle it
-            if (e.inputType.includes('delete')) return;
+    textState = newText;
+    input.value = newText;
 
-            // Handle typing/pasting
-            ws.send(JSON.stringify({
-                "action": "insert",
-                "index": proxyInput.selectionStart - (e.data ? e.data.length : 1),
-                "text": e.data || (e.inputType === "insertLineBreak" ? "\n" : "")
-            }));
-        });
+    input.setSelectionRange(delStart, delStart);
 
-        proxyInput.addEventListener('keydown', function(e) {
-            if (e.key === "Backspace" || e.key === "Delete") {
-                e.preventDefault();
-                
-                let start = proxyInput.selectionStart;
-                let end = proxyInput.selectionEnd;
-                let delIdx = start;
-                let delLen = end - start;
+    render(newText);
 
-                if (start === end) {
-                    delLen = 1;
-                    if (e.key === "Backspace") {
-                        if (start === 0) return;
-                        delIdx = start - 1;
-                    }
-                }
+    ws.send(JSON.stringify({
+        action: "delete",
+        index: delStart,
+        length: delEnd - delStart
+    }));
+});
 
-                ws.send(JSON.stringify({
-                    "action": "delete",
-                    "index": delIdx,
-                    "length": delLen
-                }));
+/* ---------------- BLOCK COPY ---------------- */
+input.addEventListener("copy", e => e.preventDefault());
+input.addEventListener("cut", e => e.preventDefault());
 
-                // Predict cursor movement for smoother feel
-                if (e.key === "Backspace" && start === end) {
-                    proxyInput.setSelectionRange(start - 1, start - 1);
-                }
-            }
-        });
-    </script>
+/* ---------------- INIT ---------------- */
+render("");
+</script>
+
 </body>
 </html>
