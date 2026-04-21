@@ -49,7 +49,8 @@ public:
     // Core Mutation Operations
     // ------------------------------------------
     void insert_text(size_t index, const std::string& text);
-    void delete_text(size_t index, size_t length);
+   
+    std::string delete_text(size_t index, size_t length);
 
     // ------------------------------------------
     // State Retrieval
