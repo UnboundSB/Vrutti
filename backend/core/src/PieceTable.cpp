@@ -140,14 +140,12 @@ void PieceTable::insert_text(size_t index, const std::string& text) {
     }
 }
 
-void PieceTable::delete_text(size_t index, size_t length) {
-    // size_t cannot be negative, so we only need to check if length is 0
-    if (length == 0) return;
+
+std::string PieceTable::delete_text(size_t index, size_t length) {
+    if (length == 0) return ""; // Return empty string if nothing to delete
 
     size_t current_index = 0;
     
-    // We use booleans to track if we found them, instead of -1, 
-    // because size_t cannot hold negative numbers!
     bool found_start = false;
     size_t start_piece_idx = 0;
     size_t start_offset = 0;
@@ -167,7 +165,7 @@ void PieceTable::delete_text(size_t index, size_t length) {
         current_index += pieces[i].length;
     }
 
-    if (!found_start) return; // Out of bounds
+    if (!found_start) return ""; // Out of bounds
 
     current_index = 0;
     // 2. Find where the deletion ENDS
@@ -181,10 +179,27 @@ void PieceTable::delete_text(size_t index, size_t length) {
         current_index += pieces[i].length;
     }
 
-    // If deletion goes past the end of the document, cap it
     if (!found_end) {
         end_piece_idx = pieces.size() - 1;
         end_offset = pieces.back().length;
+    }
+
+    // ==========================================
+    // EXTRACTION: Grab the text BEFORE we destroy the pieces
+    // ==========================================
+    std::string deleted_text = "";
+    for (size_t i = start_piece_idx; i <= end_piece_idx; ++i) {
+        size_t read_start = (i == start_piece_idx) ? start_offset : 0;
+        size_t read_end = (i == end_piece_idx) ? end_offset : pieces[i].length;
+        
+        if (read_end > read_start) { // Safety check
+            size_t read_len = read_end - read_start;
+            if (pieces[i].source == BufferType::Original) {
+                deleted_text += original_buffer.substr(pieces[i].start + read_start, read_len);
+            } else {
+                deleted_text += add_buffer.substr(pieces[i].start + read_start, read_len);
+            }
+        }
     }
 
     // 3. The Surgery
@@ -203,6 +218,8 @@ void PieceTable::delete_text(size_t index, size_t length) {
     pieces.erase(pieces.begin() + start_piece_idx, pieces.begin() + end_piece_idx + 1);
     pieces.insert(pieces.begin() + start_piece_idx, new_pieces.begin(), new_pieces.end());
 
-    // UPDATE THE CACHED LENGTH
     cached_length -= length;
+    
+    // RETURN THE AMPUTATED TEXT!
+    return deleted_text;
 }
