@@ -43,3 +43,9 @@ This document outlines the high-level architecture of `vrutti_ide/src/core` and 
     *   **Concept**: A per-file localized string deduplicator. Reuses strings across large parsed files without introducing global multi-threading mutex contention, backed by the Arena.
 *   **`LineScanner.h / .cpp`**
     *   **Concept**: A SIMD-accelerated (`std::memchr`) string scanner to instantly map `\n` line breaks across massive files in 32-byte vectorized chunks.
+
+## 7. IPC & Extension Bridging (`core/ipc/`)
+
+*   **`IPCClient.h / .cpp`**
+    *   **Concept**: The critical bridge decoupling the Native IDE from the headless Node.js Extension Host.
+    *   **Architecture**: Uses Named Pipes/Sockets to stream JSON-RPC commands. VS Code extensions running in the Node.js background process send standard edit commands, which are intercepted, parsed via `Json`, and routed instantly to the Native C++ `PieceTable`. This eliminates Electron completely while guaranteeing 100% marketplace extension compatibility.
