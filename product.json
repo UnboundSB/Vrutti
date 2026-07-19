@@ -1,0 +1,15 @@
+{
+  "nameShort": "Vrutti",
+  "nameLong": "Vrutti Code Editor",
+  "applicationName": "vrutti",
+  "dataFolderName": ".vrutti",
+  "win32MutexName": "vrutticode",
+  "win32DirName": "Vrutti",
+  "win32NameVersion": "Vrutti",
+  "win32AppUserModelId": "Vrutti.Vrutti",
+  "win32ShellNameShort": "Vrutti",
+  "darwinBundleIdentifier": "com.vrutti.editor",
+  "reportIssueUrl": "https://github.com/UnboundSB/Vrutti/issues",
+  "urlProtocol": "vrutti",
+  "extensionAllowedProposedApi": []
+}

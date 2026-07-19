@@ -1,0 +1,15 @@
+{
+  "name": "vrutti",
+  "version": "0.0.1",
+  "description": "A high-performance, resource-efficient code editor designed for maximum speed and minimal system impact.",
+  "author": "UnboundSB",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/UnboundSB/Vrutti.git"
+  },
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
