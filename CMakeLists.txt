@@ -18,6 +18,7 @@ add_library(vrutti_core STATIC
     src/core/editor/PieceTable.cpp
     src/core/fs/URI.cpp
     src/core/fs/Path.cpp
+    src/core/fs/Glob.cpp
 )
 target_include_directories(vrutti_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
