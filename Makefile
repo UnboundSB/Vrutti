@@ -11,7 +11,8 @@ BIN_DIR = build/bin
 
 # Source files (add new ones here or use wildcard)
 SRCS = $(SRC_DIR)/app/main.cpp \
-       $(SRC_DIR)/core/memory/ArenaAllocator.cpp
+       $(SRC_DIR)/core/memory/ArenaAllocator.cpp \
+       $(SRC_DIR)/core/concurrency/ThreadPool.cpp
 
 # Object files
 OBJS = $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(SRCS))
