@@ -14,5 +14,5 @@
 - [x] Set up the preliminary build system (CMake/Makefile) to compile the core modules.
 - [x] **Foundation Phase 1:** Implement `core/memory` (custom allocators, zero-copy buffers).
 - [x] **Foundation Phase 2 & 3:** Implement `core/concurrency`, `core/events`, and `core/editor` (Piece Table). *(See `src/core/task.md` for detailed core tracking)*
-- [ ] **Foundation Phase 4:** Port File System and `URI` logic.
+- [ ] **Foundation Phase 4:** Port File System (*`URI` logic complete*).
 - [ ] Begin porting necessary architecture concepts while ensuring low RAM consumption targets are met.

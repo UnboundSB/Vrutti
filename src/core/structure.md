@@ -16,10 +16,11 @@ This document outlines the high-level architecture of `vrutti_ide/src/core` and 
     *   **Concept**: Mapped from standard `Promise` / async execution models in TS. 
     *   **Architecture**: Offloads heavy tasks (file indexing, syntax highlighting) from the main thread (UI thread) to hardware worker threads using a lock-based task queue and `std::future`.
 
-## 3. File System (`core/fs/`) - *Planned*
+## 3. File System (`core/fs/`)
 
-*   **URI Abstractions (Mapping `uri.ts`)**
-    *   **Goal**: Create a lightweight, zero-copy `URI` parser for handling `file://`, `vscode://`, and remote schemes efficiently.
+*   **`URI.h / .cpp` (Mapped from `uri.ts`)**
+    *   **Concept**: A memory-optimized `URI` parser for handling `file://`, `vscode://`, and remote schemes. 
+    *   **Architecture**: Radically reduces the RAM footprint compared to standard parsing by maintaining a single raw string and lazily evaluating boundaries using `uint16_t` offset caches and zero-allocation `std::string_view` returns.
 
 ## 4. Events (`core/events/`)
 
