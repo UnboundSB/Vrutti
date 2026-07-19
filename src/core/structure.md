@@ -21,7 +21,8 @@ This document outlines the high-level architecture of `vrutti_ide/src/core` and 
 *   **URI Abstractions (Mapping `uri.ts`)**
     *   **Goal**: Create a lightweight, zero-copy `URI` parser for handling `file://`, `vscode://`, and remote schemes efficiently.
 
-## 4. Events (`core/events/`) - *Planned*
+## 4. Events (`core/events/`)
 
-*   **Event Emitter (Mapping `event.ts`)**
-    *   **Goal**: Create a lightweight pub/sub mechanism (`Event<T>`, `Emitter<T>`) that is thread-safe and integrates directly with our `IDisposable` model for deterministic unsubscription.
+*   **`Event.h` (Mapped from `event.ts`)**
+    *   **Concept**: Creates a lightweight pub/sub mechanism (`Event<T>`, `Emitter<T>`) that is entirely thread-safe using `std::mutex`.
+    *   **Architecture**: Subscribing to an event returns an `IDisposable`. This perfectly mirrors the VS Code architecture, guaranteeing deterministic cleanup of event listeners and avoiding memory leaks commonly found in loosely coupled systems.
