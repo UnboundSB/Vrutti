@@ -236,6 +236,7 @@ namespace vrutti::core::editor {
         Piece rightPiece = { node->piece.buffer, node->piece.start + offsetInPiece, node->piece.length - offsetInPiece };
         int64_t shrinkDelta = -static_cast<int64_t>(rightPiece.length);
         node->piece.length = offsetInPiece;
+        updateSizeLeft(node, shrinkDelta); // MUST UPDATE ANCESTORS!
         
         TreeNode* rightNode = allocateNode(rightPiece);
         rightNode->left = m_nil;
@@ -281,17 +282,15 @@ namespace vrutti::core::editor {
         auto deleteRange = [&](auto& self, TreeNode* n, size_t nOffset) -> void {
             if (n == m_nil) return;
             size_t nStart = nOffset + n->size_left;
-            size_t nEnd = nStart + n->piece.length;
+            size_t originalLength = n->piece.length;
+            size_t nEnd = nStart + originalLength;
             if (nStart < offset + length && nEnd > offset) {
-                int64_t delta = -static_cast<int64_t>(n->piece.length);
+                int64_t delta = -static_cast<int64_t>(originalLength);
                 n->piece.length = 0;
                 updateSizeLeft(n, delta);
-                // Note: we don't strictly free the node back to the freelist here because 
-                // re-wiring the RB tree around deleted nodes is complex.
-                // Leaving 0-length nodes maintains RB properties and is fast.
             }
             if (nOffset + n->size_left > offset) self(self, n->left, nOffset);
-            if (nStart + n->piece.length < offset + length) self(self, n->right, nStart + n->piece.length);
+            if (nStart + originalLength < offset + length) self(self, n->right, nStart + originalLength);
         };
         
         deleteRange(deleteRange, m_root, 0);

@@ -32,4 +32,14 @@ This document outlines the high-level architecture of `vrutti_ide/src/core` and 
 
 *   **`PieceTable.h / .cpp`**
     *   **Concept**: Replaces basic strings/arrays for text file storage.
-    *   **Architecture**: Uses an append-only buffer for new typing and an original buffer for the loaded file. Editing doesn't move large chunks of memory, it just splices pointers. The API exposes traditional standard string outputs (`getText`, `insert`, `remove`) so outer modules don't have to worry about the complex internal buffer mapping.
+    *   **Architecture**: Replaced the naive vector storage with an **O(log N) Red-Black Tree** directly wired into the `ArenaAllocator`. This ensures all tree nodes are physically contiguous in RAM, providing lightning-fast CPU cache locality while guaranteeing that massive file edits never freeze the engine.
+    *   **Lazy Loading**: The PieceTable uses direct disk I/O and a 4KB LRU cache to buffer file lines, keeping 5GB files near 0MB RAM footprint on open.
+
+## 6. Utilities (`core/utils/`)
+
+*   **`Json.h / .cpp`**
+    *   **Concept**: A zero-copy JSON scanner utilizing `std::string_view`.
+*   **`StringPool.h / .cpp`**
+    *   **Concept**: A per-file localized string deduplicator. Reuses strings across large parsed files without introducing global multi-threading mutex contention, backed by the Arena.
+*   **`LineScanner.h / .cpp`**
+    *   **Concept**: A SIMD-accelerated (`std::memchr`) string scanner to instantly map `\n` line breaks across massive files in 32-byte vectorized chunks.
