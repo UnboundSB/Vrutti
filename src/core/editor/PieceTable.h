@@ -1,56 +1,77 @@
 #pragma once
 #include <string>
-#include <vector>
+#include <memory>
 #include <cstdint>
 
 namespace vrutti::core::editor {
 
-    // A Piece Table implementation for highly efficient text editing.
-    // Instead of copying large strings on every edit, it maintains a list of "pieces"
-    // pointing to either the original read-only file buffer or a fast append-only buffer.
     class PieceTable {
     public:
         // Initialize with the original file contents
         explicit PieceTable(const std::string& originalText);
-        ~PieceTable() = default;
+        ~PieceTable();
 
         // Core API - Keeps names simple for connecting to outer systems
-        
-        // Inserts text at the specified character offset
         void insert(size_t offset, const std::string& text);
-        
-        // Deletes 'length' characters starting from 'offset'
         void remove(size_t offset, size_t length);
-        
-        // Retrieves the entire document as a single string
         std::string getText() const;
-        
-        // Retrieves a specific substring
         std::string substring(size_t offset, size_t length) const;
-
-        // Current total length of the document
         size_t length() const;
 
     private:
         enum class BufferType { Original, Append };
+        enum class NodeColor { Red, Black };
 
         struct Piece {
             BufferType buffer;
-            size_t start;  // Starting index in the respective buffer
-            size_t length; // Length of this piece
+            size_t start;
+            size_t length;
         };
 
-        // Locates which piece contains the logical offset, and where inside that piece it falls
+        struct TreeNode {
+            Piece piece;
+            size_t size_left; // Sum of lengths in the left subtree
+            NodeColor color;
+            TreeNode* left;
+            TreeNode* right;
+            TreeNode* parent;
+
+            TreeNode(const Piece& p) : piece(p), size_left(0), color(NodeColor::Red), left(nullptr), right(nullptr), parent(nullptr) {}
+        };
+
         struct PieceLocation {
-            size_t pieceIndex;
+            TreeNode* node;
             size_t offsetInPiece;
         };
 
-        PieceLocation findPiece(size_t logicalOffset) const;
+        // Red-Black Tree operations
+        TreeNode* m_root;
+        TreeNode* m_nil; // Sentinel node for leaves
+
+        void leftRotate(TreeNode* x);
+        void rightRotate(TreeNode* x);
+        void insertFixup(TreeNode* z);
+        
+        // Inserts a new node into the tree at the specified logical offset
+        void insertNodeAt(size_t offset, TreeNode* newNode);
+        
+        // Splits a node at a given offset inside its piece
+        void splitNode(TreeNode* node, size_t offsetInPiece);
+        
+        // Finds the node containing the logical offset
+        PieceLocation findNode(size_t logicalOffset) const;
+        
+        // Updates the size_left of ancestors after an insertion or length change
+        void updateSizeLeft(TreeNode* node, int64_t delta);
+        
+        // Recursive deletion helper
+        void deleteTree(TreeNode* node);
+        
+        // In-order traversal helper for building strings
+        void buildString(TreeNode* node, size_t offset, size_t length, std::string& result, size_t& currentOffset, size_t& remaining) const;
 
         std::string m_originalBuffer;
         std::string m_appendBuffer;
-        std::vector<Piece> m_pieces;
         size_t m_totalLength;
     };
 
