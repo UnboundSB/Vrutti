@@ -15,6 +15,7 @@ endif()
 add_library(vrutti_core STATIC
     src/core/memory/ArenaAllocator.cpp
     src/core/concurrency/ThreadPool.cpp
+    src/core/editor/PieceTable.cpp
 )
 target_include_directories(vrutti_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 

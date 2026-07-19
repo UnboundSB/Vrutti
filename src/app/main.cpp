@@ -30,10 +30,34 @@ void runEventSystemTests() {
     }
 }
 
+#include "core/editor/PieceTable.h"
+
+void runPieceTableTests() {
+    std::cout << "[TEST] Running Piece Table Tests..." << std::endl;
+    
+    // Initial content
+    vrutti::core::editor::PieceTable table("Hello World");
+    
+    // Insert "Beautiful " -> "Hello Beautiful World"
+    table.insert(6, "Beautiful ");
+    
+    // Remove "World" and insert "Universe!" -> "Hello Beautiful Universe!"
+    table.remove(16, 5);
+    table.insert(16, "Universe!");
+
+    std::string finalOutput = table.getText();
+    if (finalOutput == "Hello Beautiful Universe!") {
+        std::cout << "[SUCCESS] Piece Table modifications and string generation verified." << std::endl;
+    } else {
+        std::cout << "[ERROR] Piece Table logic failed. Output: '" << finalOutput << "'" << std::endl;
+    }
+}
+
 int main() {
     std::cout << "Vrutti IDE Core Initialization..." << std::endl;
 
     runEventSystemTests();
+    runPieceTableTests();
 
     // TODO: Initialize core subsystems (Memory, Concurrency, VFS)
     // TODO: Launch application window and compositor

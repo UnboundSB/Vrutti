@@ -26,3 +26,9 @@ This document outlines the high-level architecture of `vrutti_ide/src/core` and 
 *   **`Event.h` (Mapped from `event.ts`)**
     *   **Concept**: Creates a lightweight pub/sub mechanism (`Event<T>`, `Emitter<T>`) that is entirely thread-safe using `std::mutex`.
     *   **Architecture**: Subscribing to an event returns an `IDisposable`. This perfectly mirrors the VS Code architecture, guaranteeing deterministic cleanup of event listeners and avoiding memory leaks commonly found in loosely coupled systems.
+
+## 5. Editor Core (`core/editor/`)
+
+*   **`PieceTable.h / .cpp`**
+    *   **Concept**: Maps to VS Code's `pieceTreeTextBuffer`. Replaces basic strings/arrays for text file storage.
+    *   **Architecture**: Uses an append-only buffer for new typing and an original buffer for the loaded file. Editing doesn't move large chunks of memory, it just splices pointers. The API exposes traditional standard string outputs (`getText`, `insert`, `remove`) so outer modules don't have to worry about the complex internal buffer mapping.
