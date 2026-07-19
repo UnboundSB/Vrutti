@@ -1,0 +1,26 @@
+# Node modules
+node_modules/
+npm-debug.log
+
+# Build outputs
+build/
+out/
+dist/
+*.exe
+*.dll
+*.so
+*.dylib
+*.obj
+*.o
+
+# macOS
+.DS_Store
+
+# IDE / OS
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
