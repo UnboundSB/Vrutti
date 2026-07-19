@@ -13,5 +13,6 @@
 - [x] Scaffold the base folder structure for the native C++ core (`src/`).
 - [x] Set up the preliminary build system (CMake/Makefile) to compile the core modules.
 - [x] **Foundation Phase 1:** Implement `core/memory` (custom allocators, zero-copy buffers).
-- [ ] **Foundation Phase 2:** Implement `core/concurrency` (thread pools, lock-free structures). *(See `src/core/task.md` for detailed core tracking)*
+- [x] **Foundation Phase 2 & 3:** Implement `core/concurrency`, `core/events`, and `core/editor` (Piece Table). *(See `src/core/task.md` for detailed core tracking)*
+- [ ] **Foundation Phase 4:** Port File System and `URI` logic.
 - [ ] Begin porting necessary architecture concepts while ensuring low RAM consumption targets are met.

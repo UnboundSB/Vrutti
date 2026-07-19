@@ -7,13 +7,15 @@ This ensures context is preserved across sessions and instances.
 - [x] Create `ArenaAllocator` for zero-copy, fast node allocation.
 - [x] Test `ArenaAllocator` in main.
 
-## Phase 2: Concurrency (In Progress)
-- [ ] Implement `ThreadPool` for async task execution.
-- [ ] Implement a lock-free queue or synchronization primitives if needed.
+## Phase 2: Concurrency & Events (Completed)
+- [x] Implement `ThreadPool` for async task execution.
+- [x] Implement VS Code's `Event` and `Emitter` pub/sub mechanism.
 
-## Phase 3: File System (Pending)
+## Phase 3: Editor Core (Completed)
+- [x] Implement `PieceTable` for high-performance text buffer manipulations.
+- [ ] Support large file loading into original buffer segment.
+
+## Phase 4: File System (Pending)
+- [ ] Create `URI` abstractions.
 - [ ] Implement fast asynchronous file system operations.
 - [ ] Setup file watcher abstractions for live reloading.
-
-## Phase 4: Strings and Buffers (Pending)
-- [ ] Implement zero-copy string views and buffer management.
