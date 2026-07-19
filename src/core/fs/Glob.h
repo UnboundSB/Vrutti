@@ -3,7 +3,7 @@
 
 namespace vrutti::core::fs {
 
-    // A lightweight glob pattern matcher, mapped from VS Code's `glob.ts`
+    // A lightweight glob pattern matcher.
     class Glob {
     public:
         // Returns true if the provided path matches the glob pattern.

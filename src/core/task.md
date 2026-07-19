@@ -9,7 +9,7 @@ This ensures context is preserved across sessions and instances.
 
 ## Phase 2: Concurrency & Events (Completed)
 - [x] Implement `ThreadPool` for async task execution.
-- [x] Implement VS Code's `Event` and `Emitter` pub/sub mechanism.
+- [x] Implement `Event` and `Emitter` pub/sub mechanism.
 
 ## Phase 3: Editor Core (Completed)
 - [x] Implement `PieceTable` for high-performance text buffer manipulations.

@@ -6,17 +6,14 @@
 
 namespace vrutti::core::memory {
 
-    // Ported from VS Code's `vs/base/common/lifecycle.ts`
-    // Represents an object that holds unmanaged resources or event subscriptions
-    // that must be explicitly released.
+    // Replaces garbage collection reliance by strictly managing resource lifecycles.
     class IDisposable {
     public:
         virtual ~IDisposable() = default;
         virtual void dispose() = 0;
     };
 
-    // A collection of disposables that are disposed together.
-    // Equivalent to VS Code's `DisposableStore`.
+    // A container that takes ownership of multiple IDisposables.
     class DisposableStore : public IDisposable {
     public:
         DisposableStore() : m_isDisposed(false) {}

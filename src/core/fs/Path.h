@@ -4,7 +4,7 @@
 
 namespace vrutti::core::fs {
 
-    // A utility class mirroring Node's `path` and VS Code's `vs/base/common/path.ts`
+    // A utility class mirroring Node's `path`.
     // It provides cross-platform path string manipulations safely.
     // Underlying implementation uses <filesystem> to guarantee OS compliance.
     class Path {

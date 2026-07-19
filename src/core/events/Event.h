@@ -11,8 +11,7 @@ namespace vrutti::core::events {
     template<typename T>
     using Listener = std::function<void(const T&)>;
 
-    // Represents an event that can be subscribed to. 
-    // Ported from VS Code's `Event<T>` (vs/base/common/event.ts)
+    // An event that listeners can subscribe to.
     template<typename T>
     class Event {
     public:
@@ -22,8 +21,7 @@ namespace vrutti::core::events {
         virtual ~Event() = default;
     };
 
-    // A concrete implementation that fires events to its listeners.
-    // Ported from VS Code's `Emitter<T>` (vs/base/common/event.ts)
+    // Emitter that triggers the event.
     template<typename T>
     class Emitter : public Event<T> {
     private:
