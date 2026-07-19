@@ -16,6 +16,6 @@ This ensures context is preserved across sessions and instances.
 - [ ] Support large file loading into original buffer segment.
 
 ## Phase 4: File System (Pending)
-- [ ] Create `URI` abstractions.
+- [x] Create `URI` abstractions.
 - [ ] Implement fast asynchronous file system operations.
 - [ ] Setup file watcher abstractions for live reloading.
