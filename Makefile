@@ -14,7 +14,8 @@ SRCS = $(SRC_DIR)/app/main.cpp \
        $(SRC_DIR)/core/memory/ArenaAllocator.cpp \
        $(SRC_DIR)/core/concurrency/ThreadPool.cpp \
        $(SRC_DIR)/core/editor/PieceTable.cpp \
-       $(SRC_DIR)/core/fs/URI.cpp
+       $(SRC_DIR)/core/fs/URI.cpp \
+       $(SRC_DIR)/core/fs/Path.cpp
 
 # Object files
 OBJS = $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(SRCS))
