@@ -19,6 +19,7 @@ add_library(vrutti_core STATIC
     src/core/fs/URI.cpp
     src/core/fs/Path.cpp
     src/core/fs/Glob.cpp
+    src/core/utils/Json.cpp
 )
 target_include_directories(vrutti_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 

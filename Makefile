@@ -16,7 +16,8 @@ SRCS = $(SRC_DIR)/app/main.cpp \
        $(SRC_DIR)/core/editor/PieceTable.cpp \
        $(SRC_DIR)/core/fs/URI.cpp \
        $(SRC_DIR)/core/fs/Path.cpp \
-       $(SRC_DIR)/core/fs/Glob.cpp
+       $(SRC_DIR)/core/fs/Glob.cpp \
+       $(SRC_DIR)/core/utils/Json.cpp
 
 # Object files
 OBJS = $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(SRCS))
