@@ -18,7 +18,8 @@ SRCS = $(SRC_DIR)/app/main.cpp \
        $(SRC_DIR)/core/fs/Path.cpp \
        $(SRC_DIR)/core/fs/Glob.cpp \
        $(SRC_DIR)/core/utils/Json.cpp \
-       $(SRC_DIR)/core/utils/StringPool.cpp
+       $(SRC_DIR)/core/utils/StringPool.cpp \
+       $(SRC_DIR)/core/utils/LineScanner.cpp
 
 # Object files
 OBJS = $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(SRCS))
