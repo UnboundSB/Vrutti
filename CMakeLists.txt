@@ -22,6 +22,7 @@ add_library(vrutti_core STATIC
     src/core/utils/Json.cpp
     src/core/utils/StringPool.cpp
     src/core/utils/LineScanner.cpp
+    src/core/ipc/IPCClient.cpp
 )
 target_include_directories(vrutti_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
