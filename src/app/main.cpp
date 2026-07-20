@@ -45,35 +45,37 @@ void testPieceTable() {
         out << initialContent;
     }
     
-    editor::PieceTable pt(testFile, initialContent.length());
-    
-    // 1. Initial Load Test
-    assert(pt.length() == initialContent.length());
-    assert(pt.getText() == initialContent);
-    
-    // 2. Insert Test
-    pt.insert(5, " Beautiful");
-    std::string expected = "Hello Beautiful World! This is a test file for the PieceTable.";
-    assert(pt.getText() == expected);
-    
-    // 3. Remove Test (across pieces)
-    pt.remove(16, 7); // Remove " World!"
-    expected = "Hello Beautiful This is a test file for the PieceTable.";
-    if (pt.getText() != expected) {
-        std::cerr << "Remove test failed!\nExpected: " << expected << "\nActual:   " << pt.getText() << std::endl;
-        assert(false);
-    }
-    
-    // 4. Boundary Tests
-    pt.insert(pt.length(), " End.");
-    expected += " End.";
-    assert(pt.getText() == expected);
-    
-    pt.insert(0, "Start. ");
-    expected = "Start. " + expected;
-    if (pt.getText() != expected) {
-        std::cerr << "Boundary test failed!\nExpected: " << expected << "\nActual:   " << pt.getText() << std::endl;
-        assert(false);
+    {
+        editor::PieceTable pt(testFile, initialContent.length());
+        
+        // 1. Initial Load Test
+        assert(pt.length() == initialContent.length());
+        assert(pt.getText() == initialContent);
+        
+        // 2. Insert Test
+        pt.insert(5, " Beautiful");
+        std::string expected = "Hello Beautiful World! This is a test file for the PieceTable.";
+        assert(pt.getText() == expected);
+        
+        // 3. Remove Test (across pieces)
+        pt.remove(16, 7); // Remove " World!"
+        expected = "Hello Beautiful This is a test file for the PieceTable.";
+        if (pt.getText() != expected) {
+            std::cerr << "Remove test failed!\nExpected: " << expected << "\nActual:   " << pt.getText() << std::endl;
+            assert(false);
+        }
+        
+        // 4. Boundary Tests
+        pt.insert(pt.length(), " End.");
+        expected += " End.";
+        assert(pt.getText() == expected);
+        
+        pt.insert(0, "Start. ");
+        expected = "Start. " + expected;
+        if (pt.getText() != expected) {
+            std::cerr << "Boundary test failed!\nExpected: " << expected << "\nActual:   " << pt.getText() << std::endl;
+            assert(false);
+        }
     }
     
     // Cleanup
@@ -81,8 +83,7 @@ void testPieceTable() {
     std::cout << "PieceTable OK." << std::endl;
 }
 
-#include "ui/Window.h"
-#include "ui/EditorView.h"
+#include "ui/compositor/Window.h"
 
 int main() {
     std::cout << "--- Vrutti Core Rigorous Test Suite ---" << std::endl;

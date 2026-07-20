@@ -25,7 +25,7 @@ namespace vrutti::ui::views {
 
         // Render our views inside the dockspace framework
         m_explorer.render(m_workspace);
-        m_editor.render(nullptr); // Placeholder for PieceTable
+        m_editor.render(); // Placeholder for PieceTable
 
         ImGui::End();
     }

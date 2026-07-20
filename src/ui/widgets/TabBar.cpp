@@ -11,7 +11,7 @@ namespace vrutti::ui::widgets {
                 bool isOpen = true; // In a real app, track closed tabs to remove them from openFiles
                 
                 // Render each individual tab
-                if (ImGui::BeginTabItem(openFiles[i].c_str(), &isOpen, i == m_activeTabIndex ? ImGuiTabItemFlags_SetSelected : 0)) {
+                if (ImGui::BeginTabItem(openFiles[i].c_str(), &isOpen, (int)i == m_activeTabIndex ? ImGuiTabItemFlags_SetSelected : 0)) {
                     m_activeTabIndex = static_cast<int>(i);
                     ImGui::EndTabItem();
                 }
