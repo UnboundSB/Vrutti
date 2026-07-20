@@ -30,6 +30,3 @@ We will use **Dear ImGui** backed by **GLFW/OpenGL3**. It is the absolute fastes
 - `[x]` Write the actual Node.js bootstrapper script that loads the `vrutti` API polyfill.
 - `[x]` Connect the Node.js script to the C++ `IPCClient` named pipe.
 
-### Phase 8: Mock Extension Module (✅ COMPLETED)
-- `[x]` Create a mock extension (`src/ext/mock_extension.js`) to verify end-to-end functionality.
-- `[x]` Ensure it utilizes the `vrutti` API without any VS Code references.
