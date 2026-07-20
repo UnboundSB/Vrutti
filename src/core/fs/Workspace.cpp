@@ -30,4 +30,12 @@ namespace vrutti::core::fs {
         }
     }
 
+    void Workspace::unloadDirectory(FileNode& node) {
+        if (node.isScanned) {
+            node.children.clear();
+            node.children.shrink_to_fit();
+            node.isScanned = false;
+        }
+    }
+
 } // namespace vrutti::core::fs
