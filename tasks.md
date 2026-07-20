@@ -26,6 +26,6 @@ We will use **Dear ImGui** backed by **GLFW/OpenGL3**. It is the absolute fastes
 - `[-]` Implement OS-level File Watchers for live-reloading (Deferred: decided to keep binary lightweight and fast for now).
 - `[x]` Build the UI File Explorer tree panel (`ui/FileExplorer`).
 
-### Phase 7: The Extension Host Bridge (PENDING)
-- `[ ]` Write the actual Node.js bootstrapper script that loads the `vscode` API polyfill.
-- `[ ]` Connect the Node.js script to the C++ `IPCClient` named pipe.
+### Phase 7: The Extension Host Bridge (✅ COMPLETED)
+- `[x]` Write the actual Node.js bootstrapper script that loads the `vrutti` API polyfill.
+- `[x]` Connect the Node.js script to the C++ `IPCClient` named pipe.
