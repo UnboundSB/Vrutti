@@ -30,3 +30,8 @@ We will use **Dear ImGui** backed by **GLFW/OpenGL3**. It is the absolute fastes
 - `[x]` Write the actual Node.js bootstrapper script that loads the `vrutti` API polyfill.
 - `[x]` Connect the Node.js script to the C++ `IPCClient` named pipe.
 
+### Phase 8: Native UI Structure & Layout (✅ COMPLETED)
+- `[x]` Split `src/ui/` into `compositor`, `views`, and `widgets` subdirectories.
+- `[x]` Build the overarching `Layout` engine using ImGui DockSpace.
+- `[x]` Build the reusable `TabBar` widget for managing open files.
+- `[x]` Compile and verify all C++ integrations.
