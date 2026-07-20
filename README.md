@@ -8,6 +8,7 @@ Vrutti is a high-performance, resource-efficient code editor designed for maximu
 * **Native C++ Core:** The engine relies on C++ for raw processing power, utilizing a Piece Table (a highly optimized data structure that tracks document edits efficiently) to open and edit massive files instantly.
 * **Zero-Copy Extension Bridge:** Extensions are supported via a deeply integrated, lightweight JavaScript environment. By utilizing shared memory (a method where multiple systems can access the exact same block of computer RAM), Vrutti bypasses standard serialization delays, creating a frictionless and high-speed extension ecosystem.
 * **Asynchronous Architecture:** External agents, language servers, and network requests are handled strictly on background multiplexing threads, guaranteeing that the primary typing interface never stutters or freezes.
+* **Native UI Compositor:** A highly optimized Dear ImGui frontend that bypasses the DOM entirely, rendering a professional DockSpace IDE layout natively on the GPU.
 
 ## Getting Started
 
