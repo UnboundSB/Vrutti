@@ -11,3 +11,11 @@ This folder contains the native rendering interface for Vrutti IDE. We use a GPU
 * **`EditorView.h` / `EditorView.cpp`**: 
   - **Function**: Responsible for drawing the text and user interface components.
   - **Details**: It translates the internal text data (from the Piece Table) into visual pixels on the screen. It uses lazy loading (viewport virtualization), which means it only queries computer memory for the specific lines of text that are currently visible on your screen. This allows you to open massive files instantly because invisible text is never loaded into RAM.
+
+* **`FileExplorer.h` / `FileExplorer.cpp`**:
+  - **Function**: Renders the workspace directory tree.
+  - **Details**: Interfaces directly with the lazy-loading `Workspace` to only expand and scan folders when the user clicks them.
+
+## Subdirectories
+
+* **`vendor/`**: Contains third-party dependencies required for the UI to function (e.g., Dear ImGui). See its internal `structure.md` for more details.

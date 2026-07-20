@@ -11,4 +11,16 @@ Vrutti is a high-performance, resource-efficient code editor designed for maximu
 
 ## Getting Started
 
-*(Build instructions and configuration steps will be updated as the core engine development progresses.)*
+To build Vrutti, you need a C++20 compatible compiler and CMake. We recommend using MSYS2 on Windows.
+
+1. Install MSYS2.
+2. Open the MSYS2 UCRT64 terminal and install the toolchain:
+   ```bash
+   pacman -S --noconfirm mingw-w64-ucrt-x86_64-cmake mingw-w64-ucrt-x86_64-gcc
+   ```
+3. Clone the repository and run CMake:
+   ```bash
+   cmake -B build
+   cmake --build build
+   ```
+4. Run the executable from `build/vrutti_app.exe`.

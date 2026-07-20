@@ -21,10 +21,10 @@ We will use **Dear ImGui** backed by **GLFW/OpenGL3**. It is the absolute fastes
 - `[x]` Create `src/ui/Window` to handle OS-level window creation and input polling.
 - `[x]` Create `src/ui/EditorView` to visually render the `PieceTable` text to the screen in real-time.
 
-### Phase 6: Workspace & File System Management (PENDING)
-- `[ ]` Implement robust directory scanning (`core/fs/Workspace`).
-- `[ ]` Implement OS-level File Watchers for live-reloading.
-- `[ ]` Build the UI File Explorer tree panel.
+### Phase 6: Workspace & File System Management (✅ COMPLETED)
+- `[x]` Implement robust directory scanning (`core/fs/Workspace`) with lazy loading.
+- `[-]` Implement OS-level File Watchers for live-reloading (Deferred: decided to keep binary lightweight and fast for now).
+- `[x]` Build the UI File Explorer tree panel (`ui/FileExplorer`).
 
 ### Phase 7: The Extension Host Bridge (PENDING)
 - `[ ]` Write the actual Node.js bootstrapper script that loads the `vscode` API polyfill.
