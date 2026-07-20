@@ -59,12 +59,14 @@ add_library(vrutti_core STATIC
     src/core/fs/URI.cpp
     src/core/fs/Path.cpp
     src/core/fs/Glob.cpp
+    src/core/fs/Workspace.cpp
     src/core/utils/Json.cpp
     src/core/utils/StringPool.cpp
     src/core/utils/LineScanner.cpp
     src/core/ipc/IPCClient.cpp
     src/ui/Window.cpp
     src/ui/EditorView.cpp
+    src/ui/FileExplorer.cpp
 )
 target_include_directories(vrutti_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
