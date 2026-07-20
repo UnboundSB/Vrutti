@@ -14,12 +14,12 @@ The invisible foundation of the IDE is completely bulletproof and heavily optimi
 
 Now that the backend is a Ferrari engine, it's time to build the chassis. We need to actually render this text to the screen without using a browser.
 
-### Phase 5: Native Rendering Engine (🚀 UP NEXT)
+### Phase 5: Native Rendering Engine (🚀 COMPLETED)
 We will use **Dear ImGui** backed by **GLFW/OpenGL3**. It is the absolute fastest, zero-bloat UI framework in the C++ world, executing in microseconds and rendering directly to the GPU.
-- `[ ]` Configure `CMakeLists.txt` to link OpenGL3 and GLFW.
-- `[ ]` Download and integrate `Dear ImGui` core files.
-- `[ ]` Create `src/ui/Window` to handle OS-level window creation and input polling.
-- `[ ]` Create `src/ui/EditorView` to visually render the `PieceTable` text to the screen in real-time.
+- `[x]` Configure `CMakeLists.txt` to link OpenGL3 and GLFW.
+- `[x]` Download and integrate `Dear ImGui` core files.
+- `[x]` Create `src/ui/Window` to handle OS-level window creation and input polling.
+- `[x]` Create `src/ui/EditorView` to visually render the `PieceTable` text to the screen in real-time.
 
 ### Phase 6: Workspace & File System Management (PENDING)
 - `[ ]` Implement robust directory scanning (`core/fs/Workspace`).
