@@ -1,21 +1,23 @@
 # UI Module Structure
 
-This folder contains the native rendering interface for Vrutti IDE. We use a GPU-accelerated approach to ensure the editor draws text extremely fast without blocking the system.
+This folder contains the native rendering interface for Vrutti IDE. We use a GPU-accelerated approach (ImGui + OpenGL3) to ensure the editor draws text extremely fast without blocking the system.
 
-## Files and Responsibilities
+## Sub-Modules
 
-* **`Window.h` / `Window.cpp`**: 
-  - **Function**: Handles creating the main application window on your operating system.
-  - **Details**: It initializes the OpenGL graphics context, sets up the window frame, and captures system-level mouse and keyboard events. It also manages the main render loop, ensuring the screen is updated continuously.
+### `compositor/`
+Handles the core OS-level window rendering and hardware context.
+* **`Window.h/cpp`**: Initializes OpenGL, handles main window creation, and manages the main render loop (input polling, frame swapping).
 
-* **`EditorView.h` / `EditorView.cpp`**: 
-  - **Function**: Responsible for drawing the text and user interface components.
-  - **Details**: It translates the internal text data (from the Piece Table) into visual pixels on the screen. It uses lazy loading (viewport virtualization), which means it only queries computer memory for the specific lines of text that are currently visible on your screen. This allows you to open massive files instantly because invisible text is never loaded into RAM.
+### `views/`
+High-level structural panels that make up the IDE layout.
+* **`Layout.h/cpp`**: The overarching DockSpace layout engine. It splits the screen logically and anchors the Sidebar and Editor Tabs.
+* **`FileExplorer.h/cpp`**: Renders the workspace directory tree. Interfaces directly with the lazy-loading `Workspace`.
+* **`EditorView.h/cpp`**: Visually renders the actual text content and code buffers (PieceTable).
 
-* **`FileExplorer.h` / `FileExplorer.cpp`**:
-  - **Function**: Renders the workspace directory tree.
-  - **Details**: Interfaces directly with the lazy-loading `Workspace` to only expand and scan folders when the user clicks them.
+### `widgets/`
+Reusable, lightweight UI components.
+* **`TabBar.h/cpp`**: Renders the row of open file tabs at the top of the editor.
 
 ## Subdirectories
 
-* **`vendor/`**: Contains third-party dependencies required for the UI to function (e.g., Dear ImGui). See its internal `structure.md` for more details.
+* **`vendor/`**: Contains third-party dependencies required for the UI to function (e.g., Dear ImGui).
