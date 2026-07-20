@@ -1,0 +1,1 @@
+#pragma once`n`nnamespace vrutti::core::fs {`n    class Workspace;`n    struct FileNode;`n}`n`nnamespace vrutti::ui {`n`n    class FileExplorer {`n    public:`n        void render(vrutti::core::fs::Workspace& workspace);`n    private:`n        void renderNode(vrutti::core::fs::Workspace& workspace, vrutti::core::fs::FileNode& node);`n    };`n`n}
