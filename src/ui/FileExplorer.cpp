@@ -24,6 +24,12 @@ namespace vrutti::ui {
                     renderNode(workspace, child);
                 }
                 ImGui::TreePop();
+            } else {
+                // Deep lazy loading: instantly free RAM when a folder is collapsed.
+                // We avoid unloading the root workspace directory itself.
+                if (node.isScanned && &node != &workspace.getRoot()) {
+                    workspace.unloadDirectory(node);
+                }
             }
         } else {
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.8f, 0.8f, 0.8f, 1.0f)); // Light gray for files
