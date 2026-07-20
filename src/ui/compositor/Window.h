@@ -7,10 +7,11 @@ namespace vrutti::core::fs {
     class Workspace;
 }
 
-namespace vrutti::ui {
-    class FileExplorer;
-    class EditorView;
+namespace vrutti::ui::views {
+    class Layout;
+}
 
+namespace vrutti::ui {
     class Window {
     public:
         Window(int width, int height, const std::string& title);
@@ -27,8 +28,7 @@ namespace vrutti::ui {
         void* m_glfwWindow; // Type erased to avoid leaking GLFW headers everywhere
 
         std::unique_ptr<vrutti::core::fs::Workspace> m_workspace;
-        std::unique_ptr<FileExplorer> m_fileExplorer;
-        std::unique_ptr<EditorView> m_editorView;
+        std::unique_ptr<vrutti::ui::views::Layout> m_layout;
 
         void renderFrame();
     };

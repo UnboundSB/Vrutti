@@ -1,7 +1,6 @@
 #include "Window.h"
-#include "FileExplorer.h"
-#include "EditorView.h"
-#include "../core/fs/Workspace.h"
+#include "../views/Layout.h"
+#include "../../core/fs/Workspace.h"
 #include <iostream>
 #include <filesystem>
 #include <imgui.h>
@@ -14,8 +13,7 @@ namespace vrutti::ui {
     Window::Window(int width, int height, const std::string& title)
         : m_width(width), m_height(height), m_title(title), m_glfwWindow(nullptr) {
         m_workspace = std::make_unique<core::fs::Workspace>(std::filesystem::current_path().string());
-        m_fileExplorer = std::make_unique<FileExplorer>();
-        m_editorView = std::make_unique<EditorView>();
+        m_layout = std::make_unique<views::Layout>(*m_workspace);
     }
 
     Window::~Window() {
@@ -62,14 +60,8 @@ namespace vrutti::ui {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
         
-        ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport());
-
-        if (m_fileExplorer && m_workspace) {
-            m_fileExplorer->render(*m_workspace);
-        }
-
-        if (m_editorView) {
-            m_editorView->render();
+        if (m_layout) {
+            m_layout->render();
         }
 
         ImGui::Render();
