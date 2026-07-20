@@ -81,6 +81,9 @@ void testPieceTable() {
     std::cout << "PieceTable OK." << std::endl;
 }
 
+#include "ui/Window.h"
+#include "ui/EditorView.h"
+
 int main() {
     std::cout << "--- Vrutti Core Rigorous Test Suite ---" << std::endl;
     
@@ -94,5 +97,16 @@ int main() {
         return 1;
     }
     
+    // Launch UI
+    vrutti::ui::Window window(1280, 720, "Vrutti IDE");
+    if (!window.init()) {
+        std::cerr << "Failed to initialize UI window!" << std::endl;
+        return 1;
+    }
+
+    // Currently we just run the window loop
+    // Further integration with EditorView will happen here
+    window.run();
+
     return 0;
 }
