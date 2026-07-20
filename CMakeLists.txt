@@ -65,9 +65,11 @@ add_library(vrutti_core STATIC
     src/core/utils/StringPool.cpp
     src/core/utils/LineScanner.cpp
     src/core/ipc/IPCClient.cpp
-    src/ui/Window.cpp
-    src/ui/EditorView.cpp
-    src/ui/FileExplorer.cpp
+    src/ui/compositor/Window.cpp
+    src/ui/views/Layout.cpp
+    src/ui/views/EditorView.cpp
+    src/ui/views/FileExplorer.cpp
+    src/ui/widgets/TabBar.cpp
 )
 target_include_directories(vrutti_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
@@ -80,6 +82,4 @@ target_link_libraries(vrutti_core PUBLIC imgui OpenGL::GL)
 add_executable(vrutti_app src/app/main.cpp)
 target_link_libraries(vrutti_app PRIVATE vrutti_core imgui glfw OpenGL::GL)
 
-# Test Executable
-add_executable(vrutti_test tests/test_runner.cpp)
-target_link_libraries(vrutti_test PRIVATE vrutti_core imgui glfw OpenGL::GL)
+
