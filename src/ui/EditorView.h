@@ -1,1 +1,8 @@
-#pragma once`n`nnamespace vrutti::ui {`n    class EditorView {`n    public:`n        void render();`n    };`n}
+#pragma once
+
+namespace vrutti::ui {
+    class EditorView {
+    public:
+        void render();
+    };
+}

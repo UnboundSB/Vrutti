@@ -1,1 +1,31 @@
-#pragma once`n`n#include <string>`n#include <vector>`n#include <filesystem>`n`nnamespace vrutti::core::fs {`n`n    struct FileNode {`n        std::string name;`n        std::string path;`n        bool isDirectory;`n        bool isScanned = false;`n        std::vector<FileNode> children;`n    };`n`n    class Workspace {`n    public:`n        Workspace(const std::string& rootPath);`n        `n        const FileNode& getRoot() const { return m_root; }`n        FileNode& getRootMutable() { return m_root; }`n`n        // Lazy loads children of a specific node`n        void scanDirectory(FileNode& node);`n`n    private:`n        FileNode m_root;`n    };`n`n}
+#pragma once
+
+#include <string>
+#include <vector>
+#include <filesystem>
+
+namespace vrutti::core::fs {
+
+    struct FileNode {
+        std::string name;
+        std::string path;
+        bool isDirectory;
+        bool isScanned = false;
+        std::vector<FileNode> children;
+    };
+
+    class Workspace {
+    public:
+        Workspace(const std::string& rootPath);
+        
+        const FileNode& getRoot() const { return m_root; }
+        FileNode& getRootMutable() { return m_root; }
+
+        // Lazy loads children of a specific node
+        void scanDirectory(FileNode& node);
+
+    private:
+        FileNode m_root;
+    };
+
+}

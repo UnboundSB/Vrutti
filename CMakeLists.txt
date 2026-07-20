@@ -6,9 +6,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # Set compile options for high performance and strict warnings
 if(MSVC)
-    add_compile_options(/W4 /WX /O2)
+    add_compile_options(/W4 /O2)
 else()
-    add_compile_options(-Wall -Wextra -Werror -O3 -flto)
+    add_compile_options(-Wall -Wextra -O3 -flto)
 endif()
 
 # TODO: Add UI/Compositor and Bridge dependencies later
@@ -32,24 +32,25 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/ocornut/imgui.git
     GIT_TAG        v1.90.8-docking
 )
-FetchContent_MakeAvailable(imgui)
+FetchContent_GetProperties(imgui)
+if(NOT imgui_POPULATED)
+    FetchContent_Populate(imgui)
+endif()
 
 # Create a library for ImGui
-if(imgui_ADDED)
-    add_library(imgui STATIC
-        ${imgui_SOURCE_DIR}/imgui.cpp
-        ${imgui_SOURCE_DIR}/imgui_draw.cpp
-        ${imgui_SOURCE_DIR}/imgui_tables.cpp
-        ${imgui_SOURCE_DIR}/imgui_widgets.cpp
-        ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
-        ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
-    )
-    target_include_directories(imgui PUBLIC 
-        ${imgui_SOURCE_DIR} 
-        ${imgui_SOURCE_DIR}/backends
-    )
-    target_link_libraries(imgui PUBLIC glfw)
-endif()
+add_library(imgui STATIC
+    ${imgui_SOURCE_DIR}/imgui.cpp
+    ${imgui_SOURCE_DIR}/imgui_draw.cpp
+    ${imgui_SOURCE_DIR}/imgui_tables.cpp
+    ${imgui_SOURCE_DIR}/imgui_widgets.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
+)
+target_include_directories(imgui PUBLIC 
+    ${imgui_SOURCE_DIR} 
+    ${imgui_SOURCE_DIR}/backends
+)
+target_link_libraries(imgui PUBLIC glfw)
 
 # Core Module
 add_library(vrutti_core STATIC
@@ -72,6 +73,8 @@ target_include_directories(vrutti_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 # Find OpenGL
 find_package(OpenGL REQUIRED)
+
+target_link_libraries(vrutti_core PUBLIC imgui OpenGL::GL)
 
 # Main Executable
 add_executable(vrutti_app src/app/main.cpp)

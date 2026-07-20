@@ -62,7 +62,7 @@ namespace vrutti::ui {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
         
-        ImGui::DockSpaceOverViewport(ImGui::GetMainViewport());
+        ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport());
 
         if (m_fileExplorer && m_workspace) {
             m_fileExplorer->render(*m_workspace);
