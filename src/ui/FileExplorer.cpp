@@ -12,8 +12,11 @@ namespace vrutti::ui {
 
     void FileExplorer::renderNode(core::fs::Workspace& workspace, core::fs::FileNode& node) {
         if (node.isDirectory) {
-            // Lazy load contents when expanded
-            if (ImGui::TreeNodeEx(node.name.c_str(), ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick)) {
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.7f, 1.0f, 1.0f)); // Light blue for folders
+            bool isExpanded = ImGui::TreeNodeEx(node.name.c_str(), ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick);
+            ImGui::PopStyleColor();
+            
+            if (isExpanded) {
                 if (!node.isScanned) {
                     workspace.scanDirectory(node);
                 }
@@ -23,7 +26,9 @@ namespace vrutti::ui {
                 ImGui::TreePop();
             }
         } else {
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.8f, 0.8f, 0.8f, 1.0f)); // Light gray for files
             ImGui::TreeNodeEx(node.name.c_str(), ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
+            ImGui::PopStyleColor();
         }
     }
 
