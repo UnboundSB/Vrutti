@@ -7,8 +7,8 @@
 
 namespace vrutti::ui {
 
-    Window::Window(int width, int height, const std::string& title)
-        : m_width(width), m_height(height), m_title(title), m_windowHandle(nullptr) 
+    Window::Window(int width, int height, const std::string& title, vrutti::core::ipc::IPCClient* ipc)
+        : m_width(width), m_height(height), m_title(title), m_windowHandle(nullptr), m_ipc(ipc) 
     {
     }
 
@@ -32,9 +32,18 @@ namespace vrutti::ui {
             this->shutdown();
         }, nullptr);
 
-        // Calculate absolute path to the frontend index.html
+        // Bind IPC message handler for Lit frontend to communicate with C++ Core natively
+        w->bind("sendIpcMessage", [this](const std::string& seq, const std::string& req, void* arg) {
+            if (this->m_ipc) {
+                // The 'req' payload from webview is always a JSON array string containing the arguments.
+                // We pass it directly to the IPC client to handle.
+                this->m_ipc->handleIncomingMessage(req);
+            }
+        }, nullptr);
+
+        // Calculate absolute path to the compiled frontend dist/index.html
         std::filesystem::path cwd = std::filesystem::current_path();
-        std::filesystem::path htmlPath = cwd / "src" / "ui" / "frontend" / "index.html";
+        std::filesystem::path htmlPath = cwd / "src" / "ui" / "frontend" / "dist" / "index.html";
         
         // Ensure string is correctly formatted for webview
         std::string htmlStr = htmlPath.string();
