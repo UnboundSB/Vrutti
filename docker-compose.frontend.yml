@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  frontend-compiler:
+    build:
+      context: ./src/ui/frontend
+      dockerfile: Dockerfile.frontend
+    volumes:
+      - ./src/ui/frontend:/app
+      - /app/node_modules # Prevent host node_modules from overwriting container's
+    environment:
+      - NODE_ENV=production
