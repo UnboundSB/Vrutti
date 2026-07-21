@@ -46,6 +46,12 @@ if(WIN32)
         ole32 comctl32 oleaut32 uuid mpr version shlwapi user32 advapi32
     )
     target_include_directories(vrutti_core PUBLIC ${webview2_SOURCE_DIR}/build/native/include)
+else()
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(WEBKIT2GTK REQUIRED gtk+-3.0 webkit2gtk-4.0)
+    target_include_directories(vrutti_core PUBLIC ${WEBKIT2GTK_INCLUDE_DIRS})
+    target_link_libraries(vrutti_core PUBLIC ${WEBKIT2GTK_LIBRARIES})
+    target_compile_options(vrutti_core PUBLIC ${WEBKIT2GTK_CFLAGS})
 endif()
 
 # Main Executable
