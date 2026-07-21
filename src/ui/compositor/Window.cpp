@@ -26,6 +26,17 @@ namespace vrutti::ui {
         w->set_title(m_title);
         w->set_size(m_width, m_height, WEBVIEW_HINT_NONE);
 
+#ifdef _WIN32
+        HWND hwnd = static_cast<HWND>(w->window());
+        if (hwnd) {
+            HICON hIcon = LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(101));
+            if (hIcon) {
+                SendMessage(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hIcon);
+                SendMessage(hwnd, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
+            }
+        }
+#endif
+
         // Bind a C++ function so JS can close the window
         w->bind("closeWindow", [this](const std::string& seq, const std::string& req, void* arg) {
             std::cout << "[UI] JS requested window close." << std::endl;
