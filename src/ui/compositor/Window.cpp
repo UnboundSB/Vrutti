@@ -1,19 +1,16 @@
 #include "Window.h"
-#include "../views/Layout.h"
-#include "../../core/fs/Workspace.h"
 #include <iostream>
 #include <filesystem>
-#include <imgui.h>
-#include <imgui_impl_glfw.h>
-#include <imgui_impl_opengl3.h>
-#include <GLFW/glfw3.h>
+
+// We must include webview.h here. It's a single header library.
+#define WEBVIEW_HEADER
+#include "../vendor/webview.h"
 
 namespace vrutti::ui {
 
     Window::Window(int width, int height, const std::string& title)
-        : m_width(width), m_height(height), m_title(title), m_glfwWindow(nullptr) {
-        m_workspace = std::make_unique<core::fs::Workspace>(std::filesystem::current_path().string());
-        m_layout = std::make_unique<views::Layout>(*m_workspace);
+        : m_width(width), m_height(height), m_title(title), m_windowHandle(nullptr) 
+    {
     }
 
     Window::~Window() {
@@ -21,78 +18,55 @@ namespace vrutti::ui {
     }
 
     bool Window::init() {
-        std::cout << "[UI] Initializing GLFW Window: " << m_title << " (" << m_width << "x" << m_height << ")" << std::endl;
+        std::cout << "[UI] Initializing Native Webview Window..." << std::endl;
         
-        if (!glfwInit()) {
-            return false;
-        }
+        // Ensure webview.h compiles by setting up a dummy handle
+        m_windowHandle = new webview::webview(true, nullptr);
+        
+        webview::webview* w = static_cast<webview::webview*>(m_windowHandle);
+        w->set_title(m_title);
+        w->set_size(m_width, m_height, WEBVIEW_HINT_NONE);
 
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+        // Bind a C++ function so JS can close the window
+        w->bind("closeWindow", [this](const std::string& seq, const std::string& req, void* arg) {
+            std::cout << "[UI] JS requested window close." << std::endl;
+            this->shutdown();
+        }, nullptr);
 
-        m_glfwWindow = glfwCreateWindow(m_width, m_height, m_title.c_str(), nullptr, nullptr);
-        if (!m_glfwWindow) {
-            glfwTerminate();
-            return false;
-        }
+        // Calculate absolute path to the frontend index.html
+        std::filesystem::path cwd = std::filesystem::current_path();
+        std::filesystem::path htmlPath = cwd / "src" / "ui" / "frontend" / "index.html";
+        
+        // Ensure string is correctly formatted for webview
+        std::string htmlStr = htmlPath.string();
+        for (char& c : htmlStr) { if (c == '\\') c = '/'; }
+        std::string uri = "file:///" + htmlStr;
+        
+        w->navigate(uri);
 
-        glfwMakeContextCurrent((GLFWwindow*)m_glfwWindow);
-        glfwSwapInterval(1); // Enable vsync
-
-        IMGUI_CHECKVERSION();
-        ImGui::CreateContext();
-        ImGuiIO& io = ImGui::GetIO(); (void)io;
-        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-        io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
-        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-
-        ImGui::StyleColorsDark();
-
-        ImGui_ImplGlfw_InitForOpenGL((GLFWwindow*)m_glfwWindow, true);
-        ImGui_ImplOpenGL3_Init("#version 330");
-
+        std::cout << "[UI] Webview navigated to: " << uri << std::endl;
         return true;
     }
 
-    void Window::renderFrame() {
-        ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
-        ImGui::NewFrame();
-        
-        if (m_layout) {
-            m_layout->render();
-        }
-
-        ImGui::Render();
-        int display_w, display_h;
-        glfwGetFramebufferSize((GLFWwindow*)m_glfwWindow, &display_w, &display_h);
-        glViewport(0, 0, display_w, display_h);
-        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-        
-        glfwSwapBuffers((GLFWwindow*)m_glfwWindow);
-    }
-
     void Window::run() {
-        std::cout << "[UI] Entering main render loop..." << std::endl;
-        while (!glfwWindowShouldClose((GLFWwindow*)m_glfwWindow)) {
-            glfwPollEvents();
-            renderFrame();
+        // Run the webview event loop
+        webview::webview* w = static_cast<webview::webview*>(m_windowHandle);
+        if (w) {
+            w->run(); // This is blocking until window is closed
         }
     }
 
     void Window::shutdown() {
-        if (!m_glfwWindow) return;
-        std::cout << "[UI] Shutting down UI context." << std::endl;
-        ImGui_ImplOpenGL3_Shutdown();
-        ImGui_ImplGlfw_Shutdown();
-        ImGui::DestroyContext();
-        
-        glfwDestroyWindow((GLFWwindow*)m_glfwWindow);
-        glfwTerminate();
-        m_glfwWindow = nullptr;
+        if (m_windowHandle) {
+            webview::webview* w = static_cast<webview::webview*>(m_windowHandle);
+            w->terminate();
+            delete w;
+            m_windowHandle = nullptr;
+            std::cout << "[UI] Webview destroyed." << std::endl;
+        }
     }
 
-} // namespace vrutti::ui
+    bool Window::shouldClose() const {
+        return m_windowHandle == nullptr;
+    }
+}
