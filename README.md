@@ -26,3 +26,12 @@ To build Vrutti, you need a C++20 compatible compiler and CMake. We recommend us
    cmake --build build
    ```
 4. Run the executable from `build/vrutti_app.exe`.
+
+## Testing
+
+Vrutti utilizes a rigorous two-pronged testing approach to guarantee zero-bloat and extreme performance:
+1. **Native C++ Mocking (`ctest`)**: Core structures (Arena Allocators, File Watchers) and IPC channels are tested instantly using highly-optimized, dependency-free C++ mocks via `tests/TestFramework.h`.
+2. **Dockerized Node.js Integration**: To test the JSON-RPC Extension Host Bridge authentically without polluting your local Windows environment, Vrutti spins up a lightweight Linux Docker container.
+   ```bash
+   docker compose -f docker-compose.test.yml run --build test-suite
+   ```
