@@ -3,7 +3,6 @@
 #include <filesystem>
 
 // We must include webview.h here. It's a single header library.
-#define WEBVIEW_HEADER
 #include "../vendor/webview.h"
 
 namespace vrutti::ui {
