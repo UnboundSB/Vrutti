@@ -51,7 +51,7 @@ export class VruttiApp extends LitElement {
     return html`
       <header>
         <div class="logo">
-          <img src="../../../logos/logo-512x512.png" alt="Vrutti Logo" style="height: 20px; vertical-align: middle; margin-right: 8px;" />
+          <img src="../../../../logos/logo-512x512.png" alt="Vrutti Logo" style="height: 20px; vertical-align: middle; margin-right: 8px;" />
           Vrutti
         </div>
         <!-- Placeholder for Search -->
