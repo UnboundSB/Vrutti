@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vrutti IDE</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="app">
+        <header class="titlebar">
+            <div class="logo">Vrutti</div>
+            <div class="search-bar">Search files, symbols, or commands...</div>
+            <div class="window-controls">
+                <span class="control min"></span>
+                <span class="control max"></span>
+                <span class="control close"></span>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <aside class="sidebar">
+                <div class="sidebar-header">EXPLORER</div>
+                <ul class="file-tree" id="file-tree">
+                    <li class="folder open">
+                        <span class="icon">📁</span> src
+                        <ul>
+                            <li class="file"><span class="icon">📄</span> main.cpp</li>
+                            <li class="file active"><span class="icon">📄</span> IPCClient.cpp</li>
+                            <li class="file"><span class="icon">📄</span> Window.cpp</li>
+                        </ul>
+                    </li>
+                    <li class="folder">
+                        <span class="icon">📁</span> tests
+                    </li>
+                </ul>
+            </aside>
+
+            <main class="editor-area">
+                <div class="editor-tabs">
+                    <div class="tab active">IPCClient.cpp</div>
+                    <div class="tab">main.cpp</div>
+                </div>
+                <div class="editor-content" id="editor">
+<pre><code><span class="keyword">#include</span> <span class="string">"IPCClient.h"</span>
+<span class="keyword">#include</span> <span class="string">&lt;iostream&gt;</span>
+<span class="keyword">#include</span> <span class="string">&lt;thread&gt;</span>
+
+<span class="keyword">namespace</span> vrutti::core::ipc {
+
+    <span class="type">void</span> IPCClient::start() {
+        <span class="keyword">if</span> (m_running) <span class="keyword">return</span>;
+        m_running = <span class="keyword">true</span>;
+        
+        std::thread([<span class="keyword">this</span>]() { <span class="keyword">this</span>->listenLoop(); }).detach();
+        std::cout &lt;&lt; <span class="string">"[IPC] Bound to pipe/socket: "</span> &lt;&lt; m_pipeName &lt;&lt; std::endl;
+    }
+
+} <span class="comment">// namespace vrutti::core::ipc</span>
+</code></pre>
+                </div>
+            </main>
+        </div>
+
+        <footer class="statusbar">
+            <div class="status-left">
+                <span class="item">master*</span>
+                <span class="item">0 errors, 0 warnings</span>
+            </div>
+            <div class="status-right">
+                <span class="item">Ln 42, Col 1</span>
+                <span class="item">Spaces: 4</span>
+                <span class="item">UTF-8</span>
+                <span class="item">C++</span>
+            </div>
+        </footer>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
