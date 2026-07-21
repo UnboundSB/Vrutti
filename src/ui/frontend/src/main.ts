@@ -51,8 +51,7 @@ export class VruttiApp extends LitElement {
     return html`
       <header>
         <div class="logo">
-          <img src="../../../../logos/logo-512x512.png" alt="Vrutti Logo" style="height: 20px; vertical-align: middle; margin-right: 8px;" />
-          Vrutti
+          <img src="../../../../logos/favicon-32x32.png" alt="Vrutti" style="height: 20px; vertical-align: middle;" />
         </div>
         <!-- Placeholder for Search -->
         <div>Search files...</div>
@@ -106,12 +105,14 @@ export class VruttiEditor extends LitElement {
       display: flex;
       flex-direction: column;
       height: 100%;
+      position: relative;
     }
     .tabs {
       height: 35px;
       background-color: #13151f;
       display: flex;
       border-bottom: 1px solid #23273b;
+      z-index: 1;
     }
     .tab {
       padding: 0 16px;
@@ -127,6 +128,16 @@ export class VruttiEditor extends LitElement {
       padding: 24px;
       font-family: 'Fira Code', monospace;
       font-size: 14px;
+      z-index: 1;
+    }
+    .underlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      opacity: 0.05;
+      pointer-events: none;
+      z-index: 0;
     }
   `;
 
@@ -139,6 +150,7 @@ export class VruttiEditor extends LitElement {
         // Vrutti Core Native Editor<br/>
         #include &lt;iostream&gt;
       </div>
+      <img src="../../../../logos/logo-512x512.png" class="underlay" />
     `;
   }
 }
