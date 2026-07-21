@@ -104,6 +104,15 @@ add_executable(test_fs tests/test_fs.cpp)
 target_link_libraries(test_fs PRIVATE vrutti_core)
 add_test(NAME FSTests COMMAND test_fs)
 
+# Integration Testing (Mocks)
+add_executable(test_ipc_bridge tests/test_ipc_bridge.cpp)
+target_link_libraries(test_ipc_bridge PRIVATE vrutti_core)
+add_test(NAME IPCBridgeTests COMMAND test_ipc_bridge)
+
+add_executable(test_ui_core tests/test_ui_core.cpp)
+target_link_libraries(test_ui_core PRIVATE vrutti_core)
+add_test(NAME UICoreIntegrationTests COMMAND test_ui_core)
+
 
 
 
