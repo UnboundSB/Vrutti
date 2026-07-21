@@ -1,0 +1,226 @@
+:root {
+    --bg-base: #0f111a;
+    --bg-sidebar: #13151f;
+    --bg-titlebar: #181b28;
+    --bg-surface: #1e2132;
+    --bg-highlight: #272c42;
+    
+    --text-primary: #a6accd;
+    --text-secondary: #717cb4;
+    --text-muted: #4e5579;
+    
+    --accent: #82aaff;
+    --error: #f07178;
+    --success: #c3e88d;
+    --warning: #ffcb6b;
+    
+    --border: #23273b;
+    
+    /* Syntax */
+    --syn-keyword: #c792ea;
+    --syn-string: #c3e88d;
+    --syn-type: #ffcb6b;
+    --syn-comment: #676e95;
+    
+    --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: 'Fira Code', Consolas, Monaco, 'Courier New', monospace;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: var(--bg-base);
+    color: var(--text-primary);
+    font-family: var(--font-ui);
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+#app {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+/* Titlebar */
+.titlebar {
+    height: 35px;
+    background-color: var(--bg-titlebar);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    border-bottom: 1px solid var(--border);
+    -webkit-app-region: drag; /* Allows native dragging if supported */
+}
+
+.logo {
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 0.5px;
+}
+
+.search-bar {
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 4px 120px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    -webkit-app-region: no-drag;
+}
+
+.window-controls {
+    display: flex;
+    gap: 8px;
+    -webkit-app-region: no-drag;
+}
+
+.control {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.control.min { background-color: var(--warning); }
+.control.max { background-color: var(--success); }
+.control.close { background-color: var(--error); }
+
+/* Main Content */
+.main-content {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* Sidebar */
+.sidebar {
+    width: 250px;
+    background-color: var(--bg-sidebar);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+}
+
+.sidebar-header {
+    padding: 10px 16px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    color: var(--text-secondary);
+}
+
+.file-tree {
+    list-style: none;
+    font-size: 13px;
+}
+
+.file-tree ul {
+    list-style: none;
+    padding-left: 20px;
+}
+
+.file-tree li {
+    padding: 4px 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: background-color 0.2s;
+}
+
+.file-tree li:hover {
+    background-color: var(--bg-surface);
+}
+
+.file-tree li.active {
+    background-color: var(--bg-highlight);
+    color: var(--accent);
+}
+
+.icon {
+    font-size: 14px;
+    opacity: 0.8;
+}
+
+/* Editor Area */
+.editor-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--bg-base);
+}
+
+.editor-tabs {
+    display: flex;
+    background-color: var(--bg-sidebar);
+    height: 35px;
+    border-bottom: 1px solid var(--border);
+}
+
+.tab {
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    font-size: 13px;
+    color: var(--text-secondary);
+    border-right: 1px solid var(--border);
+    cursor: pointer;
+    background-color: var(--bg-surface);
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.tab.active {
+    background-color: var(--bg-base);
+    color: var(--accent);
+    border-top: 2px solid var(--accent);
+}
+
+.editor-content {
+    flex: 1;
+    padding: 24px;
+    overflow: auto;
+    font-family: var(--font-mono);
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+/* Syntax Highlighting */
+.keyword { color: var(--syn-keyword); }
+.string { color: var(--syn-string); }
+.type { color: var(--syn-type); }
+.comment { color: var(--syn-comment); font-style: italic; }
+
+/* Statusbar */
+.statusbar {
+    height: 24px;
+    background-color: var(--accent);
+    color: var(--bg-base);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.statusbar .status-left, .statusbar .status-right {
+    display: flex;
+    gap: 16px;
+}
+
+.statusbar .item {
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.statusbar .item:hover {
+    opacity: 0.8;
+}
