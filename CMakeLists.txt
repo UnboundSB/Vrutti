@@ -55,7 +55,7 @@ else()
 endif()
 
 # Main Executable
-add_executable(vrutti_app src/app/main.cpp)
+add_executable(vrutti_app src/app/main.cpp src/app/vrutti_app.rc)
 target_link_libraries(vrutti_app PRIVATE vrutti_core)
 
 # Lazy Loaded Search DLL
