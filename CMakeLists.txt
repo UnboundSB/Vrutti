@@ -89,6 +89,21 @@ add_library(vrutti_search SHARED
 )
 target_link_libraries(vrutti_search PRIVATE vrutti_core)
 
+# Rigorous Unit Testing Pipeline
+enable_testing()
+
+add_executable(test_memory tests/test_memory.cpp)
+target_link_libraries(test_memory PRIVATE vrutti_core)
+add_test(NAME MemoryTests COMMAND test_memory)
+
+add_executable(test_concurrency tests/test_concurrency.cpp)
+target_link_libraries(test_concurrency PRIVATE vrutti_core)
+add_test(NAME ConcurrencyTests COMMAND test_concurrency)
+
+add_executable(test_fs tests/test_fs.cpp)
+target_link_libraries(test_fs PRIVATE vrutti_core)
+add_test(NAME FSTests COMMAND test_fs)
+
 
 
 
