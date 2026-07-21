@@ -65,6 +65,7 @@ add_library(vrutti_core STATIC
     src/core/utils/StringPool.cpp
     src/core/utils/LineScanner.cpp
     src/core/ipc/IPCClient.cpp
+    src/core/plugins/PluginLoader.cpp
     src/ui/compositor/Window.cpp
     src/ui/views/Layout.cpp
     src/ui/views/EditorView.cpp
@@ -81,5 +82,13 @@ target_link_libraries(vrutti_core PUBLIC imgui OpenGL::GL)
 # Main Executable
 add_executable(vrutti_app src/app/main.cpp)
 target_link_libraries(vrutti_app PRIVATE vrutti_core imgui glfw OpenGL::GL)
+
+# Lazy Loaded Search DLL
+add_library(vrutti_search SHARED
+    src/plugins/search/SearchPlugin.cpp
+)
+target_link_libraries(vrutti_search PRIVATE vrutti_core)
+
+
 
 
