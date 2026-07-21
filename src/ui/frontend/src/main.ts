@@ -50,62 +50,66 @@ export class VruttiApp extends LitElement {
   render() {
     return html`
       <header>
-        <div class="logo">
-          <img src="../../../../logos/icon.ico" alt="Vrutti" style="height: 20px; vertical-align: middle;" />
+        <div class="title">Vrutti IDE Core</div>
+        <div class="actions">
+          <button style="background: none; border: none; color: #a6accd; cursor: pointer;">_</button>
+          <button style="background: none; border: none; color: #a6accd; cursor: pointer;">□</button>
+          <button style="background: none; border: none; color: #a6accd; cursor: pointer;">x</button>
         </div>
-        <!-- Placeholder for Search -->
-        <div>Search files...</div>
-        <div>X</div>
       </header>
       <div class="main">
-        <vrutti-sidebar></vrutti-sidebar>
-        <vrutti-editor></vrutti-editor>
+        <vrutti-workspace></vrutti-workspace>
+        <vrutti-editor-surface></vrutti-editor-surface>
       </div>
       <vrutti-statusbar></vrutti-statusbar>
     `;
   }
 }
 
-@customElement('vrutti-sidebar')
-export class VruttiSidebar extends LitElement {
+@customElement('vrutti-workspace')
+export class VruttiWorkspace extends LitElement {
   static styles = css`
     :host {
       display: block;
+      width: 250px;
       height: 100%;
+      background-color: #13151f;
+      border-right: 1px solid #23273b;
     }
     .header {
       padding: 10px 16px;
       font-size: 11px;
       font-weight: 600;
       color: #717cb4;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
-    .item {
-      padding: 4px 16px;
+    .status {
+      padding: 16px;
       font-size: 13px;
-      cursor: pointer;
-    }
-    .item:hover {
-      background-color: #1e2132;
+      color: #a6accd;
+      opacity: 0.7;
     }
   `;
 
   render() {
     return html`
-      <div class="header">EXPLORER</div>
-      <div class="item">📁 src</div>
-      <div class="item">📄 main.cpp</div>
+      <div class="header">WORKSPACE EXPLORER</div>
+      <div class="status">Awaiting FS Sync via IPC...</div>
     `;
   }
 }
 
-@customElement('vrutti-editor')
-export class VruttiEditor extends LitElement {
+@customElement('vrutti-editor-surface')
+export class VruttiEditorSurface extends LitElement {
   static styles = css`
     :host {
       display: flex;
       flex-direction: column;
+      flex: 1;
       height: 100%;
       position: relative;
+      background-color: #0f111a;
     }
     .tabs {
       height: 35px;
@@ -114,20 +118,14 @@ export class VruttiEditor extends LitElement {
       border-bottom: 1px solid #23273b;
       z-index: 1;
     }
-    .tab {
-      padding: 0 16px;
+    .content {
       display: flex;
       align-items: center;
-      font-size: 13px;
-      color: #a6accd;
-      border-right: 1px solid #23273b;
-      border-top: 2px solid #82aaff;
-      background-color: #0f111a;
-    }
-    .content {
-      padding: 24px;
+      justify-content: center;
+      flex: 1;
       font-family: 'Fira Code', monospace;
       font-size: 14px;
+      color: #717cb4;
       z-index: 1;
     }
     .underlay {
@@ -143,12 +141,9 @@ export class VruttiEditor extends LitElement {
 
   render() {
     return html`
-      <div class="tabs">
-        <div class="tab">main.cpp</div>
-      </div>
+      <div class="tabs"></div>
       <div class="content">
-        // Vrutti Core Native Editor<br/>
-        #include &lt;iostream&gt;
+        [PieceTable Buffer Empty]
       </div>
       <img src="../../../../logos/logo-512x512.png" class="underlay" />
     `;
@@ -164,6 +159,7 @@ export class VruttiStatusbar extends LitElement {
       background-color: #82aaff;
       color: #0f111a;
       align-items: center;
+      justify-content: space-between;
       padding: 0 12px;
       font-size: 12px;
       font-weight: 500;
@@ -172,7 +168,8 @@ export class VruttiStatusbar extends LitElement {
 
   render() {
     return html`
-      <div>main* | 0 errors</div>
+      <div>IPC: Disconnected</div>
+      <div>ThreadPool: Active</div>
     `;
   }
 }
