@@ -15,6 +15,13 @@ endif()
 
 include(FetchContent)
 
+# Fetch Microsoft Edge WebView2 SDK
+FetchContent_Declare(
+    webview2
+    URL "https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/1.0.2592.51"
+)
+FetchContent_MakeAvailable(webview2)
+
 # Core Module
 add_library(vrutti_core STATIC
     src/core/memory/ArenaAllocator.cpp
@@ -38,6 +45,7 @@ if(WIN32)
     target_link_libraries(vrutti_core PUBLIC
         ole32 comctl32 oleaut32 uuid mpr version shlwapi user32 advapi32
     )
+    target_include_directories(vrutti_core PUBLIC ${webview2_SOURCE_DIR}/build/native/include)
 endif()
 
 # Main Executable
