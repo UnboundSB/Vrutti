@@ -9,6 +9,8 @@ The architecture is designed for high-performance, low RAM consumption, and a ze
   - `memory/` - Custom memory allocators, zero-copy buffers, and resource management.
   - `fs/` - Fast async file system operations and watchers.
   - `concurrency/` - Thread pools, task schedulers, and lock-free data structures.
+  - `plugins/` - Core DLL dynamic loading architecture for lazy-loaded features.
+- `plugins/` - Features extracted into standalone native DLLs (e.g., `search`).
 - `ui/` - The native user interface rendering engine.
   - `compositor/` - Hardware-accelerated rendering layer.
   - `widgets/` - Base UI components, input handling, and layout engine.
