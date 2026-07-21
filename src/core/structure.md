@@ -49,3 +49,9 @@ This document outlines the high-level architecture of `vrutti_ide/src/core` and 
 *   **`IPCClient.h / .cpp`**
     *   **Concept**: The critical bridge decoupling the Native IDE from the headless Node.js Extension Host.
     *   **Architecture**: Uses Named Pipes/Sockets to stream JSON-RPC commands. VS Code extensions running in the Node.js background process send standard edit commands, which are intercepted, parsed via `Json`, and routed instantly to the Native C++ `PieceTable`. This eliminates Electron completely while guaranteeing 100% marketplace extension compatibility.
+
+## 8. Plugins (`core/plugins/`)
+
+*   **`PluginLoader.h / .cpp` & `IPlugin.h`**
+    *   **Concept**: A memory-safe DLL loader for dynamic components.
+    *   **Architecture**: Implements lazy loading by tracking OS-level DLL handles. Features (like Search) are only loaded into memory when their panel is open, and instantly destroyed/freed via `FreeLibrary` when closed. This keeps Vrutti's baseline memory strictly zero for inactive features.
