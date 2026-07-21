@@ -1,16 +1,6 @@
 #pragma once
 #include <string>
 
-#include <memory>
-
-namespace vrutti::core::fs {
-    class Workspace;
-}
-
-namespace vrutti::ui::views {
-    class Layout;
-}
-
 namespace vrutti::ui {
     class Window {
     public:
@@ -20,17 +10,12 @@ namespace vrutti::ui {
         bool init();
         void run();
         void shutdown();
+        bool shouldClose() const;
 
     private:
         int m_width;
         int m_height;
         std::string m_title;
-        void* m_glfwWindow; // Type erased to avoid leaking GLFW headers everywhere
-
-        std::unique_ptr<vrutti::core::fs::Workspace> m_workspace;
-        std::unique_ptr<vrutti::ui::views::Layout> m_layout;
-
-        void renderFrame();
+        void* m_windowHandle; // Type erased webview handle
     };
-
-} // namespace vrutti::ui
+}
