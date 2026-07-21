@@ -33,7 +33,7 @@ namespace vrutti::core::ipc {
         void* m_connectionHandle;
 
         void listenLoop();
-        
+
         // Dispatches incoming JSON-RPC commands from VS Code extensions to the C++ core
         void handleIncomingMessage(const std::string& jsonMessage);
     };

@@ -13,13 +13,13 @@ This document outlines the high-level architecture of `vrutti_ide/src/core` and 
 ## 2. Concurrency (`core/concurrency/`)
 
 *   **`ThreadPool.h / .cpp`**
-    *   **Concept**: Mapped from standard `Promise` / async execution models in TS. 
+    *   **Concept**: Mapped from standard `Promise` / async execution models in TS.
     *   **Architecture**: Offloads heavy tasks (file indexing, syntax highlighting) from the main thread (UI thread) to hardware worker threads using a lock-based task queue and `std::future`.
 
 ## 3. File System (`core/fs/`)
 
 *   **`URI.h / .cpp`**
-    *   **Concept**: A memory-optimized `URI` parser for handling `file://`, `vrutti://`, and remote schemes. 
+    *   **Concept**: A memory-optimized `URI` parser for handling `file://`, `vrutti://`, and remote schemes.
     *   **Architecture**: Radically reduces the RAM footprint compared to standard parsing by maintaining a single raw string and lazily evaluating boundaries using `uint16_t` offset caches and zero-allocation `std::string_view` returns.
 
 ## 4. Events (`core/events/`)
