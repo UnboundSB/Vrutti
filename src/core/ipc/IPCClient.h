@@ -24,6 +24,9 @@ namespace vrutti::core::ipc {
         // Binds the active PieceTable so IPC can directly manipulate the C++ text buffer
         void bindEditorBuffer(vrutti::core::editor::PieceTable* table);
 
+        // Dispatches incoming JSON-RPC commands from VS Code extensions to the C++ core
+        void handleIncomingMessage(const std::string& jsonMessage);
+
     private:
         std::string m_pipeName;
         bool m_running;
@@ -33,9 +36,6 @@ namespace vrutti::core::ipc {
         void* m_connectionHandle;
 
         void listenLoop();
-
-        // Dispatches incoming JSON-RPC commands from VS Code extensions to the C++ core
-        void handleIncomingMessage(const std::string& jsonMessage);
     };
 
 } // namespace vrutti::core::ipc
