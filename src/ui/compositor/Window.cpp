@@ -130,7 +130,7 @@ namespace vrutti::ui {
             if (m_windowHandle) {
                 HWND hwnd = static_cast<HWND>(static_cast<webview::webview*>(m_windowHandle)->window());
                 ReleaseCapture();
-                SendMessage(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
+                PostMessage(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
             }
 #endif
         }, nullptr);
