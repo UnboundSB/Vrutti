@@ -18,9 +18,56 @@ export class VruttiApp extends LitElement {
       background-color: #181b28;
       display: flex;
       align-items: center;
-      padding: 0 16px;
+      justify-content: space-between;
       border-bottom: 1px solid #23273b;
       -webkit-app-region: drag;
+      user-select: none;
+    }
+    
+    .header-left {
+      display: flex;
+      align-items: center;
+      padding-left: 10px;
+    }
+    .logo-img {
+      width: 16px;
+      height: 16px;
+      margin-right: 12px;
+    }
+    .menu-item {
+      padding: 4px 8px;
+      font-size: 13px;
+      color: #a6accd;
+      -webkit-app-region: no-drag;
+      cursor: default;
+      border-radius: 4px;
+    }
+    .menu-item:hover {
+      background-color: #23273b;
+    }
+    .header-right {
+      display: flex;
+      height: 100%;
+    }
+    .actions button {
+      background: none;
+      border: none;
+      color: #a6accd;
+      width: 46px;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      -webkit-app-region: no-drag;
+      cursor: default;
+      padding: 0;
+    }
+    .actions button:hover {
+      background-color: #23273b;
+    }
+    .actions button.close-btn:hover {
+      background-color: #e81123;
+      color: white;
     }
     
     .logo {
@@ -49,7 +96,24 @@ export class VruttiApp extends LitElement {
   render() {
     return html`
       <header>
-        <div class="title">Vrutti IDE Core</div>
+        <div class="header-left">
+          <img src="../../../../logos/logo-16x16.png" class="logo-img" />
+          <div class="menu-item">File</div>
+          <div class="menu-item">Edit</div>
+          <div class="menu-item">Selection</div>
+          <div class="menu-item">View</div>
+        </div>
+        <div class="header-right actions">
+          <button @click="${() => (window as any).minimizeWindow()}">
+            <svg width="11" height="11" viewBox="0 0 11 11" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11 4.399V5.5H0V4.399h11z" fill="currentColor"/></svg>
+          </button>
+          <button @click="${() => (window as any).maximizeWindow()}">
+            <svg width="11" height="11" viewBox="0 0 11 11" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11 0v11H0V0h11zM9.899 1.1H1.1v8.8h8.799V1.1z" fill="currentColor"/></svg>
+          </button>
+          <button class="close-btn" @click="${() => (window as any).closeWindow()}">
+            <svg width="11" height="11" viewBox="0 0 11 11" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5.5 4.793l4.146-4.147.708.708L6.207 5.5l4.147 4.146-.708.708L5.5 6.207l-4.146 4.147-.708-.708L4.793 5.5.646 1.354l.708-.708L5.5 4.793z" fill="currentColor"/></svg>
+          </button>
+        </div>
       </header>
       <div class="main">
         <vrutti-workspace></vrutti-workspace>
