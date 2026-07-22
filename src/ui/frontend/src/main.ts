@@ -104,7 +104,7 @@ export class VruttiApp extends LitElement {
         }
       }}">
         <div class="header-left">
-          <svg class="logo-img" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <svg class="logo-img" viewBox="0 0 24 24" width="16" height="16" fill="transparent" xmlns="http://www.w3.org/2000/svg" style="display: block; min-width: 16px; min-height: 16px;">
             <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="#82aaff"/>
             <path d="M2 17L12 22L22 17" stroke="#82aaff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             <path d="M2 12L12 17L22 12" stroke="#82aaff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
