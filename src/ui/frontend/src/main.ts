@@ -1,4 +1,4 @@
-import { LitElement, css, html, TemplateResult } from 'lit';
+import { LitElement, css, html } from 'lit';
 import { customElement } from 'lit/decorators.js';
 
 @customElement('vrutti-app')
@@ -18,7 +18,6 @@ export class VruttiApp extends LitElement {
       background-color: #181b28;
       display: flex;
       align-items: center;
-      justify-content: space-between;
       padding: 0 16px;
       border-bottom: 1px solid #23273b;
       -webkit-app-region: drag;
@@ -51,11 +50,6 @@ export class VruttiApp extends LitElement {
     return html`
       <header>
         <div class="title">Vrutti IDE Core</div>
-        <div class="actions">
-          <button style="background: none; border: none; color: #a6accd; cursor: pointer;">_</button>
-          <button style="background: none; border: none; color: #a6accd; cursor: pointer;">□</button>
-          <button style="background: none; border: none; color: #a6accd; cursor: pointer;">x</button>
-        </div>
       </header>
       <div class="main">
         <vrutti-workspace></vrutti-workspace>
@@ -107,33 +101,11 @@ export class VruttiWorkspace extends LitElement {
     }
   `;
 
-  files = [
-    { name: 'src', type: 'folder', open: true, children: [
-        { name: 'core', type: 'folder', open: false, children: [] },
-        { name: 'ui', type: 'folder', open: true, children: [
-            { name: 'Window.cpp', type: 'file' },
-            { name: 'Window.h', type: 'file' }
-        ]}
-    ]},
-    { name: 'CMakeLists.txt', type: 'file' },
-    { name: 'README.md', type: 'file' }
-  ];
-
-  renderTree(nodes: any[], depth = 0): TemplateResult[] {
-    return nodes.map(node => html`
-      <div class="item" style="padding-left: ${16 + depth * 12}px">
-        <span class="icon">${node.type === 'folder' ? (node.open ? '📂' : '📁') : '📄'}</span>
-        ${node.name}
-      </div>
-      ${node.type === 'folder' && node.open && node.children ? this.renderTree(node.children, depth + 1) : ''}
-    `);
-  }
-
   render() {
     return html`
       <div class="header">WORKSPACE EXPLORER</div>
-      <div class="tree">
-        ${this.renderTree(this.files)}
+      <div style="padding: 16px; color: #a6accd; opacity: 0.5; font-size: 13px;">
+        Awaiting FS Sync via IPC...
       </div>
     `;
   }
@@ -207,33 +179,11 @@ export class VruttiEditorSurface extends LitElement {
     }
   `;
 
-  tabs = ['main.cpp', 'Window.cpp', 'IPCClient.h'];
-  activeTab = 'Window.cpp';
-  
-  mockCode = [
-    html`<span class="keyword">#include</span> <span class="string">"Window.h"</span>`,
-    html`<span class="keyword">#include</span> <span class="string">&lt;iostream&gt;</span>`,
-    html``,
-    html`<span class="keyword">namespace</span> vrutti::ui {`,
-    html`    Window::Window(<span class="keyword">int</span> width, <span class="keyword">int</span> height) {`,
-    html`        <span class="comment">// Initialize native webview</span>`,
-    html`        std::cout &lt;&lt; <span class="string">"[UI] Initializing Native Webview..."</span> &lt;&lt; std::endl;`,
-    html`    }`,
-    html`}`
-  ];
-
   render() {
     return html`
-      <div class="tabs">
-        ${this.tabs.map(t => html`<div class="tab ${t === this.activeTab ? 'active' : ''}">${t}</div>`)}
-      </div>
+      <div class="tabs"></div>
       <div class="content">
-        <div class="gutter">
-          ${this.mockCode.map((_, i) => html`<div>${i + 1}</div>`)}
-        </div>
-        <div class="code">
-          ${this.mockCode.map(line => html`<div>${line || html`&nbsp;`}</div>`)}
-        </div>
+        [PieceTable Buffer Empty]
       </div>
       <img src="../../../../logos/logo-512x512.png" class="underlay" />
     `;
