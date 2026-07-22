@@ -95,7 +95,14 @@ export class VruttiApp extends LitElement {
 
   render() {
     return html`
-      <header>
+      <header @mousedown="${(e: MouseEvent) => {
+        const target = e.target as HTMLElement;
+        if (target.tagName !== 'BUTTON' && !target.closest('button') && !target.classList.contains('menu-item')) {
+          if ((window as any).startWindowDrag) {
+            (window as any).startWindowDrag();
+          }
+        }
+      }}">
         <div class="header-left">
           <svg class="logo-img" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="#82aaff"/>

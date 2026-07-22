@@ -62,8 +62,33 @@ namespace vrutti::ui {
 
             // Make the window frameless (remove title bar) but keep it resizable
             LONG_PTR style = GetWindowLongPtr(hwnd, GWL_STYLE);
+            style |= WS_POPUP | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX;
             style &= ~WS_CAPTION; // Remove title bar
             SetWindowLongPtr(hwnd, GWL_STYLE, style);
+            
+            // Subclass the window to handle WM_NCCALCSIZE for true frameless and WM_GETMINMAXINFO for maximizing properly
+            SetWindowSubclass(hwnd, [](HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData) -> LRESULT {
+                if (uMsg == WM_NCCALCSIZE && wParam == TRUE) {
+                    return 0; // Returning 0 removes the standard title bar entirely while keeping resize borders
+                }
+                if (uMsg == WM_GETMINMAXINFO) {
+                    MINMAXINFO* mmi = (MINMAXINFO*)lParam;
+                    HMONITOR hMonitor = MonitorFromWindow(hWnd, MONITOR_DEFAULTTONEAREST);
+                    if (hMonitor) {
+                        MONITORINFO mi;
+                        mi.cbSize = sizeof(MONITORINFO);
+                        if (GetMonitorInfo(hMonitor, &mi)) {
+                            mmi->ptMaxPosition.x = mi.rcWork.left - mi.rcMonitor.left;
+                            mmi->ptMaxPosition.y = mi.rcWork.top - mi.rcMonitor.top;
+                            mmi->ptMaxSize.x = mi.rcWork.right - mi.rcWork.left;
+                            mmi->ptMaxSize.y = mi.rcWork.bottom - mi.rcWork.top;
+                        }
+                    }
+                    return 0;
+                }
+                return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+            }, 1, 0);
+
             SetWindowPos(hwnd, NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
         }
 #endif
@@ -96,6 +121,16 @@ namespace vrutti::ui {
                         ShowWindow(hwnd, SW_MAXIMIZE);
                     }
                 }
+            }
+#endif
+        }, nullptr);
+
+        w->bind("startWindowDrag", [this](const std::string& seq, const std::string& req, void* arg) {
+#ifdef _WIN32
+            if (m_windowHandle) {
+                HWND hwnd = static_cast<HWND>(static_cast<webview::webview*>(m_windowHandle)->window());
+                ReleaseCapture();
+                SendMessage(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
             }
 #endif
         }, nullptr);
