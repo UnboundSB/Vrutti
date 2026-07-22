@@ -104,11 +104,7 @@ export class VruttiApp extends LitElement {
         }
       }}">
         <div class="header-left">
-          <svg class="logo-img" viewBox="0 0 24 24" width="16" height="16" fill="transparent" xmlns="http://www.w3.org/2000/svg" style="display: block; min-width: 16px; min-height: 16px;">
-            <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="#82aaff"/>
-            <path d="M2 17L12 22L22 17" stroke="#82aaff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M2 12L12 17L22 12" stroke="#82aaff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
+          <img class="logo-img" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAAAhFBMVEUkJSwmJy4eHyUsLDMWGiQhIigoKTA+QUotLzYXFhtBQ00YHzA6PkczO0NSPEgcHSEjLUc2Nz8QEBMqMkpoMz5SNUMuMjkhKDw5PlY6MTwtMUEmLTxFKDQrGyI9K0BjPUmhS1ZZTVYvLTstN0SFSVRYKzZ6UVxpSVQ1NUxDICdHNkmIP0qroIc/AAAAxUlEQVQY0zXPR3LDMBBE0UEikYgM5ihZlCXf/34G5XIvX/3FDKCqIoS329k0upZSwgWcm5TOAnX9DzMSSWr9B4QM2XjI+9mU5Cpu6zLLZ1r2513rAhyBtSYjKsxRAJCLvffv4fDbz340wLouqL4nYtge4vWlwSp3t7T3KOfKpIcGEYKKzslhNWZewAPGNFDH4jeshJG2BcwYDt2kIrqVDzgvBWOCjirCSK6BLYKFUxMay41VVW66Eqwmhj4DWgRboToLn/0CjEYNK5Jz8E8AAAAASUVORK5CYII=" style="display: block; width: 16px; height: 16px; object-fit: contain;" />
           <div class="menu-item">File</div>
           <div class="menu-item">Edit</div>
           <div class="menu-item">Selection</div>
