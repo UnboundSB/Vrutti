@@ -97,208 +97,37 @@ export class VruttiApp extends LitElement {
     return html`
       <header @mousedown="${(e: MouseEvent) => {
         const target = e.target as HTMLElement;
-        if (target.tagName !== 'BUTTON' && !target.closest('button') && !target.classList.contains('menu-item')) {
+        if (target.tagName !== 'BUTTON' && !target.closest('.control-btn') && !target.classList.contains('menu-item')) {
           if ((window as any).startWindowDrag) {
             (window as any).startWindowDrag();
           }
         }
       }}">
+        <div class="window-frame">
         <div class="header-left">
-          <img class="logo-img" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAAAhFBMVEUkJSwmJy4eHyUsLDMWGiQhIigoKTA+QUotLzYXFhtBQ00YHzA6PkczO0NSPEgcHSEjLUc2Nz8QEBMqMkpoMz5SNUMuMjkhKDw5PlY6MTwtMUEmLTxFKDQrGyI9K0BjPUmhS1ZZTVYvLTstN0SFSVRYKzZ6UVxpSVQ1NUxDICdHNkmIP0qroIc/AAAAxUlEQVQY0zXPR3LDMBBE0UEikYgM5ihZlCXf/34G5XIvX/3FDKCqIoS329k0upZSwgWcm5TOAnX9DzMSSWr9B4QM2XjI+9mU5Cpu6zLLZ1r2513rAhyBtSYjKsxRAJCLvffv4fDbz340wLouqL4nYtge4vWlwSp3t7T3KOfKpIcGEYKKzslhNWZewAPGNFDH4jeshJG2BcwYDt2kIrqVDzgvBWOCjirCSK6BLYKFUxMay41VVW66Eqwmhj4DWgRboToLn/0CjEYNK5Jz8E8AAAAASUVORK5CYII=" style="display: block; width: 16px; height: 16px; object-fit: contain;" />
+          <img class="logo-img" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAABL1BMVEVHcEwxNzknKTUxJzAjKT1xT1o8MDxFOUIgKUMlL0pVOUYlLURkMD0eJjwxM0M2Mjk8OUQgKUN1XWYuMkA0LEJrSlYiJzghKD9uW2QdJTs7NESRWWMoLT4tNEqLUl01NkcrNE01NksoK0JAPElbQU1nN0eLQE9gPUpkPkxqTlpLOUc1OlAnKTBSJjQwMkQdIzWBRlOEWGFVLjsmLUA9LT8aITYXYm6KOEhTO0luO0olKDggKkaZS1YcJT2QWWKOUl6JXGaBTlpoQU9QP0tPPU0lLkuPRFE9M0EzNElTNEI/LkChVGCsTlmhTltzPk19Q1E1O1GjPU+tQlKpSVZVNkVMNUZCL0FvTVlbQFB0RFFCRldOUl9dM0ZaRE8nL0Y6QVdQO0wrNE5ILkBITVwfKkYMoBU4AAAAZHRSTlMAAhIX8zMbIKHHOL/LhYEMI5QWb+k9Kd0bzE9qquWXjvCVr2Wttq3hhCuk8ZFWylnWgsH8vUsEbth6eZDqtK63Vd7OQ/Sa1bPz6fzdtHDEoTISQyXH89mnlca4RxW2/MDL1WpWS6ieYwAAAL9JREFUGNNNj0MSBAEUQ38bY9u2bds273+GqVF1Z5WXRSoB+EharxHAk8Q5dlfkHFMOLzEbVbV/xjqrk48yD8q/BLGs737nzj0fmtNvRhUOFliPywcLg+Hdk8dvl4f/6t2oJu1iDAFK01LTgYD+uPW42EyUALVOY5varQdy2WvkhEIVIFiqxDDnva3fzMZDGPKppZ9GU9euTJL/ISRj0VnFSj03VUQXTMYwygURgSyBi3nnUIUMD0r5d0EkkHzNCy8jF6c8+rZRAAAAAElFTkSuQmCC" style="display: block; width: 16px; height: 16px; object-fit: contain;" />
           <div class="menu-item">File</div>
           <div class="menu-item">Edit</div>
           <div class="menu-item">Selection</div>
           <div class="menu-item">View</div>
         </div>
-        <div class="header-right actions">
-          <button @click="${() => (window as any).minimizeWindow()}">
-            <svg width="11" height="11" viewBox="0 0 11 11" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11 4.399V5.5H0V4.399h11z" fill="currentColor"/></svg>
-          </button>
-          <button @click="${() => (window as any).maximizeWindow()}">
-            <svg width="11" height="11" viewBox="0 0 11 11" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11 0v11H0V0h11zM9.899 1.1H1.1v8.8h8.799V1.1z" fill="currentColor"/></svg>
-          </button>
-          <button class="close-btn" @click="${() => (window as any).closeWindow()}">
-            <svg width="11" height="11" viewBox="0 0 11 11" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5.5 4.793l4.146-4.147.708.708L6.207 5.5l4.147 4.146-.708.708L5.5 6.207l-4.146 4.147-.708-.708L4.793 5.5.646 1.354l.708-.708L5.5 4.793z" fill="currentColor"/></svg>
-          </button>
+        
+        <div class="window-controls">
+          <div class="control-btn" @click=${() => (window as any).minimizeWindow()}>
+            <svg viewBox="0 0 10 1" width="10" height="1"><rect width="10" height="1" fill="currentColor"/></svg>
+          </div>
+          <div class="control-btn" @click=${() => (window as any).maximizeWindow()}>
+            <svg viewBox="0 0 10 10" width="10" height="10" fill="none" stroke="currentColor"><rect x="0.5" y="0.5" width="9" height="9"/></svg>
+          </div>
+          <div class="control-btn close" @click=${() => (window as any).closeWindow()}>
+            <svg viewBox="0 0 10 10" width="10" height="10" stroke="currentColor"><path d="M0,0 L10,10 M10,0 L0,10" stroke-width="1.5"/></svg>
+          </div>
         </div>
+      </div>
       </header>
-      <div class="main">
-        <vrutti-workspace></vrutti-workspace>
-        <vrutti-editor-surface></vrutti-editor-surface>
-      </div>
-      <vrutti-statusbar></vrutti-statusbar>
-    `;
-  }
-}
-
-@customElement('vrutti-workspace')
-export class VruttiWorkspace extends LitElement {
-  static styles = css`
-    :host {
-      display: flex;
-      flex-direction: column;
-      width: 250px;
-      height: 100%;
-      background-color: #13151f;
-      border-right: 1px solid #23273b;
-    }
-    .header {
-      padding: 10px 16px;
-      font-size: 11px;
-      font-weight: 600;
-      color: #717cb4;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    .tree {
-      flex: 1;
-      overflow-y: auto;
-    }
-    .item {
-      padding: 4px 16px;
-      font-size: 13px;
-      color: #a6accd;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      user-select: none;
-    }
-    .item:hover {
-      background-color: #1e2132;
-    }
-    .item .icon {
-      margin-right: 6px;
-      font-size: 14px;
-    }
-  `;
-
-  render() {
-    return html`
-      <div class="header">WORKSPACE EXPLORER</div>
-      <div style="padding: 16px; color: #a6accd; opacity: 0.5; font-size: 13px;">
-        Awaiting FS Sync via IPC...
-      </div>
-    `;
-  }
-}
-
-@customElement('vrutti-editor-surface')
-export class VruttiEditorSurface extends LitElement {
-  static styles = css`
-    :host {
-      display: flex;
-      flex-direction: column;
-      flex: 1;
-      height: 100%;
-      position: relative;
-      background-color: #0f111a;
-    }
-    .tabs {
-      height: 35px;
-      background-color: #13151f;
-      display: flex;
-      border-bottom: 1px solid #23273b;
-      z-index: 1;
-    }
-    .tab {
-      padding: 0 16px;
-      display: flex;
-      align-items: center;
-      font-size: 13px;
-      color: #717cb4;
-      border-right: 1px solid #23273b;
-      cursor: pointer;
-    }
-    .tab.active {
-      color: #a6accd;
-      border-top: 2px solid #82aaff;
-      background-color: #0f111a;
-    }
-    .content {
-      display: flex;
-      flex: 1;
-      font-family: 'Fira Code', 'Consolas', monospace;
-      font-size: 14px;
-      color: #a6accd;
-      z-index: 1;
-      overflow-y: auto;
-      padding: 12px 0;
-    }
-    .gutter {
-      padding: 0 16px 0 24px;
-      color: #4b526d;
-      text-align: right;
-      user-select: none;
-    }
-    .code {
-      flex: 1;
-      white-space: pre;
-    }
-    .code .keyword { color: #c792ea; }
-    .code .string { color: #c3e88d; }
-    .code .function { color: #82aaff; }
-    .code .comment { color: #717cb4; font-style: italic; }
-
-    .underlay {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      opacity: 0.05;
-      pointer-events: none;
-      z-index: 0;
-    }
-  `;
-
-  render() {
-    return html`
-      <div class="tabs"></div>
-      <div class="content">
-        [PieceTable Buffer Empty]
-      </div>
-      <img src="../../../../logos/logo-512x512.png" class="underlay" />
-    `;
-  }
-}
-
-@customElement('vrutti-statusbar')
-export class VruttiStatusbar extends LitElement {
-  static styles = css`
-    :host {
-      display: flex;
-      height: 24px;
-      background-color: #82aaff;
-      color: #0f111a;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 12px;
-      font-size: 12px;
-      font-weight: 500;
-    }
-    .section {
-      display: flex;
-      align-items: center;
-    }
-    .item {
-      margin: 0 8px;
-      cursor: pointer;
-    }
-    .item:hover {
-      opacity: 0.8;
-    }
-  `;
-
-  render() {
-    return html`
-      <div class="section">
-        <span class="item">ᚠ main</span>
-        <span class="item">⊗ 0  ⚠ 0</span>
-      </div>
-      <div class="section">
-        <span class="item">Ln 14, Col 28</span>
-        <span class="item">UTF-8</span>
-        <span class="item">CRLF</span>
-        <span class="item">C++</span>
+      
+      <div style="flex: 1; display: flex; align-items: center; justify-content: center; opacity: 0.1; pointer-events: none;">
+        <h1 style="font-size: 6rem; letter-spacing: 0.5rem; font-family: sans-serif;">Vrutti</h1>
       </div>
     `;
   }
