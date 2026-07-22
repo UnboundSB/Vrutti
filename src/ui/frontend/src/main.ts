@@ -1,4 +1,4 @@
-import { LitElement, css, html } from 'lit';
+import { LitElement, css, html, TemplateResult } from 'lit';
 import { customElement } from 'lit/decorators.js';
 
 @customElement('vrutti-app')
@@ -119,7 +119,7 @@ export class VruttiWorkspace extends LitElement {
     { name: 'README.md', type: 'file' }
   ];
 
-  renderTree(nodes: any[], depth = 0) {
+  renderTree(nodes: any[], depth = 0): TemplateResult[] {
     return nodes.map(node => html`
       <div class="item" style="padding-left: ${16 + depth * 12}px">
         <span class="icon">${node.type === 'folder' ? (node.open ? '📂' : '📁') : '📄'}</span>
