@@ -97,13 +97,12 @@ export class VruttiApp extends LitElement {
     return html`
       <header @mousedown="${(e: MouseEvent) => {
         const target = e.target as HTMLElement;
-        if (target.tagName !== 'BUTTON' && !target.closest('.control-btn') && !target.classList.contains('menu-item')) {
+        if (target.tagName !== 'BUTTON' && !target.closest('button') && !target.classList.contains('menu-item')) {
           if ((window as any).startWindowDrag) {
             (window as any).startWindowDrag();
           }
         }
       }}">
-        <div class="window-frame">
         <div class="header-left">
           <img class="logo-img" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAABL1BMVEVHcEwxNzknKTUxJzAjKT1xT1o8MDxFOUIgKUMlL0pVOUYlLURkMD0eJjwxM0M2Mjk8OUQgKUN1XWYuMkA0LEJrSlYiJzghKD9uW2QdJTs7NESRWWMoLT4tNEqLUl01NkcrNE01NksoK0JAPElbQU1nN0eLQE9gPUpkPkxqTlpLOUc1OlAnKTBSJjQwMkQdIzWBRlOEWGFVLjsmLUA9LT8aITYXYm6KOEhTO0luO0olKDggKkaZS1YcJT2QWWKOUl6JXGaBTlpoQU9QP0tPPU0lLkuPRFE9M0EzNElTNEI/LkChVGCsTlmhTltzPk19Q1E1O1GjPU+tQlKpSVZVNkVMNUZCL0FvTVlbQFB0RFFCRldOUl9dM0ZaRE8nL0Y6QVdQO0wrNE5ILkBITVwfKkYMoBU4AAAAZHRSTlMAAhIX8zMbIKHHOL/LhYEMI5QWb+k9Kd0bzE9qquWXjvCVr2Wttq3hhCuk8ZFWylnWgsH8vUsEbth6eZDqtK63Vd7OQ/Sa1bPz6fzdtHDEoTISQyXH89mnlca4RxW2/MDL1WpWS6ieYwAAAL9JREFUGNNNj0MSBAEUQ38bY9u2bds273+GqVF1Z5WXRSoB+EharxHAk8Q5dlfkHFMOLzEbVbV/xjqrk48yD8q/BLGs737nzj0fmtNvRhUOFliPywcLg+Hdk8dvl4f/6t2oJu1iDAFK01LTgYD+uPW42EyUALVOY5varQdy2WvkhEIVIFiqxDDnva3fzMZDGPKppZ9GU9euTJL/ISRj0VnFSj03VUQXTMYwygURgSyBi3nnUIUMD0r5d0EkkHzNCy8jF6c8+rZRAAAAAElFTkSuQmCC" style="display: block; width: 16px; height: 16px; object-fit: contain;" />
           <div class="menu-item">File</div>
@@ -112,18 +111,17 @@ export class VruttiApp extends LitElement {
           <div class="menu-item">View</div>
         </div>
         
-        <div class="window-controls">
-          <div class="control-btn" @click=${() => (window as any).minimizeWindow()}>
+        <div class="header-right actions">
+          <button @click=${() => (window as any).minimizeWindow()}>
             <svg viewBox="0 0 10 1" width="10" height="1"><rect width="10" height="1" fill="currentColor"/></svg>
-          </div>
-          <div class="control-btn" @click=${() => (window as any).maximizeWindow()}>
+          </button>
+          <button @click=${() => (window as any).maximizeWindow()}>
             <svg viewBox="0 0 10 10" width="10" height="10" fill="none" stroke="currentColor"><rect x="0.5" y="0.5" width="9" height="9"/></svg>
-          </div>
-          <div class="control-btn close" @click=${() => (window as any).closeWindow()}>
+          </button>
+          <button class="close-btn" @click=${() => (window as any).closeWindow()}>
             <svg viewBox="0 0 10 10" width="10" height="10" stroke="currentColor"><path d="M0,0 L10,10 M10,0 L0,10" stroke-width="1.5"/></svg>
-          </div>
+          </button>
         </div>
-      </div>
       </header>
       
       <div style="flex: 1; display: flex; align-items: center; justify-content: center; opacity: 0.1; pointer-events: none;">
