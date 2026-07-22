@@ -59,6 +59,12 @@ namespace vrutti::ui {
                 }
                 FreeLibrary(hDwm);
             }
+
+            // Make the window frameless (remove title bar) but keep it resizable
+            LONG_PTR style = GetWindowLongPtr(hwnd, GWL_STYLE);
+            style &= ~WS_CAPTION; // Remove title bar
+            SetWindowLongPtr(hwnd, GWL_STYLE, style);
+            SetWindowPos(hwnd, NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
         }
 #endif
 
@@ -66,6 +72,32 @@ namespace vrutti::ui {
         w->bind("closeWindow", [this](const std::string& seq, const std::string& req, void* arg) {
             std::cout << "[UI] JS requested window close." << std::endl;
             this->shutdown();
+        }, nullptr);
+
+        w->bind("minimizeWindow", [this](const std::string& seq, const std::string& req, void* arg) {
+#ifdef _WIN32
+            if (m_windowHandle) {
+                HWND hwnd = static_cast<HWND>(static_cast<webview::webview*>(m_windowHandle)->window());
+                ShowWindow(hwnd, SW_MINIMIZE);
+            }
+#endif
+        }, nullptr);
+
+        w->bind("maximizeWindow", [this](const std::string& seq, const std::string& req, void* arg) {
+#ifdef _WIN32
+            if (m_windowHandle) {
+                HWND hwnd = static_cast<HWND>(static_cast<webview::webview*>(m_windowHandle)->window());
+                WINDOWPLACEMENT wp;
+                wp.length = sizeof(WINDOWPLACEMENT);
+                if (GetWindowPlacement(hwnd, &wp)) {
+                    if (wp.showCmd == SW_SHOWMAXIMIZED) {
+                        ShowWindow(hwnd, SW_RESTORE);
+                    } else {
+                        ShowWindow(hwnd, SW_MAXIMIZE);
+                    }
+                }
+            }
+#endif
         }, nullptr);
 
         // Bind IPC message handler for Lit frontend to communicate with C++ Core natively
