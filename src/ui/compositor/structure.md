@@ -8,4 +8,4 @@ Instead of drawing graphics manually via OpenGL, this layer initializes an embed
   - Initializes the native OS window (HWND).
   - Uses Win32 `WM_NCCALCSIZE` subclassing to create a fully frameless window that retains native resize borders and DWM shadows.
   - Spawns the `webview::webview` instance and navigates it to the bundled frontend HTML.
-  - Bridges JavaScript IPC commands directly to native C++ APIs (`minimizeWindow`, `maximizeWindow`, `closeWindow`, `startWindowDrag`).
+  - Bridges JavaScript IPC commands directly to native C++ APIs (`minimizeWindow`, `maximizeWindow`, `closeWindow`, `startWindowDrag`). It handles `startWindowDrag` via an asynchronous `PostMessage` to ensure the IPC event loop is not blocked during dragging.
