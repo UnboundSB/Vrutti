@@ -29,10 +29,35 @@ namespace vrutti::ui {
 #ifdef _WIN32
         HWND hwnd = static_cast<HWND>(w->window());
         if (hwnd) {
+            // Set Icon
             HICON hIcon = LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(101));
             if (hIcon) {
                 SendMessage(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hIcon);
                 SendMessage(hwnd, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
+            }
+            
+            // Enable native dark mode title bar (Windows 10/11)
+            // 20 is DWMWA_USE_IMMERSIVE_DARK_MODE in older SDKs, 19 in some. 
+            // We try both safely.
+            #ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
+            #define DWMWA_USE_IMMERSIVE_DARK_MODE 20
+            #endif
+            #ifndef DWMWA_USE_IMMERSIVE_DARK_MODE_V2
+            #define DWMWA_USE_IMMERSIVE_DARK_MODE_V2 19
+            #endif
+            
+            BOOL value = TRUE;
+            // DwmSetWindowAttribute is usually in dwmapi.dll, so we should dynamically load it or assume we link against it.
+            // Since webview.h might not link dwmapi.lib by default, we'll dynamically load it.
+            HMODULE hDwm = LoadLibraryA("dwmapi.dll");
+            if (hDwm) {
+                typedef HRESULT(WINAPI* DwmSetWindowAttribute_t)(HWND, DWORD, LPCVOID, DWORD);
+                DwmSetWindowAttribute_t pDwmSetWindowAttribute = (DwmSetWindowAttribute_t)GetProcAddress(hDwm, "DwmSetWindowAttribute");
+                if (pDwmSetWindowAttribute) {
+                    pDwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &value, sizeof(value));
+                    pDwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE_V2, &value, sizeof(value));
+                }
+                FreeLibrary(hDwm);
             }
         }
 #endif
