@@ -53,8 +53,22 @@ namespace vrutti::ui {
         }, nullptr);
 
         // Calculate absolute path to the compiled frontend dist/index.html
-        std::filesystem::path cwd = std::filesystem::current_path();
-        std::filesystem::path htmlPath = cwd / "src" / "ui" / "frontend" / "dist" / "index.html";
+        // We use the executable path to be independent of the Current Working Directory.
+        std::filesystem::path exePath;
+#ifdef _WIN32
+        char buffer[MAX_PATH];
+        GetModuleFileNameA(NULL, buffer, MAX_PATH);
+        exePath = std::filesystem::path(buffer);
+#else
+        char buffer[PATH_MAX];
+        ssize_t count = readlink("/proc/self/exe", buffer, PATH_MAX);
+        if (count != -1) {
+            exePath = std::filesystem::path(std::string(buffer, (count > 0) ? count : 0));
+        }
+#endif
+        // exePath is build/vrutti_app.exe. Go up two levels to get to vrutti_ide/
+        std::filesystem::path basePath = exePath.parent_path().parent_path();
+        std::filesystem::path htmlPath = basePath / "src" / "ui" / "frontend" / "dist" / "index.html";
         
         // Ensure string is correctly formatted for webview
         std::string htmlStr = htmlPath.string();
