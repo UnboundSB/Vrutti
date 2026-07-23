@@ -96,6 +96,11 @@ export class VruttiSidebar extends LitElement {
       background-color: var(--vrutti-bg, #0f111a);
       border-right: 1px solid var(--vrutti-surface-border, #23273b);
       z-index: 10;
+      overflow-y: auto;
+    }
+
+    .activity-bar::-webkit-scrollbar {
+      display: none;
     }
 
     .top-icons, .bottom-icons {
@@ -188,6 +193,7 @@ export class VruttiSidebar extends LitElement {
       color: var(--vrutti-text, #636b95);
       font-size: 13px;
       white-space: nowrap;
+      overflow-x: hidden;
     }
 
     svg {
@@ -261,7 +267,7 @@ export class VruttiSidebar extends LitElement {
             ${unsafeSVG(icon_close)}
           </button>
         </div>
-        <div class="pane-content" style="padding: 0; overflow-y: auto;">
+        <div class="pane-content" style="padding: 0; overflow-y: auto; overflow-x: hidden;">
           ${this.activeTab === 'explorer' 
             ? html`<vrutti-explorer .item="${this.explorerRoot}"></vrutti-explorer>` 
             : html`<div style="padding: 15px; opacity: 0.5;">${this.activeTab} panel not yet implemented.</div>`
