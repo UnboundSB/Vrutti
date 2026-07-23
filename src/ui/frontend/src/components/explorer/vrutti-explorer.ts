@@ -1,6 +1,7 @@
 import { LitElement, css, html } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { ExplorerItem } from './explorerModel';
+import { getIconForFile } from './iconMapper';
 
 @customElement('vrutti-explorer')
 export class VruttiExplorer extends LitElement {
@@ -52,8 +53,9 @@ export class VruttiExplorer extends LitElement {
       width: 16px;
       height: 16px;
       margin-right: 6px;
-      fill: currentColor;
-      opacity: 0.9;
+      display: inline-block;
+      user-select: none;
+      -webkit-user-drag: none;
     }
     
     .children {
@@ -69,18 +71,8 @@ export class VruttiExplorer extends LitElement {
   }
 
   private renderIcon() {
-    if (this.item.isDirectory) {
-      return html`
-        <svg class="icon" viewBox="0 0 24 24">
-          <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
-        </svg>
-      `;
-    }
-    return html`
-      <svg class="icon" viewBox="0 0 24 24">
-        <path d="M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6H6zm7 7V3.5L18.5 9H13z"/>
-      </svg>
-    `;
+    const iconPath = getIconForFile(this.item.name, this.item.isDirectory, this.item.isExpanded);
+    return html`<img class="icon" src="${iconPath}" />`;
   }
 
   private renderChevron() {
