@@ -8,7 +8,10 @@ import { ExplorerModel, ExplorerItem } from './explorer/explorerModel';
 @customElement('vrutti-sidebar')
 export class VruttiSidebar extends LitElement {
   @state()
-  private isOpen = false;
+  private isDockOpen = false;
+
+  @state()
+  private isOpen = true;
 
   @state()
   private activeTab = 'explorer';
@@ -38,11 +41,47 @@ export class VruttiSidebar extends LitElement {
   static styles = css`
     :host {
       display: flex;
-      position: relative;
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
       height: 100%;
+      z-index: 50;
+      transform: translateX(-100%);
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       background-color: var(--vrutti-surface, #13151f);
       border-right: 1px solid var(--vrutti-surface-border, #23273b);
+      box-shadow: 4px 0 15px rgba(0,0,0,0.4);
       font-family: var(--vrutti-font, 'Inter', sans-serif);
+    }
+    
+    :host(.dock-open) {
+      transform: translateX(0);
+    }
+
+    .dock-toggle {
+      position: absolute;
+      right: -24px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 24px;
+      height: 48px;
+      background: var(--vrutti-surface, #13151f);
+      border: 1px solid var(--vrutti-surface-border, #23273b);
+      border-left: none;
+      border-radius: 0 8px 8px 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--vrutti-text, #636b95);
+      cursor: pointer;
+      box-shadow: 4px 0 10px rgba(0,0,0,0.2);
+      z-index: 60;
+    }
+
+    .dock-toggle:hover {
+      color: var(--vrutti-text-bright, #a6accd);
+      background: var(--vrutti-surface-border, #23273b);
     }
 
     .activity-bar {
@@ -99,16 +138,8 @@ export class VruttiSidebar extends LitElement {
     }
 
     .sidebar-pane {
-      position: absolute;
-      left: 48px;
-      top: 0;
-      bottom: 0;
       width: 250px;
       height: 100%;
-      z-index: 20;
-      background-color: var(--vrutti-surface, #13151f);
-      border-right: 1px solid var(--vrutti-surface-border, #23273b);
-      box-shadow: 4px 0 10px rgba(0,0,0,0.3);
       overflow: hidden;
       transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       display: flex;
@@ -118,7 +149,6 @@ export class VruttiSidebar extends LitElement {
     .sidebar-pane.collapsed {
       width: 0px;
       border-right: none;
-      box-shadow: none;
     }
 
     .pane-header {
@@ -184,9 +214,21 @@ export class VruttiSidebar extends LitElement {
     this.isOpen = !this.isOpen;
   }
 
-  render() {
-    return html`
-      <div class="activity-bar">
+  toggleDock() {
+      this.isDockOpen = !this.isDockOpen;
+      if (this.isDockOpen) {
+        this.classList.add('dock-open');
+      } else {
+        this.classList.remove('dock-open');
+      }
+    }
+
+    render() {
+      return html`
+        <div class="dock-toggle" @click="${this.toggleDock}" title="Toggle Sidebar">
+          ${unsafeSVG(this.isDockOpen ? icon_chevron_left : icon_chevron_right)}
+        </div>
+        <div class="activity-bar">
         <div class="top-icons">
           <!-- Files Icon -->
           <button class="icon-button ${this.activeTab === 'explorer' ? 'active' : ''}" @click="${() => this.selectTab('explorer')}" title="Explorer">
@@ -210,10 +252,6 @@ export class VruttiSidebar extends LitElement {
           </button>
         </div>
         <div class="bottom-icons">
-          <!-- Chevron Toggle -->
-          <button class="icon-button" @click="${this.toggleSidebar}" title="Toggle Sidebar">
-            ${unsafeSVG(this.isOpen ? icon_chevron_left : icon_chevron_right)}
-          </button>
         </div>
       </div>
       <div class="sidebar-pane ${this.isOpen ? '' : 'collapsed'}">
