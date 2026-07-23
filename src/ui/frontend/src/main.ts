@@ -112,12 +112,10 @@ export class VruttiApp extends LitElement {
     }
     
     vrutti-sidebar {
-      width: 250px;
       background: var(--vrutti-surface);
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
       border-right: 1px solid var(--vrutti-surface-border);
-      transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
     
     vrutti-editor {
