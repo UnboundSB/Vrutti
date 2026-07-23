@@ -35,3 +35,10 @@ We will use **Dear ImGui** backed by **GLFW/OpenGL3**. It is the absolute fastes
 - `[x]` Build the overarching `Layout` engine using ImGui DockSpace.
 - `[x]` Build the reusable `TabBar` widget for managing open files.
 - `[x]` Compile and verify all C++ integrations.
+
+### Phase 9: Modern Web UI & Layout (✅ COMPLETED)
+- `[x]` Migrate from pure ImGui to a hybrid architecture with Lit Web Components in `src/ui/frontend`.
+- `[x]` Build `vrutti-sidebar` component with activity bar and workspace explorer pane, featuring native scrolling and collapse animations.
+- `[x]` Fix layout constraints in `main.ts` so the absolute sidebar overlays the editor without overlapping header/footer.
+- `[x]` Implement `vrutti-menubar` for OS-native top bar dropdowns (File, Edit, Terminal).
+- `[x]` Ensure Docker compiler pipelines accurately bundle Vite outputs.
