@@ -113,6 +113,7 @@ export class VruttiApp extends LitElement {
       display: flex;
       flex: 1;
       overflow: hidden;
+      position: relative;
     }
     
     vrutti-sidebar {
