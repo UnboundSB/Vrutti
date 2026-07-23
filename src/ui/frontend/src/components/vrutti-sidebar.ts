@@ -1,5 +1,7 @@
 import { LitElement, css, html } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
+import { unsafeSVG } from 'lit/directives/unsafe-svg.js';
+import { icon_files, icon_search, icon_source_control, icon_debug_alt, icon_extensions, icon_chevron_left, icon_chevron_right, icon_close } from './codicons';
 import './explorer/vrutti-explorer';
 import { ExplorerModel, ExplorerItem } from './explorer/explorerModel';
 
@@ -148,8 +150,14 @@ export class VruttiSidebar extends LitElement {
       white-space: nowrap;
     }
 
-    .pane-action-btn i {
-      font-size: 14px;
+    svg {
+      width: 24px;
+      height: 24px;
+    }
+
+    .pane-action-btn svg {
+      width: 14px;
+      height: 14px;
     }
   `;
 
@@ -168,39 +176,33 @@ export class VruttiSidebar extends LitElement {
 
   render() {
     return html`
-      <link href="https://cdn.jsdelivr.net/npm/@vscode/codicons/dist/codicon.css" rel="stylesheet" />
-      <style>
-        .codicon {
-          font-size: 24px;
-        }
-      </style>
       <div class="activity-bar">
         <div class="top-icons">
           <!-- Files Icon -->
           <button class="icon-button ${this.activeTab === 'explorer' ? 'active' : ''}" @click="${() => this.selectTab('explorer')}" title="Explorer">
-            <i class="codicon codicon-files"></i>
+            ${unsafeSVG(icon_files)}
           </button>
           <!-- Search Icon -->
           <button class="icon-button ${this.activeTab === 'search' ? 'active' : ''}" @click="${() => this.selectTab('search')}" title="Search">
-            <i class="codicon codicon-search"></i>
+            ${unsafeSVG(icon_search)}
           </button>
           <!-- Source Control Icon -->
           <button class="icon-button ${this.activeTab === 'scm' ? 'active' : ''}" @click="${() => this.selectTab('scm')}" title="Source Control">
-            <i class="codicon codicon-source-control"></i>
+            ${unsafeSVG(icon_source_control)}
           </button>
           <!-- Debug Icon -->
           <button class="icon-button ${this.activeTab === 'debug' ? 'active' : ''}" @click="${() => this.selectTab('debug')}" title="Run and Debug">
-            <i class="codicon codicon-debug-alt"></i>
+            ${unsafeSVG(icon_debug_alt)}
           </button>
           <!-- Extensions Icon -->
           <button class="icon-button ${this.activeTab === 'extensions' ? 'active' : ''}" @click="${() => this.selectTab('extensions')}" title="Extensions">
-            <i class="codicon codicon-extensions"></i>
+            ${unsafeSVG(icon_extensions)}
           </button>
         </div>
         <div class="bottom-icons">
           <!-- Chevron Toggle -->
           <button class="icon-button" @click="${this.toggleSidebar}" title="Toggle Sidebar">
-            <i class="codicon ${this.isOpen ? 'codicon-chevron-left' : 'codicon-chevron-right'}"></i>
+            ${unsafeSVG(this.isOpen ? icon_chevron_left : icon_chevron_right)}
           </button>
         </div>
       </div>
@@ -208,7 +210,7 @@ export class VruttiSidebar extends LitElement {
         <div class="pane-header">
           <span>${this.activeTab}</span>
           <button class="pane-action-btn" @click="${() => this.isOpen = false}" title="Minimize">
-            <i class="codicon codicon-close"></i>
+            ${unsafeSVG(icon_close)}
           </button>
         </div>
         <div class="pane-content" style="padding: 0; overflow-y: auto;">
