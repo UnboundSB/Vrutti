@@ -8,7 +8,7 @@ import { ExplorerModel, ExplorerItem } from './explorer/explorerModel';
 @customElement('vrutti-sidebar')
 export class VruttiSidebar extends LitElement {
   @state()
-  private isOpen = true;
+  private isOpen = false;
 
   @state()
   private activeTab = 'explorer';
@@ -38,6 +38,7 @@ export class VruttiSidebar extends LitElement {
   static styles = css`
     :host {
       display: flex;
+      position: relative;
       height: 100%;
       background-color: var(--vrutti-surface, #13151f);
       border-right: 1px solid var(--vrutti-surface-border, #23273b);
@@ -98,8 +99,16 @@ export class VruttiSidebar extends LitElement {
     }
 
     .sidebar-pane {
+      position: absolute;
+      left: 48px;
+      top: 0;
+      bottom: 0;
       width: 250px;
       height: 100%;
+      z-index: 20;
+      background-color: var(--vrutti-surface, #13151f);
+      border-right: 1px solid var(--vrutti-surface-border, #23273b);
+      box-shadow: 4px 0 10px rgba(0,0,0,0.3);
       overflow: hidden;
       transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       display: flex;
@@ -109,6 +118,7 @@ export class VruttiSidebar extends LitElement {
     .sidebar-pane.collapsed {
       width: 0px;
       border-right: none;
+      box-shadow: none;
     }
 
     .pane-header {
