@@ -218,6 +218,6 @@ export class VruttiApp extends LitElement {
       <vrutti-statusbar></vrutti-statusbar>
     `;
   }
-
+}
 
 
