@@ -1,5 +1,6 @@
 import { LitElement, css, html } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
+import './components/vrutti-sidebar';
 
 @customElement('vrutti-app')
 export class VruttiApp extends LitElement {
