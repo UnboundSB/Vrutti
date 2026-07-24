@@ -326,7 +326,7 @@ export class VruttiMenuBar extends LitElement {
     }
 
     .dropdown-item:hover {
-      background-color: var(--vrutti-accent, #2a2d42);
+      background-color: #094771;
       color: var(--vrutti-text-bright, #fff);
     }
 
