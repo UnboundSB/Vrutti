@@ -3,7 +3,6 @@ import { customElement, state } from 'lit/decorators.js';
 import './components/vrutti-sidebar';
 import './components/vrutti-statusbar';
 import './components/vrutti-menubar';
-import './components/vrutti-terminal';
 
 @customElement('vrutti-app')
 export class VruttiApp extends LitElement {
@@ -195,11 +194,20 @@ export class VruttiApp extends LitElement {
       flex: 1;
       background-color: transparent;
       min-height: 0;
+      z-index: 1;
     }
 
-    vrutti-terminal {
-      height: 250px;
-      flex-shrink: 0;
+    .underlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      opacity: 0.05;
+      pointer-events: none;
+      z-index: 0;
+      width: 40vw;
+      max-width: 512px;
+      object-fit: contain;
     }
     
     .splash-screen {
@@ -301,7 +309,7 @@ export class VruttiApp extends LitElement {
         <vrutti-sidebar></vrutti-sidebar>
         <div class="editor-container">
           <vrutti-editor></vrutti-editor>
-          <vrutti-terminal></vrutti-terminal>
+          <img src="../../../../logos/logo-512x512.png" class="underlay" />
         </div>
       </div>
       <vrutti-statusbar></vrutti-statusbar>
