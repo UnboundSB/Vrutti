@@ -35,6 +35,7 @@ add_library(vrutti_core STATIC
     src/core/utils/StringPool.cpp
     src/core/utils/LineScanner.cpp
     src/core/ipc/IPCClient.cpp
+    src/core/config/SettingsManager.cpp
     src/core/plugins/PluginLoader.cpp
     src/ui/compositor/Window.cpp
 )
