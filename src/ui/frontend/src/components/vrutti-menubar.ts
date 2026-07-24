@@ -75,12 +75,52 @@ export class VruttiMenuBar extends LitElement {
       ]
     },
     {
+      title: 'Go',
+      items: [
+        { label: 'Back' },
+        { label: 'Forward' },
+        { separator: true, label: '' },
+        { label: 'Go to File...' },
+        { label: 'Go to Symbol in Workspace...' },
+        { separator: true, label: '' },
+        { label: 'Go to Line/Column...' },
+        { label: 'Go to Definition' },
+        { label: 'Go to References' }
+      ]
+    },
+    {
+      title: 'Run',
+      items: [
+        { label: 'Start Debugging' },
+        { label: 'Run Without Debugging' },
+        { separator: true, label: '' },
+        { label: 'Stop Debugging' },
+        { label: 'Restart Debugging' },
+        { separator: true, label: '' },
+        { label: 'Toggle Breakpoint' },
+        { label: 'New Breakpoint' }
+      ]
+    },
+    {
       title: 'Terminal',
       items: [
         { label: 'New Terminal' },
         { label: 'Split Terminal' },
         { separator: true, label: '' },
-        { label: 'Run Task...' }
+        { label: 'Run Task...' },
+        { label: 'Configure Tasks...' }
+      ]
+    },
+    {
+      title: 'Help',
+      items: [
+        { label: 'Welcome' },
+        { label: 'Documentation' },
+        { label: 'Release Notes' },
+        { separator: true, label: '' },
+        { label: 'Check for Updates...' },
+        { separator: true, label: '' },
+        { label: 'About' }
       ]
     }
   ];
