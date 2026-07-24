@@ -5,6 +5,7 @@ The components are designed using the Shadow DOM to encapsulate styles and behav
 
 ## Directory Layout
 
+- `vrutti-menubar.ts` - The top titlebar menus component. Handles the classic File, Edit, Selection, View dropdowns seamlessly mirroring the original VS Code dropdown structure using glassmorphic UI.
 - `vrutti-sidebar.ts` - The main sidebar docking overlay. Controls the activity bar (tool icons) and coordinates which side panel (e.g., explorer, search) is currently active.
 - `vrutti-statusbar.ts` - The bottom status bar component. Displays critical workspace info such as Git branch, error/warning counts, cursor position, and language modes.
 - `codicons.ts` - Contains all the inline SVG definitions used for the tool icons (adapted from VS Code's codicon library).
