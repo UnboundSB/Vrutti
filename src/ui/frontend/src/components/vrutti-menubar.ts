@@ -24,14 +24,30 @@ export class VruttiMenuBar extends LitElement {
     {
       title: 'File',
       items: [
-        { label: 'New File' },
+        { label: 'New Text File' },
+        { label: 'New File...' },
         { label: 'New Window' },
         { separator: true, label: '' },
         { label: 'Open File...' },
         { label: 'Open Folder...' },
+        { label: 'Open Workspace from File...' },
+        { label: 'Open Recent >' },
+        { separator: true, label: '' },
+        { label: 'Add Folder to Workspace...' },
+        { label: 'Save Workspace As...' },
+        { label: 'Duplicate Workspace' },
         { separator: true, label: '' },
         { label: 'Save' },
         { label: 'Save As...' },
+        { label: 'Save All' },
+        { separator: true, label: '' },
+        { label: 'Auto Save' },
+        { label: 'Preferences >' },
+        { separator: true, label: '' },
+        { label: 'Revert File' },
+        { label: 'Close Editor' },
+        { label: 'Close Folder' },
+        { label: 'Close Window' },
         { separator: true, label: '' },
         { label: 'Exit', action: 'closeWindow' }
       ]
@@ -47,7 +63,14 @@ export class VruttiMenuBar extends LitElement {
         { label: 'Paste' },
         { separator: true, label: '' },
         { label: 'Find' },
-        { label: 'Replace' }
+        { label: 'Replace' },
+        { separator: true, label: '' },
+        { label: 'Find in Files' },
+        { label: 'Replace in Files' },
+        { separator: true, label: '' },
+        { label: 'Toggle Line Comment' },
+        { label: 'Toggle Block Comment' },
+        { label: 'Emmet: Expand Abbreviation' }
       ]
     },
     {
@@ -58,20 +81,43 @@ export class VruttiMenuBar extends LitElement {
         { label: 'Shrink Selection' },
         { separator: true, label: '' },
         { label: 'Copy Line Up' },
-        { label: 'Copy Line Down' }
+        { label: 'Copy Line Down' },
+        { label: 'Move Line Up' },
+        { label: 'Move Line Down' },
+        { label: 'Duplicate Selection' },
+        { separator: true, label: '' },
+        { label: 'Add Cursor Above' },
+        { label: 'Add Cursor Below' },
+        { label: 'Add Cursors to Line Ends' },
+        { label: 'Add Next Occurrence' },
+        { label: 'Add Previous Occurrence' },
+        { label: 'Select All Occurrences' },
+        { separator: true, label: '' },
+        { label: 'Switch to Ctrl+Click for Multi-Cursor' },
+        { label: 'Column Selection Mode' }
       ]
     },
     {
       title: 'View',
       items: [
         { label: 'Command Palette...' },
+        { label: 'Open View...' },
+        { separator: true, label: '' },
+        { label: 'Appearance >' },
+        { label: 'Editor Layout >' },
         { separator: true, label: '' },
         { label: 'Explorer' },
         { label: 'Search' },
         { label: 'Source Control' },
+        { label: 'Run' },
         { label: 'Extensions' },
         { separator: true, label: '' },
-        { label: 'Appearance' }
+        { label: 'Problems' },
+        { label: 'Output' },
+        { label: 'Debug Console' },
+        { label: 'Terminal' },
+        { separator: true, label: '' },
+        { label: 'Word Wrap' }
       ]
     },
     {
@@ -85,7 +131,15 @@ export class VruttiMenuBar extends LitElement {
         { separator: true, label: '' },
         { label: 'Go to Line/Column...' },
         { label: 'Go to Definition' },
-        { label: 'Go to References' }
+        { label: 'Go to Declaration' },
+        { label: 'Go to Type Definition' },
+        { label: 'Go to Implementations' },
+        { label: 'Go to References' },
+        { separator: true, label: '' },
+        { label: 'Next Problem' },
+        { label: 'Previous Problem' },
+        { label: 'Next Change' },
+        { label: 'Previous Change' }
       ]
     },
     {
@@ -93,12 +147,19 @@ export class VruttiMenuBar extends LitElement {
       items: [
         { label: 'Start Debugging' },
         { label: 'Run Without Debugging' },
-        { separator: true, label: '' },
         { label: 'Stop Debugging' },
         { label: 'Restart Debugging' },
         { separator: true, label: '' },
+        { label: 'Open Configurations' },
+        { label: 'Add Configuration...' },
+        { separator: true, label: '' },
+        { label: 'Step Over' },
+        { label: 'Step Into' },
+        { label: 'Step Out' },
+        { label: 'Continue' },
+        { separator: true, label: '' },
         { label: 'Toggle Breakpoint' },
-        { label: 'New Breakpoint' }
+        { label: 'New Breakpoint >' }
       ]
     },
     {
@@ -108,18 +169,37 @@ export class VruttiMenuBar extends LitElement {
         { label: 'Split Terminal' },
         { separator: true, label: '' },
         { label: 'Run Task...' },
-        { label: 'Configure Tasks...' }
+        { label: 'Build Task...' },
+        { label: 'Active Tasks...' },
+        { separator: true, label: '' },
+        { label: 'Configure Tasks...' },
+        { label: 'Configure Default Build Task...' }
       ]
     },
     {
       title: 'Help',
       items: [
         { label: 'Welcome' },
+        { label: 'Show All Commands' },
         { label: 'Documentation' },
+        { label: 'Editor Playground' },
         { label: 'Release Notes' },
         { separator: true, label: '' },
-        { label: 'Check for Updates...' },
+        { label: 'Keyboard Shortcuts Reference' },
+        { label: 'Video Tutorials' },
+        { label: 'Tips and Tricks' },
         { separator: true, label: '' },
+        { label: 'Join Us on YouTube' },
+        { label: 'Search Feature Requests' },
+        { label: 'Report Issue' },
+        { separator: true, label: '' },
+        { label: 'View License' },
+        { label: 'Privacy Statement' },
+        { separator: true, label: '' },
+        { label: 'Toggle Developer Tools' },
+        { label: 'Open Process Explorer' },
+        { separator: true, label: '' },
+        { label: 'Check for Updates...' },
         { label: 'About' }
       ]
     }
