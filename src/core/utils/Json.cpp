@@ -120,4 +120,79 @@ namespace vrutti::core::utils {
         return parseValue(source, pos);
     }
 
+    std::string JsonSerializer::stringify(const std::shared_ptr<JsonNode>& node, int indentLevel, bool pretty) {
+        std::string out;
+        serializeNode(node, out, indentLevel, pretty);
+        return out;
+    }
+
+    std::string JsonSerializer::escapeString(std::string_view str) {
+        std::string out = "\"";
+        for (char c : str) {
+            if (c == '"') out += "\\\"";
+            else if (c == '\\') out += "\\\\";
+            else if (c == '\n') out += "\\n";
+            else if (c == '\r') out += "\\r";
+            else if (c == '\t') out += "\\t";
+            else out += c;
+        }
+        out += "\"";
+        return out;
+    }
+
+    void JsonSerializer::serializeNode(const std::shared_ptr<JsonNode>& node, std::string& out, int indentLevel, bool pretty) {
+        if (!node) {
+            out += "null";
+            return;
+        }
+
+        auto getIndent = [](int level) { return std::string(level * 2, ' '); };
+
+        switch (node->type) {
+            case JsonNode::Type::Null:
+                out += "null";
+                break;
+            case JsonNode::Type::String:
+                out += escapeString(node->stringValue);
+                break;
+            case JsonNode::Type::Number: {
+                auto str = std::to_string(node->numberValue);
+                str.erase(str.find_last_not_of('0') + 1, std::string::npos);
+                if (str.back() == '.') str.pop_back();
+                out += str;
+                break;
+            }
+            case JsonNode::Type::Boolean:
+                out += node->boolValue ? "true" : "false";
+                break;
+            case JsonNode::Type::Array: {
+                out += "[";
+                if (pretty && !node->arrayElements.empty()) out += "\n";
+                for (size_t i = 0; i < node->arrayElements.size(); ++i) {
+                    if (pretty) out += getIndent(indentLevel + 1);
+                    serializeNode(node->arrayElements[i], out, indentLevel + 1, pretty);
+                    if (i < node->arrayElements.size() - 1) out += ",";
+                    if (pretty) out += "\n";
+                }
+                if (pretty && !node->arrayElements.empty()) out += getIndent(indentLevel);
+                out += "]";
+                break;
+            }
+            case JsonNode::Type::Object: {
+                out += "{";
+                if (pretty && !node->objectProperties.empty()) out += "\n";
+                for (size_t i = 0; i < node->objectProperties.size(); ++i) {
+                    if (pretty) out += getIndent(indentLevel + 1);
+                    out += escapeString(node->objectProperties[i].first) + (pretty ? ": " : ":");
+                    serializeNode(node->objectProperties[i].second, out, indentLevel + 1, pretty);
+                    if (i < node->objectProperties.size() - 1) out += ",";
+                    if (pretty) out += "\n";
+                }
+                if (pretty && !node->objectProperties.empty()) out += getIndent(indentLevel);
+                out += "}";
+                break;
+            }
+        }
+    }
+
 } // namespace vrutti::core::utils

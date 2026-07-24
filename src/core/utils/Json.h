@@ -48,4 +48,14 @@ namespace vrutti::core::utils {
         static void skipWhitespace(const std::string& source, size_t& pos);
     };
 
+    // Serializes a JsonNode tree back into a standard string.
+    class JsonSerializer {
+    public:
+        static std::string stringify(const std::shared_ptr<JsonNode>& node, int indentLevel = 0, bool pretty = true);
+    
+    private:
+        static void serializeNode(const std::shared_ptr<JsonNode>& node, std::string& out, int indentLevel, bool pretty);
+        static std::string escapeString(std::string_view str);
+    };
+
 } // namespace vrutti::core::utils
