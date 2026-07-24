@@ -5,6 +5,8 @@ import { icon_files, icon_search, icon_source_control, icon_debug_alt, icon_exte
 import './explorer/vrutti-explorer';
 import { ExplorerModel, ExplorerItem } from './explorer/explorerModel';
 
+import { globalHoverStyle } from '../shared-styles';
+
 @customElement('vrutti-sidebar')
 export class VruttiSidebar extends LitElement {
   @state()
@@ -38,7 +40,7 @@ export class VruttiSidebar extends LitElement {
     this.explorerRoot = model.root!;
   }
 
-  static styles = css`
+  static styles = [globalHoverStyle, css`
     :host {
       display: flex;
       position: absolute;

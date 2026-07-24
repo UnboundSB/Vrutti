@@ -4,6 +4,8 @@ import './components/vrutti-sidebar';
 import './components/vrutti-statusbar';
 import './components/vrutti-menubar';
 
+import { globalHoverStyle } from './shared-styles';
+
 @customElement('vrutti-app')
 export class VruttiApp extends LitElement {
   @state()
@@ -89,7 +91,7 @@ export class VruttiApp extends LitElement {
     }
   };
 
-  static styles = css`
+  static styles = [globalHoverStyle, css`
     :host {
       display: flex;
       flex-direction: column;

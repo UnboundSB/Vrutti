@@ -12,6 +12,8 @@ interface MenuData {
   items: MenuItem[];
 }
 
+import { globalHoverStyle } from '../shared-styles';
+
 @customElement('vrutti-menubar')
 export class VruttiMenuBar extends LitElement {
   @state()
@@ -262,7 +264,7 @@ export class VruttiMenuBar extends LitElement {
     }
   }
 
-  static styles = css`
+  static styles = [globalHoverStyle, css`
     :host {
       display: flex;
       align-items: center;

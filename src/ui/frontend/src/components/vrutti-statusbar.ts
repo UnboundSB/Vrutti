@@ -3,6 +3,8 @@ import { customElement, state } from 'lit/decorators.js';
 import { unsafeSVG } from 'lit/directives/unsafe-svg.js';
 import { icon_git_branch, icon_error, icon_warning } from './codicons';
 
+import { globalHoverStyle } from '../shared-styles';
+
 @customElement('vrutti-statusbar')
 export class VruttiStatusBar extends LitElement {
 
@@ -33,7 +35,7 @@ export class VruttiStatusBar extends LitElement {
   @state()
   private language = 'TypeScript';
 
-  static styles = css`
+  static styles = [globalHoverStyle, css`
     :host {
       display: flex;
       height: 22px;

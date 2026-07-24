@@ -3,6 +3,8 @@ import { customElement, property } from 'lit/decorators.js';
 import { ExplorerItem } from './explorerModel';
 import { getIconForFile } from './iconMapper';
 
+import { globalHoverStyle } from '../../shared-styles';
+
 @customElement('vrutti-explorer')
 export class VruttiExplorer extends LitElement {
   @property({ type: Object })
@@ -11,7 +13,7 @@ export class VruttiExplorer extends LitElement {
   @property({ type: Number })
   depth: number = 0;
 
-  static styles = css`
+  static styles = [globalHoverStyle, css`
     :host {
       display: block;
       font-family: var(--vrutti-font, 'Inter', -apple-system, sans-serif);

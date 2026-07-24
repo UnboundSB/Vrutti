@@ -15,6 +15,8 @@ const DEFAULT_CONFIG: Config = {
   'workbench.colorTheme': 'Default Dark'
 };
 
+import { globalHoverStyle } from '../shared-styles';
+
 @customElement('vrutti-settings')
 export class VruttiSettings extends LitElement {
   @state()
@@ -50,7 +52,7 @@ export class VruttiSettings extends LitElement {
     }, 500);
   }
 
-  static styles = css`
+  static styles = [globalHoverStyle, css`
     :host {
       display: flex;
       flex-direction: column;
