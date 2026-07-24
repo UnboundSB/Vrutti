@@ -15,6 +15,9 @@ export class VruttiApp extends LitElement {
   @state()
   private userName = 'User';
 
+  @state()
+  private showSettings = false;
+
   connectedCallback() {
     super.connectedCallback();
     
@@ -33,6 +36,36 @@ export class VruttiApp extends LitElement {
     setTimeout(() => {
       this.isLoading = false;
     }, 2500);
+
+    this.addEventListener('menu-action', this.handleMenuAction);
+    this.addEventListener('close-settings', this.handleCloseSettings);
+    this.addEventListener('setting-changed', this.handleSettingChanged);
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    this.removeEventListener('menu-action', this.handleMenuAction);
+    this.removeEventListener('close-settings', this.handleCloseSettings);
+    this.removeEventListener('setting-changed', this.handleSettingChanged);
+  }
+
+  private async handleMenuAction(e: Event) {
+    const detail = (e as CustomEvent).detail;
+    if (detail.action === 'Preferences') {
+      if (!customElements.get('vrutti-settings')) {
+        await import('./components/vrutti-settings');
+      }
+      this.showSettings = true;
+    }
+  }
+
+  private handleCloseSettings() {
+    this.showSettings = false;
+  }
+
+  private handleSettingChanged(e: Event) {
+    const detail = (e as CustomEvent).detail;
+    console.log('[Main] Routing setting save to IPC:', detail.key, detail.value);
   }
 
   static styles = css`
@@ -188,6 +221,7 @@ export class VruttiApp extends LitElement {
       flex-direction: column;
       flex: 1;
       height: 100%;
+      position: relative;
     }
     
     vrutti-editor {
@@ -308,8 +342,12 @@ export class VruttiApp extends LitElement {
       <div class="main">
         <vrutti-sidebar></vrutti-sidebar>
         <div class="editor-container">
-          <vrutti-editor></vrutti-editor>
-          <img src="../../../../logos/logo-512x512.png" class="underlay" />
+          ${this.showSettings ? html`
+            <vrutti-settings style="position: absolute; top: 0; left: 0; right: 0; bottom: 0;"></vrutti-settings>
+          ` : html`
+            <vrutti-editor></vrutti-editor>
+            <img src="../../../../logos/logo-512x512.png" class="underlay" />
+          `}
         </div>
       </div>
       <vrutti-statusbar></vrutti-statusbar>
