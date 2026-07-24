@@ -207,7 +207,7 @@ export class VruttiSidebar extends LitElement {
       width: 14px;
       height: 14px;
     }
-  `;
+  ];
 
   selectTab(tab: string) {
     if (this.activeTab === tab) {

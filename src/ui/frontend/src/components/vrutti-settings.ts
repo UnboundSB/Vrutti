@@ -181,7 +181,7 @@ export class VruttiSettings extends LitElement {
       height: 16px;
       cursor: pointer;
     }
-  `;
+  ];
 
   render() {
     return html`
