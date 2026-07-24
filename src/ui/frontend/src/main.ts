@@ -3,6 +3,7 @@ import { customElement, state } from 'lit/decorators.js';
 import './components/vrutti-sidebar';
 import './components/vrutti-statusbar';
 import './components/vrutti-menubar';
+import './components/vrutti-terminal';
 
 @customElement('vrutti-app')
 export class VruttiApp extends LitElement {
@@ -120,6 +121,54 @@ export class VruttiApp extends LitElement {
       color: #82aaff;
     }
 
+    .header-center {
+      display: flex;
+      flex: 1;
+      justify-content: center;
+      align-items: center;
+      -webkit-app-region: drag;
+    }
+
+    .command-center {
+      display: flex;
+      align-items: center;
+      background: var(--vrutti-bg);
+      border: 1px solid var(--vrutti-surface-border);
+      border-radius: 6px;
+      padding: 2px 12px;
+      width: 400px;
+      height: 24px;
+      -webkit-app-region: no-drag;
+      color: var(--vrutti-text);
+      font-size: 12px;
+      cursor: text;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .command-center:hover {
+      background: var(--vrutti-surface);
+      border-color: var(--vrutti-accent);
+    }
+
+    .command-center svg {
+      margin-right: 8px;
+      opacity: 0.7;
+    }
+
+    .layout-controls {
+      display: flex;
+      align-items: center;
+      margin-right: 8px;
+      -webkit-app-region: no-drag;
+    }
+
+    .layout-controls button {
+      width: 28px;
+      height: 24px;
+      border-radius: 4px;
+      margin: 0 2px;
+    }
+
     .main {
       display: flex;
       flex: 1;
@@ -135,9 +184,22 @@ export class VruttiApp extends LitElement {
       flex-shrink: 0;
     }
     
+    .editor-container {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      height: 100%;
+    }
+    
     vrutti-editor {
       flex: 1;
       background-color: transparent;
+      min-height: 0;
+    }
+
+    vrutti-terminal {
+      height: 250px;
+      flex-shrink: 0;
     }
     
     .splash-screen {
@@ -190,7 +252,7 @@ export class VruttiApp extends LitElement {
     return html`
       <header @mousedown="${(e: MouseEvent) => {
         const target = e.target as HTMLElement;
-        if (target.tagName !== 'BUTTON' && !target.closest('button') && !target.classList.contains('menu-item')) {
+        if (target.tagName !== 'BUTTON' && !target.closest('button') && !target.classList.contains('menu-item') && !target.closest('.command-center')) {
           if ((window as any).startWindowDrag) {
             (window as any).startWindowDrag();
           }
@@ -200,8 +262,23 @@ export class VruttiApp extends LitElement {
           <img class="logo-img" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAABL1BMVEVHcEwxNzknKTUxJzAjKT1xT1o8MDxFOUIgKUMlL0pVOUYlLURkMD0eJjwxM0M2Mjk8OUQgKUN1XWYuMkA0LEJrSlYiJzghKD9uW2QdJTs7NESRWWMoLT4tNEqLUl01NkcrNE01NksoK0JAPElbQU1nN0eLQE9gPUpkPkxqTlpLOUc1OlAnKTBSJjQwMkQdIzWBRlOEWGFVLjsmLUA9LT8aITYXYm6KOEhTO0luO0olKDggKkaZS1YcJT2QWWKOUl6JXGaBTlpoQU9QP0tPPU0lLkuPRFE9M0EzNElTNEI/LkChVGCsTlmhTltzPk19Q1E1O1GjPU+tQlKpSVZVNkVMNUZCL0FvTVlbQFB0RFFCRldOUl9dM0ZaRE8nL0Y6QVdQO0wrNE5ILkBITVwfKkYMoBU4AAAAZHRSTlMAAhIX8zMbIKHHOL/LhYEMI5QWb+k9Kd0bzE9qquWXjvCVr2Wttq3hhCuk8ZFWylnWgsH8vUsEbth6eZDqtK63Vd7OQ/Sa1bPz6fzdtHDEoTISQyXH89mnlca4RxW2/MDL1WpWS6ieYwAAAL9JREFUGNNNj0MSBAEUQ38bY9u2bds273+GqVF1Z5WXRSoB+EharxHAk8Q5dlfkHFMOLzEbVbV/xjqrk48yD8q/BLGs737nzj0fmtNvRhUOFliPywcLg+Hdk8dvl4f/6t2oJu1iDAFK01LTgYD+uPW42EyUALVOY5varQdy2WvkhEIVIFiqxDDnva3fzMZDGPKppZ9GU9euTJL/ISRj0VnFSj03VUQXTMYwygURgSyBi3nnUIUMD0r5d0EkkHzNCy8jF6c8+rZRAAAAAElFTkSuQmCC" style="display: block; width: 16px; height: 16px; object-fit: contain;" />
           <vrutti-menubar></vrutti-menubar>
         </div>
+
+        <div class="header-center">
+          <div class="command-center">
+            <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M10.68 11.74a6 6 0 0 1-7.922-8.982 6 6 0 0 1 8.982 7.922l3.04 3.04a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215ZM11.5 7a4.499 4.499 0 1 0-8.997 0A4.499 4.499 0 0 0 11.5 7Z"></path></svg>
+            <span>Vrutti IDE - Search</span>
+          </div>
+        </div>
         
         <div class="header-right actions">
+          <div class="layout-controls">
+            <button title="Toggle Sidebar">
+              <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M2 3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3zm11 0H7v10h6V3zM6 3H3v10h3V3z"></path></svg>
+            </button>
+            <button title="Toggle Panel">
+              <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M2 3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3zm11 9H3v2h10v-2zM3 11h10V3H3v8z"></path></svg>
+            </button>
+          </div>
           <button @click=${() => (window as any).minimizeWindow()}>
             <svg viewBox="0 0 10 1" width="10" height="1"><rect width="10" height="1" fill="currentColor"/></svg>
           </button>
@@ -222,7 +299,10 @@ export class VruttiApp extends LitElement {
       
       <div class="main">
         <vrutti-sidebar></vrutti-sidebar>
-        <vrutti-editor></vrutti-editor>
+        <div class="editor-container">
+          <vrutti-editor></vrutti-editor>
+          <vrutti-terminal></vrutti-terminal>
+        </div>
       </div>
       <vrutti-statusbar></vrutti-statusbar>
     `;
