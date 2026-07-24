@@ -4,7 +4,7 @@
 
 // We must include webview.h here. It's a single header library.
 #include "../vendor/webview.h"
-#include "../config/SettingsManager.h"
+#include "../../core/config/SettingsManager.h"
 
 namespace vrutti::ui {
 
