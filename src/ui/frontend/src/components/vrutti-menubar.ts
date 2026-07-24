@@ -25,24 +25,24 @@ export class VruttiMenuBar extends LitElement {
       title: 'File',
       items: [
         { label: 'New Text File' },
-        { label: 'New File...' },
+        { label: 'New File' },
         { label: 'New Window' },
         { separator: true, label: '' },
-        { label: 'Open File...' },
-        { label: 'Open Folder...' },
-        { label: 'Open Workspace from File...' },
-        { label: 'Open Recent >' },
+        { label: 'Open File' },
+        { label: 'Open Folder' },
+        { label: 'Open Workspace from File' },
+        { label: 'Open Recent' },
         { separator: true, label: '' },
-        { label: 'Add Folder to Workspace...' },
-        { label: 'Save Workspace As...' },
+        { label: 'Add Folder to Workspace' },
+        { label: 'Save Workspace As' },
         { label: 'Duplicate Workspace' },
         { separator: true, label: '' },
         { label: 'Save' },
-        { label: 'Save As...' },
+        { label: 'Save As' },
         { label: 'Save All' },
         { separator: true, label: '' },
         { label: 'Auto Save' },
-        { label: 'Preferences >' },
+        { label: 'Preferences' },
         { separator: true, label: '' },
         { label: 'Revert File' },
         { label: 'Close Editor' },
@@ -100,11 +100,11 @@ export class VruttiMenuBar extends LitElement {
     {
       title: 'View',
       items: [
-        { label: 'Command Palette...' },
-        { label: 'Open View...' },
+        { label: 'Command Palette' },
+        { label: 'Open View' },
         { separator: true, label: '' },
-        { label: 'Appearance >' },
-        { label: 'Editor Layout >' },
+        { label: 'Appearance' },
+        { label: 'Editor Layout' },
         { separator: true, label: '' },
         { label: 'Explorer' },
         { label: 'Search' },
@@ -126,10 +126,10 @@ export class VruttiMenuBar extends LitElement {
         { label: 'Back' },
         { label: 'Forward' },
         { separator: true, label: '' },
-        { label: 'Go to File...' },
-        { label: 'Go to Symbol in Workspace...' },
+        { label: 'Go to File' },
+        { label: 'Go to Symbol in Workspace' },
         { separator: true, label: '' },
-        { label: 'Go to Line/Column...' },
+        { label: 'Go to Line/Column' },
         { label: 'Go to Definition' },
         { label: 'Go to Declaration' },
         { label: 'Go to Type Definition' },
@@ -151,7 +151,7 @@ export class VruttiMenuBar extends LitElement {
         { label: 'Restart Debugging' },
         { separator: true, label: '' },
         { label: 'Open Configurations' },
-        { label: 'Add Configuration...' },
+        { label: 'Add Configuration' },
         { separator: true, label: '' },
         { label: 'Step Over' },
         { label: 'Step Into' },
@@ -159,7 +159,7 @@ export class VruttiMenuBar extends LitElement {
         { label: 'Continue' },
         { separator: true, label: '' },
         { label: 'Toggle Breakpoint' },
-        { label: 'New Breakpoint >' }
+        { label: 'New Breakpoint' }
       ]
     },
     {
@@ -168,12 +168,12 @@ export class VruttiMenuBar extends LitElement {
         { label: 'New Terminal' },
         { label: 'Split Terminal' },
         { separator: true, label: '' },
-        { label: 'Run Task...' },
-        { label: 'Build Task...' },
-        { label: 'Active Tasks...' },
+        { label: 'Run Task' },
+        { label: 'Build Task' },
+        { label: 'Active Tasks' },
         { separator: true, label: '' },
-        { label: 'Configure Tasks...' },
-        { label: 'Configure Default Build Task...' }
+        { label: 'Configure Tasks' },
+        { label: 'Configure Default Build Task' }
       ]
     },
     {
@@ -199,7 +199,7 @@ export class VruttiMenuBar extends LitElement {
         { label: 'Toggle Developer Tools' },
         { label: 'Open Process Explorer' },
         { separator: true, label: '' },
-        { label: 'Check for Updates...' },
+        { label: 'Check for Updates' },
         { label: 'About' }
       ]
     }
