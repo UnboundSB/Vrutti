@@ -311,7 +311,7 @@ export class VruttiApp extends LitElement {
       50% { transform: scale(1.05); opacity: 1; }
       100% { transform: scale(0.95); opacity: 0.7; }
     }
-  ];
+  `];
 
   render() {
     return html`

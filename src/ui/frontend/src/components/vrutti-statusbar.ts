@@ -86,7 +86,7 @@ export class VruttiStatusBar extends LitElement {
     .errors-warnings span {
       margin-right: 6px;
     }
-  ];
+  `];
 
   render() {
     return html`

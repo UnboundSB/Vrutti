@@ -337,7 +337,7 @@ export class VruttiMenuBar extends LitElement {
       background-color: var(--vrutti-surface-border, #23273b);
       margin: 4px 12px;
     }
-  ];
+  `];
 
   render() {
     return html`

@@ -63,7 +63,7 @@ export class VruttiExplorer extends LitElement {
     .children {
       display: block;
     }
-  ];
+  `];
 
   private toggle() {
     if (this.item && this.item.isDirectory) {
