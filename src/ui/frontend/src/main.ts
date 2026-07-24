@@ -12,8 +12,18 @@ export class VruttiApp extends LitElement {
   @state()
   private greeting = '';
 
+  @state()
+  private userName = 'User';
+
   connectedCallback() {
     super.connectedCallback();
+    
+    // Load user configuration
+    const storedName = localStorage.getItem('vrutti-username');
+    if (storedName) {
+      this.userName = storedName;
+    }
+
     const hour = new Date().getHours();
     if (hour >= 5 && hour < 12) this.greeting = 'Good Morning';
     else if (hour >= 12 && hour < 17) this.greeting = 'Good Afternoon';
@@ -206,7 +216,7 @@ export class VruttiApp extends LitElement {
       
       <div class="splash-screen ${this.isLoading ? '' : 'hidden'}">
         <img class="splash-logo" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAABL1BMVEVHcEwxNzknKTUxJzAjKT1xT1o8MDxFOUIgKUMlL0pVOUYlLURkMD0eJjwxM0M2Mjk8OUQgKUN1XWYuMkA0LEJrSlYiJzghKD9uW2QdJTs7NESRWWMoLT4tNEqLUl01NkcrNE01NksoK0JAPElbQU1nN0eLQE9gPUpkPkxqTlpLOUc1OlAnKTBSJjQwMkQdIzWBRlOEWGFVLjsmLUA9LT8aITYXYm6KOEhTO0luO0olKDggKkaZS1YcJT2QWWKOUl6JXGaBTlpoQU9QP0tPPU0lLkuPRFE9M0EzNElTNEI/LkChVGCsTlmhTltzPk19Q1E1O1GjPU+tQlKpSVZVNkVMNUZCL0FvTVlbQFB0RFFCRldOUl9dM0ZaRE8nL0Y6QVdQO0wrNE5ILkBITVwfKkYMoBU4AAAAZHRSTlMAAhIX8zMbIKHHOL/LhYEMI5QWb+k9Kd0bzE9qquWXjvCVr2Wttq3hhCuk8ZFWylnWgsH8vUsEbth6eZDqtK63Vd7OQ/Sa1bPz6fzdtHDEoTISQyXH89mnlca4RxW2/MDL1WpWS6ieYwAAAL9JREFUGNNNj0MSBAEUQ38bY9u2bds273+GqVF1Z5WXRSoB+EharxHAk8Q5dlfkHFMOLzEbVbV/xjqrk48yD8q/BLGs737nzj0fmtNvRhUOFliPywcLg+Hdk8dvl4f/6t2oJu1iDAFK01LTgYD+uPW42EyUALVOY5varQdy2WvkhEIVIFiqxDDnva3fzMZDGPKppZ9GU9euTJL/ISRj0VnFSj03VUQXTMYwygURgSyBi3nnUIUMD0r5d0EkkHzNCy8jF6c8+rZRAAAAAElFTkSuQmCC" />
-        <div class="greeting">${this.greeting}, User</div>
+        <div class="greeting">${this.greeting}, ${this.userName}</div>
         <div class="sub-greeting">prepping your beast...</div>
       </div>
       
