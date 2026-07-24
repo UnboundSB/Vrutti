@@ -4,6 +4,7 @@
 
 // We must include webview.h here. It's a single header library.
 #include "../vendor/webview.h"
+#include "../config/SettingsManager.h"
 
 namespace vrutti::ui {
 
@@ -143,6 +144,24 @@ namespace vrutti::ui {
                 this->m_ipc->handleIncomingMessage(req);
             }
         }, nullptr);
+
+        w->bind("vruttiGetSettings", [this](const std::string& req) -> std::string {
+            return vrutti::core::config::SettingsManager::getInstance().getSettingsJson();
+        });
+
+        w->bind("vruttiUpdateSetting", [this](const std::string& req) -> std::string {
+            auto parsedReq = vrutti::core::utils::JsonParser::parse(req);
+            if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 2) {
+                auto keyNode = parsedReq->arrayElements[0];
+                auto valNode = parsedReq->arrayElements[1];
+                if (keyNode && keyNode->type == vrutti::core::utils::JsonNode::Type::String) {
+                    std::string key(keyNode->stringValue);
+                    std::string valJson = vrutti::core::utils::JsonSerializer::stringify(valNode, 0, false);
+                    vrutti::core::config::SettingsManager::getInstance().updateSetting(key, valJson);
+                }
+            }
+            return "{}";
+        });
 
         // Calculate absolute path to the compiled frontend dist/index.html
         // We use the executable path to be independent of the Current Working Directory.

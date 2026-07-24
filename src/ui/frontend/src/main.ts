@@ -18,7 +18,7 @@ export class VruttiApp extends LitElement {
   @state()
   private showSettings = false;
 
-  connectedCallback() {
+  async connectedCallback() {
     super.connectedCallback();
     
     // Load user configuration
@@ -32,6 +32,19 @@ export class VruttiApp extends LitElement {
     else if (hour >= 12 && hour < 17) this.greeting = 'Good Afternoon';
     else if (hour >= 17 && hour < 22) this.greeting = 'Good Evening';
     else this.greeting = 'Good Night';
+
+    try {
+      if ((window as any).vruttiGetSettings) {
+        const settings = await (window as any).vruttiGetSettings();
+        if (settings && settings['editor.fontFamily']) {
+          this.style.setProperty('--vrutti-font', settings['editor.fontFamily']);
+        }
+        // Fire event to notify settings component if it's already loaded
+        window.dispatchEvent(new CustomEvent('settings-loaded', { detail: settings }));
+      }
+    } catch (e) {
+      console.error('Failed to load settings via IPC:', e);
+    }
 
     setTimeout(() => {
       this.isLoading = false;
@@ -49,7 +62,7 @@ export class VruttiApp extends LitElement {
     this.removeEventListener('setting-changed', this.handleSettingChanged);
   }
 
-  private async handleMenuAction(e: Event) {
+  private handleMenuAction = async (e: Event) => {
     const detail = (e as CustomEvent).detail;
     if (detail.action === 'Preferences') {
       if (!customElements.get('vrutti-settings')) {
@@ -57,16 +70,24 @@ export class VruttiApp extends LitElement {
       }
       this.showSettings = true;
     }
-  }
+  };
 
-  private handleCloseSettings() {
+  private handleCloseSettings = () => {
     this.showSettings = false;
-  }
+  };
 
-  private handleSettingChanged(e: Event) {
+  private handleSettingChanged = async (e: Event) => {
     const detail = (e as CustomEvent).detail;
     console.log('[Main] Routing setting save to IPC:', detail.key, detail.value);
-  }
+    
+    if (detail.key === 'editor.fontFamily') {
+      this.style.setProperty('--vrutti-font', detail.value);
+    }
+
+    if ((window as any).vruttiUpdateSetting) {
+      await (window as any).vruttiUpdateSetting(detail.key, detail.value);
+    }
+  };
 
   static styles = css`
     :host {
