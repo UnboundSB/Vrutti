@@ -120,6 +120,25 @@ namespace vrutti::core::utils {
         return parseValue(source, pos);
     }
 
+    std::string JsonParser::unescapeString(std::string_view sv) {
+        std::string out;
+        out.reserve(sv.length());
+        for (size_t i = 0; i < sv.length(); i++) {
+            if (sv[i] == '\\' && i + 1 < sv.length()) {
+                if (sv[i+1] == '"') out += '"';
+                else if (sv[i+1] == '\\') out += '\\';
+                else if (sv[i+1] == 'n') out += '\n';
+                else if (sv[i+1] == 'r') out += '\r';
+                else if (sv[i+1] == 't') out += '\t';
+                else out += sv[i+1];
+                i++;
+            } else {
+                out += sv[i];
+            }
+        }
+        return out;
+    }
+
     std::string JsonSerializer::stringify(const std::shared_ptr<JsonNode>& node, int indentLevel, bool pretty) {
         std::string out;
         serializeNode(node, out, indentLevel, pretty);
