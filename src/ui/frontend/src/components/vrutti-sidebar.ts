@@ -23,13 +23,31 @@ export class VruttiSidebar extends LitElement {
 
   async connectedCallback() {
     super.connectedCallback();
-    const model = new ExplorerModel();
+    window.addEventListener('workspace-changed', this.handleWorkspaceChanged);
+    
     // Default workspace to application folder for now
-    const workspacePath = 'D:/vrutti/vrutti_ide';
+    await this.loadWorkspace('D:/vrutti/vrutti_ide', 'Vrutti IDE Workspace');
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    window.removeEventListener('workspace-changed', this.handleWorkspaceChanged);
+  }
+
+  private handleWorkspaceChanged = async (e: Event) => {
+    const detail = (e as CustomEvent).detail;
+    if (detail.path) {
+      let folderName = detail.path.split(/[\\/]/).pop() || 'Workspace';
+      await this.loadWorkspace(detail.path, folderName);
+    }
+  };
+
+  private async loadWorkspace(path: string, name: string) {
+    const model = new ExplorerModel();
     model.setRoot({
-      name: 'Vrutti IDE Workspace',
+      name: name,
       isDirectory: true,
-      resource: workspacePath
+      resource: path
     });
     this.explorerRoot = model.root!;
     await this.explorerRoot.loadChildren();
