@@ -1,9 +1,13 @@
 #include "Window.h"
 #include <iostream>
 #include <filesystem>
+#include <fstream>
 
 // We must include webview.h here. It's a single header library.
 #include "../vendor/webview.h"
+#ifdef _WIN32
+#include <shobjidl.h>
+#endif
 #include "../../core/config/SettingsManager.h"
 
 namespace vrutti::ui {
@@ -176,6 +180,70 @@ namespace vrutti::ui {
                 }
             }
             return "[]";
+        });
+
+        w->bind("vruttiOpenFolderDialog", [this](const std::string& req) -> std::string {
+            std::string result = "";
+#ifdef _WIN32
+            IFileDialog *pfd = NULL;
+            if (SUCCEEDED(CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pfd)))) {
+                DWORD dwOptions;
+                if (SUCCEEDED(pfd->GetOptions(&dwOptions))) {
+                    pfd->SetOptions(dwOptions | FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM);
+                }
+                HWND hwnd = static_cast<HWND>(static_cast<webview::webview*>(m_windowHandle)->window());
+                if (SUCCEEDED(pfd->Show(hwnd))) {
+                    IShellItem *psi;
+                    if (SUCCEEDED(pfd->GetResult(&psi))) {
+                        PWSTR pszFilePath = NULL;
+                        if (SUCCEEDED(psi->GetDisplayName(SIGDN_FILESYSPATH, &pszFilePath))) {
+                            std::wstring wstr(pszFilePath);
+                            int size_needed = WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(), NULL, 0, NULL, NULL);
+                            std::string strTo(size_needed, 0);
+                            WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(), &strTo[0], size_needed, NULL, NULL);
+                            result = strTo;
+                            CoTaskMemFree(pszFilePath);
+                        }
+                        psi->Release();
+                    }
+                }
+                pfd->Release();
+            }
+#endif
+            // JSON stringify the result
+            std::string json = "{\"path\":\"" + vrutti::core::utils::JsonSerializer::escapeString(result) + "\"}";
+            return json;
+        });
+
+        w->bind("vruttiCreateFolder", [this](const std::string& req) -> std::string {
+            auto parsedReq = vrutti::core::utils::JsonParser::parse(req);
+            if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
+                auto pathNode = parsedReq->arrayElements[0];
+                if (pathNode && pathNode->type == vrutti::core::utils::JsonNode::Type::String) {
+                    std::string path(pathNode->stringValue);
+                    try {
+                        std::filesystem::create_directory(path);
+                        return "{\"success\":true}";
+                    } catch (...) {}
+                }
+            }
+            return "{\"success\":false}";
+        });
+
+        w->bind("vruttiCreateFile", [this](const std::string& req) -> std::string {
+            auto parsedReq = vrutti::core::utils::JsonParser::parse(req);
+            if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
+                auto pathNode = parsedReq->arrayElements[0];
+                if (pathNode && pathNode->type == vrutti::core::utils::JsonNode::Type::String) {
+                    std::string path(pathNode->stringValue);
+                    try {
+                        std::ofstream f(path);
+                        f.close();
+                        return "{\"success\":true}";
+                    } catch (...) {}
+                }
+            }
+            return "{\"success\":false}";
         });
 
         w->bind("vruttiGetSettings", [this](const std::string& req) -> std::string {
