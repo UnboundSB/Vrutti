@@ -347,8 +347,13 @@ namespace vrutti::ui {
             return "{}";
         });
 
-        // Calculate absolute path to the compiled frontend dist/index.html
-        // We use the executable path to be independent of the Current Working Directory.
+        return true;
+    }
+
+    void Window::run() {
+        if (!m_windowHandle) return;
+        
+        // Ensure initial HTML URI is formatted
         std::filesystem::path exePath;
 #ifdef _WIN32
         char buffer[MAX_PATH];
@@ -361,26 +366,24 @@ namespace vrutti::ui {
             exePath = std::filesystem::path(std::string(buffer, (count > 0) ? count : 0));
         }
 #endif
-        // exePath is build/vrutti_app.exe. Go up two levels to get to vrutti_ide/
         std::filesystem::path basePath = exePath.parent_path().parent_path();
         std::filesystem::path htmlPath = basePath / "src" / "ui" / "frontend" / "dist" / "index.html";
         
-        // Ensure string is correctly formatted for webview
         std::string htmlStr = htmlPath.string();
         for (char& c : htmlStr) { if (c == '\\') c = '/'; }
         std::string uri = "file:///" + htmlStr;
         
-        w->navigate(uri);
-
-        std::cout << "[UI] Webview navigated to: " << uri << std::endl;
-        return true;
-    }
-
-    void Window::run() {
-        // Run the webview event loop
         webview::webview* w = static_cast<webview::webview*>(m_windowHandle);
-        if (w) {
-            w->run(); // This is blocking until window is closed
+        w->navigate(uri);
+        std::cout << "[UI] Webview navigated to: " << uri << std::endl;
+
+        w->run(); // This is blocking until window is closed
+        
+        // Clean up webview after event loop ends
+        if (m_windowHandle) {
+            delete w;
+            m_windowHandle = nullptr;
+            std::cout << "[UI] Webview destroyed." << std::endl;
         }
     }
 
@@ -391,9 +394,6 @@ namespace vrutti::ui {
         if (m_windowHandle) {
             webview::webview* w = static_cast<webview::webview*>(m_windowHandle);
             w->terminate();
-            delete w;
-            m_windowHandle = nullptr;
-            std::cout << "[UI] Webview destroyed." << std::endl;
         }
     }
 
