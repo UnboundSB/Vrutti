@@ -184,6 +184,37 @@ namespace vrutti::ui {
             return "[]";
         });
 
+        w->bind("vruttiCreateFile", [this](const std::string& req) -> std::string {
+            auto parsedReq = vrutti::core::utils::JsonParser::parse(req);
+            if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
+                auto pathNode = parsedReq->arrayElements[0];
+                if (pathNode && pathNode->type == vrutti::core::utils::JsonNode::Type::String) {
+                    std::string path = vrutti::core::utils::JsonParser::unescapeString(pathNode->stringValue);
+                    try {
+                        std::ofstream f(path);
+                        f.close();
+                        return "{\"success\":true}";
+                    } catch (...) {}
+                }
+            }
+            return "{\"success\":false}";
+        });
+
+        w->bind("vruttiCreateFolder", [this](const std::string& req) -> std::string {
+            auto parsedReq = vrutti::core::utils::JsonParser::parse(req);
+            if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
+                auto pathNode = parsedReq->arrayElements[0];
+                if (pathNode && pathNode->type == vrutti::core::utils::JsonNode::Type::String) {
+                    std::string path = vrutti::core::utils::JsonParser::unescapeString(pathNode->stringValue);
+                    try {
+                        std::filesystem::create_directories(path);
+                        return "{\"success\":true}";
+                    } catch (...) {}
+                }
+            }
+            return "{\"success\":false}";
+        });
+
         w->bind("vruttiOpenFolderDialog", [this](const std::string& req) -> std::string {
             std::string result = "";
 #ifdef _WIN32
