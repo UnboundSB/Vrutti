@@ -30,11 +30,10 @@ namespace vrutti::core::terminal {
         OutputCallback m_outputCallback;
 
 #ifdef _WIN32
-        HANDLE m_hChildStd_IN_Rd = NULL;
         HANDLE m_hChildStd_IN_Wr = NULL;
         HANDLE m_hChildStd_OUT_Rd = NULL;
-        HANDLE m_hChildStd_OUT_Wr = NULL;
         HANDLE m_hProcess = NULL;
+        void* m_hPC = NULL; // HPCON type-erased
 #endif
     };
 
