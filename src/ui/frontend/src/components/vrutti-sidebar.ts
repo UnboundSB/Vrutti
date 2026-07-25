@@ -25,8 +25,19 @@ export class VruttiSidebar extends LitElement {
     super.connectedCallback();
     window.addEventListener('workspace-changed', this.handleWorkspaceChanged);
     
-    // Default workspace to application folder for now
-    await this.loadWorkspace('D:/vrutti/vrutti_ide', 'Vrutti IDE Workspace');
+    let initialPath = 'D:/vrutti/vrutti_ide';
+    if ((window as any).vruttiGetInitialWorkspace) {
+      try {
+        const res = await (window as any).vruttiGetInitialWorkspace();
+        const json = JSON.parse(res);
+        if (json.path && json.path !== "") {
+          initialPath = json.path;
+        }
+      } catch (e) {}
+    }
+    
+    let folderName = initialPath.split(/[\\/]/).pop() || 'Workspace';
+    await this.loadWorkspace(initialPath, folderName);
   }
 
   disconnectedCallback() {
