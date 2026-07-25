@@ -2,7 +2,7 @@ import { LitElement, css, html } from 'lit';
 import { customElement, query } from 'lit/decorators.js';
 import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
-import 'xterm/css/xterm.css';
+import { xtermStyles } from './xterm-styles';
 
 @customElement('vrutti-terminal')
 export class VruttiTerminal extends LitElement {
@@ -12,8 +12,8 @@ export class VruttiTerminal extends LitElement {
   @query('#terminal-container')
   private container!: HTMLElement;
 
-  static styles = css`
-    vrutti-terminal {
+  static styles = [globalHoverStyle, xtermStyles, css`
+    :host {
       display: flex;
       width: 100%;
       height: 100%;
@@ -96,11 +96,6 @@ export class VruttiTerminal extends LitElement {
       background: rgba(255, 255, 255, 0.2);
     }
   `;
-
-  // Disable shadow DOM so global xterm.css applies to xterm.js DOM elements
-  protected createRenderRoot() {
-    return this;
-  }
 
   async connectedCallback() {
     super.connectedCallback();
@@ -208,9 +203,6 @@ export class VruttiTerminal extends LitElement {
 
   render() {
     return html`
-      <style>
-        ${VruttiTerminal.styles}
-      </style>
       <div class="panel-tabs">
         <div class="tab">Problems</div>
         <div class="tab">Output</div>

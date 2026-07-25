@@ -1,3 +1,5 @@
+import { css } from 'lit';
+export const xtermStyles = css
 /**
  * Copyright (c) 2014 The xterm.js authors. All rights reserved.
  * Copyright (c) 2012-2013, Christopher Jeffrey (MIT License)
@@ -207,3 +209,5 @@
     z-index: 2;
     position: relative;
 }
+
+;
