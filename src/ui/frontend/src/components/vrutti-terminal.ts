@@ -13,7 +13,7 @@ export class VruttiTerminal extends LitElement {
   private container!: HTMLElement;
 
   static styles = css`
-    :host {
+    vrutti-terminal {
       display: flex;
       width: 100%;
       height: 100%;
@@ -97,9 +97,19 @@ export class VruttiTerminal extends LitElement {
     }
   `;
 
+  // Disable shadow DOM so global xterm.css applies to xterm.js DOM elements
+  protected createRenderRoot() {
+    return this;
+  }
+
   async connectedCallback() {
     super.connectedCallback();
     
+    // Inject component styles manually since we disabled Shadow DOM
+    const styleEl = document.createElement('style');
+    styleEl.textContent = VruttiTerminal.styles.toString();
+    this.appendChild(styleEl);
+
     // Initialize terminal on next tick to ensure DOM is ready
     setTimeout(() => this.initTerminal(), 0);
     
@@ -108,7 +118,12 @@ export class VruttiTerminal extends LitElement {
     // Bind global output callback for C++ backend
     (window as any).vruttiTerminalOutput = (b64data: string) => {
       if (this.terminal) {
-        this.terminal.write(atob(b64data));
+        const binString = atob(b64data);
+        const bytes = new Uint8Array(binString.length);
+        for (let i = 0; i < binString.length; i++) {
+          bytes[i] = binString.charCodeAt(i);
+        }
+        this.terminal.write(bytes);
       }
     };
   }
