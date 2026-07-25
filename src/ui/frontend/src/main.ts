@@ -13,6 +13,42 @@ export class VruttiApp extends LitElement {
   private isLoading = true;
 
   @state()
+  private showTerminal = true;
+
+  @state()
+  private terminalHeight = 250;
+
+  private isResizingTerminal = false;
+  private startY = 0;
+  private startHeight = 0;
+
+  private startTerminalResize = (e: MouseEvent) => {
+    this.isResizingTerminal = true;
+    this.startY = e.clientY;
+    this.startHeight = this.terminalHeight;
+    window.addEventListener('mousemove', this.doTerminalResize);
+    window.addEventListener('mouseup', this.stopTerminalResize);
+    document.body.style.cursor = 'ns-resize';
+  };
+
+  private doTerminalResize = (e: MouseEvent) => {
+    if (!this.isResizingTerminal) return;
+    const dy = this.startY - e.clientY;
+    let newHeight = this.startHeight + dy;
+    if (newHeight < 100) newHeight = 100;
+    if (newHeight > window.innerHeight - 150) newHeight = window.innerHeight - 150;
+    this.terminalHeight = newHeight;
+    window.dispatchEvent(new Event('resize'));
+  };
+
+  private stopTerminalResize = () => {
+    this.isResizingTerminal = false;
+    window.removeEventListener('mousemove', this.doTerminalResize);
+    window.removeEventListener('mouseup', this.stopTerminalResize);
+    document.body.style.cursor = '';
+  };
+
+  @state()
   private greeting = '';
 
   @state()
@@ -309,6 +345,22 @@ export class VruttiApp extends LitElement {
       flex-direction: column;
       z-index: 2;
       background: var(--vrutti-bg);
+      position: relative;
+    }
+
+    .terminal-resizer {
+      position: absolute;
+      top: -3px;
+      left: 0;
+      right: 0;
+      height: 6px;
+      cursor: ns-resize;
+      z-index: 10;
+      transition: background-color 0.2s;
+    }
+    
+    .terminal-resizer:hover {
+      background-color: var(--vrutti-accent);
     }
     
     .splash-screen {
@@ -417,7 +469,8 @@ export class VruttiApp extends LitElement {
               <img src="../../../../logos/logo-512x512.png" class="underlay" />
             </div>
             ${this.showTerminal ? html`
-              <div class="terminal-panel">
+              <div class="terminal-panel" style="height: ${this.terminalHeight}px">
+                <div class="terminal-resizer" @mousedown=${this.startTerminalResize}></div>
                 <vrutti-terminal></vrutti-terminal>
               </div>
             ` : ''}
