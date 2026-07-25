@@ -120,6 +120,8 @@ export class VruttiApp extends LitElement {
       border-bottom: 1px solid var(--vrutti-surface-border);
       -webkit-app-region: drag;
       user-select: none;
+      position: relative;
+      z-index: 9999;
     }
     
     .header-left {
