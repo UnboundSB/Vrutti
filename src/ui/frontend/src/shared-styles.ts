@@ -13,7 +13,8 @@ export const globalHoverStyle = css`
   .icon-button:hover, 
   .action-btn:hover,
   .file-item:hover,
-  .folder-item:hover {
+  .folder-item:hover,
+  .tree-node:hover {
     background-color: rgba(255, 255, 255, 0.1);
   }
 
@@ -24,7 +25,8 @@ export const globalHoverStyle = css`
   .icon-button:active, 
   .action-btn:active,
   .file-item:active,
-  .folder-item:active {
+  .folder-item:active,
+  .tree-node:active {
     background-color: rgba(255, 255, 255, 0.15);
   }
 `;
