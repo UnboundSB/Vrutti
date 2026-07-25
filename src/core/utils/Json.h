@@ -41,6 +41,7 @@ namespace vrutti::core::utils {
     class JsonParser {
     public:
         static std::shared_ptr<JsonNode> parse(const std::string& source);
+        static std::string unescapeString(std::string_view sv);
 
     private:
         static std::shared_ptr<JsonNode> parseValue(const std::string& source, size_t& pos);
