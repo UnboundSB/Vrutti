@@ -2,7 +2,7 @@ import { css } from 'lit';
 
 export const globalHoverStyle = css`
   button, .menu-item, .category-item, .dropdown-item, .icon-button, .action-btn, .file-item, .folder-item {
-    transition: background-color 0.1s ease, filter 0.1s ease !important;
+    transition: background-color 0.1s ease, filter 0.1s ease;
   }
   
   /* VS Code style subtle highlight */
@@ -14,7 +14,7 @@ export const globalHoverStyle = css`
   .action-btn:hover,
   .file-item:hover,
   .folder-item:hover {
-    background-color: rgba(255, 255, 255, 0.1) !important;
+    background-color: rgba(255, 255, 255, 0.1);
   }
 
   button:active:not(.close-btn), 
@@ -25,6 +25,6 @@ export const globalHoverStyle = css`
   .action-btn:active,
   .file-item:active,
   .folder-item:active {
-    background-color: rgba(255, 255, 255, 0.15) !important;
+    background-color: rgba(255, 255, 255, 0.15);
   }
 `;
