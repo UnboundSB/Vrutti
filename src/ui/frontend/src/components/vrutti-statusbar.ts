@@ -68,8 +68,7 @@ export class VruttiStatusBar extends LitElement {
     }
 
     .item:hover {
-      background-color: var(--vrutti-surface-border, #23273b);
-      color: var(--vrutti-text-bright, #a6accd);
+      color: var(--vrutti-text-bright, #fff);
     }
 
     .item svg {

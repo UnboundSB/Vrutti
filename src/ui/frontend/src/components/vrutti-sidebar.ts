@@ -83,7 +83,6 @@ export class VruttiSidebar extends LitElement {
 
     .dock-toggle:hover {
       color: var(--vrutti-text-bright, #a6accd);
-      background: var(--vrutti-surface-border, #23273b);
     }
 
     .activity-bar {
@@ -186,7 +185,6 @@ export class VruttiSidebar extends LitElement {
     }
 
     .pane-action-btn:hover {
-      background: var(--vrutti-surface-border, #23273b);
       color: var(--vrutti-text-bright, #fff);
     }
 

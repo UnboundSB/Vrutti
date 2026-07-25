@@ -113,7 +113,6 @@ export class VruttiSettings extends LitElement {
     }
 
     .category-item:hover {
-      background: var(--vrutti-surface, #13151f);
       color: var(--vrutti-text-bright, #fff);
     }
 
