@@ -105,11 +105,6 @@ export class VruttiTerminal extends LitElement {
   async connectedCallback() {
     super.connectedCallback();
     
-    // Inject component styles manually since we disabled Shadow DOM
-    const styleEl = document.createElement('style');
-    styleEl.textContent = VruttiTerminal.styles.toString();
-    this.appendChild(styleEl);
-
     // Initialize terminal on next tick to ensure DOM is ready
     setTimeout(() => this.initTerminal(), 0);
     
@@ -213,6 +208,9 @@ export class VruttiTerminal extends LitElement {
 
   render() {
     return html`
+      <style>
+        ${VruttiTerminal.styles}
+      </style>
       <div class="panel-tabs">
         <div class="tab">Problems</div>
         <div class="tab">Output</div>
