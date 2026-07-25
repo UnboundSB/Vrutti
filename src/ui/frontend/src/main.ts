@@ -3,6 +3,7 @@ import { customElement, state } from 'lit/decorators.js';
 import './components/vrutti-sidebar';
 import './components/vrutti-statusbar';
 import './components/vrutti-menubar';
+import './components/vrutti-terminal';
 
 import { globalHoverStyle } from './shared-styles';
 
@@ -19,6 +20,9 @@ export class VruttiApp extends LitElement {
 
   @state()
   private showSettings = false;
+
+  @state()
+  private showTerminal = false;
 
   async connectedCallback() {
     super.connectedCallback();
@@ -99,6 +103,10 @@ export class VruttiApp extends LitElement {
 
   private handleCloseSettings = () => {
     this.showSettings = false;
+  };
+
+  private toggleTerminal = () => {
+    this.showTerminal = !this.showTerminal;
   };
 
   private handleSettingChanged = async (e: Event) => {
@@ -291,6 +299,15 @@ export class VruttiApp extends LitElement {
       max-width: 512px;
       object-fit: contain;
     }
+
+    .terminal-panel {
+      height: 250px;
+      border-top: 1px solid var(--vrutti-surface-border);
+      display: flex;
+      flex-direction: column;
+      z-index: 2;
+      background: var(--vrutti-bg);
+    }
     
     .splash-screen {
       position: absolute;
@@ -365,7 +382,7 @@ export class VruttiApp extends LitElement {
             <button title="Toggle Sidebar">
               <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M2 3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3zm11 0H7v10h6V3zM6 3H3v10h3V3z"></path></svg>
             </button>
-            <button title="Toggle Panel">
+            <button title="Toggle Panel" @click=${this.toggleTerminal}>
               <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M2 3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3zm11 9H3v2h10v-2zM3 11h10V3H3v8z"></path></svg>
             </button>
           </div>
@@ -393,8 +410,15 @@ export class VruttiApp extends LitElement {
           ${this.showSettings ? html`
             <vrutti-settings style="position: absolute; top: 0; left: 0; right: 0; bottom: 0;"></vrutti-settings>
           ` : html`
-            <vrutti-editor></vrutti-editor>
-            <img src="../../../../logos/logo-512x512.png" class="underlay" />
+            <div style="flex: 1; display: flex; flex-direction: column; position: relative;">
+              <vrutti-editor></vrutti-editor>
+              <img src="../../../../logos/logo-512x512.png" class="underlay" />
+            </div>
+            ${this.showTerminal ? html`
+              <div class="terminal-panel">
+                <vrutti-terminal></vrutti-terminal>
+              </div>
+            ` : ''}
           `}
         </div>
       </div>
