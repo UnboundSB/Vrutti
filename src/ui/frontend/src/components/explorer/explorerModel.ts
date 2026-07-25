@@ -41,8 +41,7 @@ export class ExplorerItem {
       } else if (path.startsWith('file://')) {
         path = path.substring(7);
       }
-      const raw = await (window as any).vruttiReadDirectory(path);
-      const stats: IFileStat[] = JSON.parse(raw);
+      const stats: IFileStat[] = await (window as any).vruttiReadDirectory(path);
       // Sort: directories first, then alphabetical
       stats.sort((a, b) => {
         if (a.isDirectory && !b.isDirectory) return -1;
