@@ -141,7 +141,8 @@ export class VruttiExplorer extends LitElement {
     let inlineStyle = "";
     // Only color code normal folders based on depth
     if (this.item.isDirectory && (iconPath === './icons/folder.svg' || iconPath === './icons/folder-open.svg')) {
-      const hueShift = (this.depth * 55) % 360;
+      // Start shift at depth+1 so even root folders get a distinct color from the default
+      const hueShift = ((this.depth + 1) * 75) % 360;
       if (hueShift > 0) {
         inlineStyle = `filter: hue-rotate(${hueShift}deg);`;
       }
