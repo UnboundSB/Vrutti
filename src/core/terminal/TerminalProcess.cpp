@@ -75,7 +75,7 @@ namespace vrutti::core::terminal {
         PROCESS_INFORMATION piProcInfo;
         ZeroMemory(&piProcInfo, sizeof(PROCESS_INFORMATION));
 
-        wchar_t cmd[] = L"cmd.exe";
+        wchar_t cmd[] = L"powershell.exe";
         BOOL bSuccess = CreateProcessW(NULL, cmd, NULL, NULL, FALSE, EXTENDED_STARTUPINFO_PRESENT, NULL, NULL, &siEx.StartupInfo, &piProcInfo);
         
         DeleteProcThreadAttributeList(siEx.lpAttributeList);
