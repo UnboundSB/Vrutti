@@ -1,11 +1,14 @@
 import { LitElement, css, html } from 'lit';
-import { customElement, query } from 'lit/decorators.js';
+import { customElement, property, query } from 'lit/decorators.js';
 import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import { xtermStyles } from './xterm-styles';
 
 @customElement('vrutti-terminal')
 export class VruttiTerminal extends LitElement {
+  @property({ type: String })
+  terminalId!: string;
+
   private terminal!: Terminal;
   private fitAddon!: FitAddon;
 
@@ -105,26 +108,44 @@ export class VruttiTerminal extends LitElement {
     
     window.addEventListener('resize', this.handleResize);
     
-    // Bind global output callback for C++ backend
-    (window as any).vruttiTerminalOutput = (b64data: string) => {
-      if (this.terminal) {
-        const binString = atob(b64data);
-        const bytes = new Uint8Array(binString.length);
-        for (let i = 0; i < binString.length; i++) {
-          bytes[i] = binString.charCodeAt(i);
-        }
-        this.terminal.write(bytes);
+    const handleTerminalOutput = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail.id === this.terminalId && this.terminal) {
+        try {
+          const binString = atob(detail.data);
+          const bytes = new Uint8Array(binString.length);
+          for (let i = 0; i < binString.length; i++) {
+            bytes[i] = binString.charCodeAt(i);
+          }
+          this.terminal.write(bytes);
+        } catch (err) {}
       }
     };
+    this.addEventListener('disconnected', () => {
+      window.removeEventListener('terminal-output', handleTerminalOutput);
+    });
+    window.addEventListener('terminal-output', handleTerminalOutput);
+
+    // Provide a global router for backend to call
+    if (!(window as any).vruttiTerminalOutput) {
+      (window as any).vruttiTerminalOutput = (id: string, b64: string) => {
+        window.dispatchEvent(new CustomEvent('terminal-output', {
+          detail: { id, data: b64 }
+        }));
+      };
+    }
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
+    this.dispatchEvent(new Event('disconnected'));
     window.removeEventListener('resize', this.handleResize);
     if (this.terminal) {
       this.terminal.dispose();
     }
-    (window as any).vruttiTerminalOutput = undefined;
+    if ((window as any).vruttiTerminalClose) {
+      (window as any).vruttiTerminalClose(this.terminalId).catch(console.error);
+    }
   }
 
   private async initTerminal() {
@@ -168,7 +189,7 @@ export class VruttiTerminal extends LitElement {
     this.terminal.onData((data) => {
       if ((window as any).vruttiTerminalInput) {
         try {
-          (window as any).vruttiTerminalInput(btoa(data));
+          (window as any).vruttiTerminalInput(this.terminalId, btoa(data));
         } catch (e) {
           console.error('Failed to send terminal input', e);
         }
@@ -184,7 +205,18 @@ export class VruttiTerminal extends LitElement {
       if (cwd.startsWith('file:///')) cwd = cwd.substring(8);
       else if (cwd.startsWith('file://')) cwd = cwd.substring(7);
       
-      (window as any).vruttiTerminalInit(cwd).catch(console.error);
+      (window as any).vruttiTerminalInit(this.terminalId, cwd).catch(console.error);
+    }
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    window.removeEventListener('resize', this.handleResize);
+    if (this.terminal) {
+      this.terminal.dispose();
+    }
+    if ((window as any).vruttiTerminalClose) {
+      (window as any).vruttiTerminalClose(this.terminalId).catch(console.error);
     }
   }
 
@@ -198,7 +230,7 @@ export class VruttiTerminal extends LitElement {
   private async reportSize() {
     if (this.terminal && (window as any).vruttiTerminalResize) {
       try {
-        await (window as any).vruttiTerminalResize(this.terminal.cols, this.terminal.rows);
+        await (window as any).vruttiTerminalResize(this.terminalId, this.terminal.cols, this.terminal.rows);
       } catch (e) {
         console.error('Failed to report terminal size', e);
       }
@@ -207,18 +239,6 @@ export class VruttiTerminal extends LitElement {
 
   render() {
     return html`
-      <div class="panel-tabs">
-        <div class="tab">Problems</div>
-        <div class="tab">Output</div>
-        <div class="tab">Debug Console</div>
-        <div class="tab active">Terminal</div>
-        <div class="tab">Ports</div>
-        <div class="panel-actions">
-          <button title="Clear" @click=${() => this.terminal.clear()}>
-            <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M2.5 1A1.5 1.5 0 0 0 1 2.5v11A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-11A1.5 1.5 0 0 0 13.5 1h-11zm4.854 4.146a.5.5 0 0 1 0 .708L5.707 7.5H11.5a.5.5 0 0 1 0 1H5.707l1.647 1.646a.5.5 0 0 1-.708.708l-2.5-2.5a.5.5 0 0 1 0-.708l2.5-2.5a.5.5 0 0 1 .708 0z"/></svg>
-          </button>
-        </div>
-      </div>
       <div id="terminal-container"></div>
     `;
   }

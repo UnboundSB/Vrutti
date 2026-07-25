@@ -16,6 +16,33 @@ export class VruttiApp extends LitElement {
   private showTerminal = true;
 
   @state()
+  private terminals: { id: string, name: string }[] = [{ id: 'term-1', name: 'Terminal 1' }];
+
+  @state()
+  private activeTerminalId: string = 'term-1';
+
+  private nextTerminalId = 2;
+
+  private createTerminal() {
+    const id = \`term-\${this.nextTerminalId++}\`;
+    this.terminals = [...this.terminals, { id, name: \`Terminal \${this.nextTerminalId - 1}\` }];
+    this.activeTerminalId = id;
+  }
+
+  private closeTerminal(id: string, e?: Event) {
+    if (e) {
+      e.stopPropagation();
+    }
+    this.terminals = this.terminals.filter(t => t.id !== id);
+    if (this.terminals.length > 0 && this.activeTerminalId === id) {
+      this.activeTerminalId = this.terminals[this.terminals.length - 1].id;
+    } else if (this.terminals.length === 0) {
+      this.showTerminal = false;
+      this.activeTerminalId = '';
+    }
+  }
+
+  @state()
   private terminalHeight = 250;
 
   private isResizingTerminal = false;
@@ -363,6 +390,90 @@ export class VruttiApp extends LitElement {
       background-color: var(--vrutti-accent);
     }
     
+    .panel-tabs {
+      height: 35px;
+      background: transparent;
+      display: flex;
+      align-items: flex-end;
+      padding: 0 16px;
+      font-size: 11px;
+      text-transform: uppercase;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+      user-select: none;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    
+    .tab {
+      padding: 8px 12px;
+      color: rgba(255, 255, 255, 0.5);
+      cursor: pointer;
+      border-bottom: 1px solid transparent;
+      transition: color 0.1s, border-color 0.1s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .tab:hover {
+      color: rgba(255, 255, 255, 0.8);
+    }
+    
+    .tab.active {
+      color: #82aaff;
+      border-bottom: 1px solid #82aaff;
+    }
+
+    .tab-close {
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .tab-close:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .panel-actions {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-bottom: 6px;
+    }
+    
+    .panel-actions button {
+      background: transparent;
+      border: none;
+      color: rgba(255, 255, 255, 0.5);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px;
+      border-radius: 4px;
+    }
+    
+    .panel-actions button:hover {
+      color: rgba(255, 255, 255, 0.9);
+      background: rgba(255, 255, 255, 0.1);
+    }
+    
+    .terminals-container {
+      flex: 1;
+      position: relative;
+    }
+    
+    vrutti-terminal {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+    }
+    
     .splash-screen {
       position: absolute;
       top: 35px;
@@ -471,7 +582,30 @@ export class VruttiApp extends LitElement {
             ${this.showTerminal ? html`
               <div class="terminal-panel" style="height: ${this.terminalHeight}px">
                 <div class="terminal-resizer" @mousedown=${this.startTerminalResize}></div>
-                <vrutti-terminal></vrutti-terminal>
+                <div class="panel-tabs">
+                  ${this.terminals.map(t => html`
+                    <div class="tab ${this.activeTerminalId === t.id ? 'active' : ''}" @click=${() => this.activeTerminalId = t.id}>
+                      ${t.name}
+                      <span class="tab-close" @click=${(e: Event) => this.closeTerminal(t.id, e)}>×</span>
+                    </div>
+                  `)}
+                  <div class="panel-actions">
+                    <button title="New Terminal" @click=${this.createTerminal}>
+                      <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"/></svg>
+                    </button>
+                    <button title="Kill Terminal" @click=${() => this.closeTerminal(this.activeTerminalId)}>
+                      <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M11 1.75V3h2.25a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1 0-1.5H5V1.75C5 .784 5.784 0 6.75 0h2.5C10.216 0 11 .784 11 1.75ZM4.496 6.675l.66 6.6a.25.25 0 0 0 .249.225h5.19a.25.25 0 0 0 .249-.225l.66-6.6a.75.75 0 0 1 1.492.149l-.66 6.6A1.748 1.748 0 0 1 10.595 15h-5.19a1.75 1.75 0 0 1-1.741-1.575l-.66-6.6a.75.75 0 1 1 1.492-.15ZM6.5 1.75V3h3V1.75a.25.25 0 0 0-.25-.25h-2.5a.25.25 0 0 0-.25.25Z"/></svg>
+                    </button>
+                  </div>
+                </div>
+                <div class="terminals-container">
+                  ${this.terminals.map(t => html`
+                    <vrutti-terminal
+                      .terminalId=${t.id}
+                      style="visibility: ${this.activeTerminalId === t.id ? 'visible' : 'hidden'};"
+                    ></vrutti-terminal>
+                  `)}
+                </div>
               </div>
             ` : ''}
           `}

@@ -18,7 +18,6 @@ namespace vrutti::ui {
 
     Window::Window(int width, int height, const std::string& title, vrutti::core::ipc::IPCClient* ipc, const std::string& initialWorkspace) 
         : m_width(width), m_height(height), m_title(title), m_ipc(ipc), m_initialWorkspace(initialWorkspace), m_windowHandle(nullptr) {
-        m_terminal = std::make_unique<vrutti::core::terminal::TerminalProcess>();
     }
 
     Window::~Window() {
@@ -154,19 +153,26 @@ namespace vrutti::ui {
         }, nullptr);
 
         w->bind("vruttiTerminalInit", [this, w](const std::string& req) -> std::string {
+            std::string id = "";
             std::string cwd = "";
             auto parsedReq = vrutti::core::utils::JsonParser::parse(req);
-            if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
-                auto pathNode = parsedReq->arrayElements[0];
+            if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 2) {
+                auto idNode = parsedReq->arrayElements[0];
+                auto pathNode = parsedReq->arrayElements[1];
+                if (idNode && idNode->type == vrutti::core::utils::JsonNode::Type::String) {
+                    id = vrutti::core::utils::JsonParser::unescapeString(idNode->stringValue);
+                }
                 if (pathNode && pathNode->type == vrutti::core::utils::JsonNode::Type::String) {
                     cwd = vrutti::core::utils::JsonParser::unescapeString(pathNode->stringValue);
                 }
             }
+            if (id.empty()) return "{}";
 
-            this->m_terminal->start(cwd, [w](const std::string& out) {
+            this->m_terminals[id] = std::make_unique<vrutti::core::terminal::TerminalProcess>();
+            this->m_terminals[id]->start(cwd, [w, id](const std::string& out) {
                 std::string b64 = base64_encode(out);
-                w->dispatch([w, b64]() {
-                    w->eval("if (window.vruttiTerminalOutput) window.vruttiTerminalOutput('" + b64 + "');");
+                w->dispatch([w, id, b64]() {
+                    w->eval("if (window.vruttiTerminalOutput) window.vruttiTerminalOutput('" + id + "', '" + b64 + "');");
                 });
             });
             return "{}";
@@ -174,11 +180,16 @@ namespace vrutti::ui {
 
         w->bind("vruttiTerminalInput", [this](const std::string& req) -> std::string {
             auto parsedReq = vrutti::core::utils::JsonParser::parse(req);
-            if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
-                auto inputNode = parsedReq->arrayElements[0];
-                if (inputNode && inputNode->type == vrutti::core::utils::JsonNode::Type::String) {
+            if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 2) {
+                auto idNode = parsedReq->arrayElements[0];
+                auto inputNode = parsedReq->arrayElements[1];
+                if (idNode && idNode->type == vrutti::core::utils::JsonNode::Type::String &&
+                    inputNode && inputNode->type == vrutti::core::utils::JsonNode::Type::String) {
+                    std::string id = vrutti::core::utils::JsonParser::unescapeString(idNode->stringValue);
                     std::string input = base64_decode(std::string(inputNode->stringValue));
-                    this->m_terminal->writeInput(input);
+                    if (this->m_terminals.count(id)) {
+                        this->m_terminals[id]->writeInput(input);
+                    }
                 }
             }
             return "{}";
@@ -186,21 +197,44 @@ namespace vrutti::ui {
 
         w->bind("vruttiTerminalResize", [this](const std::string& req) -> std::string {
             auto parsedReq = vrutti::core::utils::JsonParser::parse(req);
-            if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 2) {
-                int cols = 120;
-                int rows = 30;
-                
-                auto colsNode = parsedReq->arrayElements[0];
-                auto rowsNode = parsedReq->arrayElements[1];
-                
-                if (colsNode && colsNode->type == vrutti::core::utils::JsonNode::Type::Number) {
-                    cols = (int)colsNode->numberValue;
-                }
-                if (rowsNode && rowsNode->type == vrutti::core::utils::JsonNode::Type::Number) {
-                    rows = (int)rowsNode->numberValue;
+            if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 3) {
+                std::string id = "";
+                auto idNode = parsedReq->arrayElements[0];
+                if (idNode && idNode->type == vrutti::core::utils::JsonNode::Type::String) {
+                    id = vrutti::core::utils::JsonParser::unescapeString(idNode->stringValue);
                 }
                 
-                this->m_terminal->resize(cols, rows);
+                if (!id.empty() && this->m_terminals.count(id)) {
+                    int cols = 120;
+                    int rows = 30;
+                    
+                    auto colsNode = parsedReq->arrayElements[1];
+                    auto rowsNode = parsedReq->arrayElements[2];
+                    
+                    if (colsNode && colsNode->type == vrutti::core::utils::JsonNode::Type::Number) {
+                        cols = (int)colsNode->numberValue;
+                    }
+                    if (rowsNode && rowsNode->type == vrutti::core::utils::JsonNode::Type::Number) {
+                        rows = (int)rowsNode->numberValue;
+                    }
+                    
+                    this->m_terminals[id]->resize(cols, rows);
+                }
+            }
+            return "{}";
+        });
+
+        w->bind("vruttiTerminalClose", [this](const std::string& req) -> std::string {
+            auto parsedReq = vrutti::core::utils::JsonParser::parse(req);
+            if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
+                auto idNode = parsedReq->arrayElements[0];
+                if (idNode && idNode->type == vrutti::core::utils::JsonNode::Type::String) {
+                    std::string id = vrutti::core::utils::JsonParser::unescapeString(idNode->stringValue);
+                    if (this->m_terminals.count(id)) {
+                        this->m_terminals[id]->stop();
+                        this->m_terminals.erase(id);
+                    }
+                }
             }
             return "{}";
         });
@@ -414,9 +448,10 @@ namespace vrutti::ui {
     }
 
     void Window::shutdown() {
-        if (m_terminal) {
-            m_terminal->stop();
+        for (auto& [id, term] : m_terminals) {
+            if (term) term->stop();
         }
+        m_terminals.clear();
         if (m_windowHandle) {
             webview::webview* w = static_cast<webview::webview*>(m_windowHandle);
             w->terminate();
