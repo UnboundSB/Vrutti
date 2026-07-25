@@ -5,7 +5,7 @@
 namespace vrutti::ui {
     class Window {
     public:
-        Window(int width, int height, const std::string& title, vrutti::core::ipc::IPCClient* ipc = nullptr);
+        Window(int width, int height, const std::string& title, vrutti::core::ipc::IPCClient* ipc = nullptr, const std::string& initialWorkspace = "");
         ~Window();
 
         bool init();
@@ -17,6 +17,7 @@ namespace vrutti::ui {
         int m_width;
         int m_height;
         std::string m_title;
+        std::string m_initialWorkspace;
         void* m_windowHandle; // Type erased webview handle
         vrutti::core::ipc::IPCClient* m_ipc;
     };
