@@ -76,7 +76,10 @@ export class VruttiApp extends LitElement {
         try {
           const json = await (window as any).vruttiOpenFolderDialog();
           if (json && json.path && json.path !== "") {
-            const openInNewWindow = window.confirm("Do you want to open this folder in a new window?");
+            let openInNewWindow = false;
+            if ((window as any).currentWorkspace) {
+              openInNewWindow = window.confirm("Do you want to open this folder in a new window?");
+            }
             if (openInNewWindow) {
               if ((window as any).vruttiOpenNewWindow) {
                 await (window as any).vruttiOpenNewWindow(json.path);

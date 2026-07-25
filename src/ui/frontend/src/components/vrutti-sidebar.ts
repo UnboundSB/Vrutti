@@ -19,13 +19,13 @@ export class VruttiSidebar extends LitElement {
   private activeTab = 'explorer';
 
   @state()
-  private explorerRoot!: ExplorerItem;
+  private explorerRoot?: ExplorerItem;
 
   async connectedCallback() {
     super.connectedCallback();
     window.addEventListener('workspace-changed', this.handleWorkspaceChanged);
     
-    let initialPath = 'D:/vrutti/vrutti_ide';
+    let initialPath = '';
     if ((window as any).vruttiGetInitialWorkspace) {
       try {
         const json = await (window as any).vruttiGetInitialWorkspace();
@@ -35,8 +35,23 @@ export class VruttiSidebar extends LitElement {
       } catch (e) {}
     }
     
-    let folderName = initialPath.split(/[\\/]/).pop() || 'Workspace';
-    await this.loadWorkspace(initialPath, folderName);
+    // If no initial path was provided via CLI argument, restore from localStorage
+    if (!initialPath) {
+      const savedPath = localStorage.getItem('lastWorkspace');
+      if (savedPath) {
+        initialPath = savedPath;
+      }
+    }
+    
+    if (initialPath) {
+      (window as any).currentWorkspace = initialPath;
+      localStorage.setItem('lastWorkspace', initialPath);
+      let folderName = initialPath.split(/[\\/]/).pop() || 'Workspace';
+      await this.loadWorkspace(initialPath, folderName);
+    } else {
+      (window as any).currentWorkspace = '';
+      this.explorerRoot = undefined;
+    }
   }
 
   disconnectedCallback() {
@@ -47,6 +62,8 @@ export class VruttiSidebar extends LitElement {
   private handleWorkspaceChanged = async (e: Event) => {
     const detail = (e as CustomEvent).detail;
     if (detail.path) {
+      (window as any).currentWorkspace = detail.path;
+      localStorage.setItem('lastWorkspace', detail.path);
       let folderName = detail.path.split(/[\\/]/).pop() || 'Workspace';
       await this.loadWorkspace(detail.path, folderName);
     }

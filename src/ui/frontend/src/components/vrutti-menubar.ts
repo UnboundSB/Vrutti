@@ -306,8 +306,6 @@ export class VruttiMenuBar extends LitElement {
       left: 2px;
       min-width: 220px;
       background: var(--vrutti-surface, #13151f);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
       border: 1px solid var(--vrutti-surface-border, #23273b);
       border-radius: 6px;
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
