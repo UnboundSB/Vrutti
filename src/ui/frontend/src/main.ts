@@ -98,6 +98,8 @@ export class VruttiApp extends LitElement {
           console.error("Failed to open folder dialog", err);
         }
       }
+    } else if (detail.action === 'toggleTerminal') {
+      this.toggleTerminal();
     }
   };
 

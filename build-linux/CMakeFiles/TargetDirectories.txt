@@ -1,0 +1,11 @@
+/app/build-linux/CMakeFiles/vrutti_core.dir
+/app/build-linux/CMakeFiles/vrutti_app.dir
+/app/build-linux/CMakeFiles/vrutti_search.dir
+/app/build-linux/CMakeFiles/test_memory.dir
+/app/build-linux/CMakeFiles/test_concurrency.dir
+/app/build-linux/CMakeFiles/test_fs.dir
+/app/build-linux/CMakeFiles/test_ipc_bridge.dir
+/app/build-linux/CMakeFiles/test_ui_core.dir
+/app/build-linux/CMakeFiles/test.dir
+/app/build-linux/CMakeFiles/edit_cache.dir
+/app/build-linux/CMakeFiles/rebuild_cache.dir

@@ -6,6 +6,7 @@
 // We must include webview.h here. It's a single header library.
 #include "../vendor/webview.h"
 #include "../../core/utils/Json.h"
+#include "../../core/utils/Base64.h"
 #include "../../core/config/SettingsManager.h"
 
 #ifdef _WIN32
@@ -154,9 +155,9 @@ namespace vrutti::ui {
 
         w->bind("vruttiTerminalInit", [this, w](const std::string& req) -> std::string {
             this->m_terminal->start([w](const std::string& out) {
-                std::string escaped = vrutti::core::utils::JsonSerializer::escapeString(out);
-                w->dispatch([w, escaped]() {
-                    w->eval("if (window.vruttiTerminalOutput) window.vruttiTerminalOutput(" + escaped + ");");
+                std::string b64 = base64_encode(out);
+                w->dispatch([w, b64]() {
+                    w->eval("if (window.vruttiTerminalOutput) window.vruttiTerminalOutput('" + b64 + "');");
                 });
             });
             return "{}";
@@ -167,7 +168,7 @@ namespace vrutti::ui {
             if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
                 auto inputNode = parsedReq->arrayElements[0];
                 if (inputNode && inputNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    std::string input = vrutti::core::utils::JsonParser::unescapeString(inputNode->stringValue);
+                    std::string input = base64_decode(inputNode->stringValue);
                     this->m_terminal->writeInput(input);
                 }
             }
@@ -384,6 +385,9 @@ namespace vrutti::ui {
     }
 
     void Window::shutdown() {
+        if (m_terminal) {
+            m_terminal->stop();
+        }
         if (m_windowHandle) {
             webview::webview* w = static_cast<webview::webview*>(m_windowHandle);
             w->terminate();

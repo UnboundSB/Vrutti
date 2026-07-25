@@ -1,0 +1,46 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/app/build-linux/_deps/imgui-subbuild/CMakeFiles/imgui-populate"
+		},
+		{
+			"file" : "/app/build-linux/_deps/imgui-subbuild/CMakeFiles/imgui-populate.rule"
+		},
+		{
+			"file" : "/app/build-linux/_deps/imgui-subbuild/CMakeFiles/imgui-populate-complete.rule"
+		},
+		{
+			"file" : "/app/build-linux/_deps/imgui-subbuild/imgui-populate-prefix/src/imgui-populate-stamp/imgui-populate-build.rule"
+		},
+		{
+			"file" : "/app/build-linux/_deps/imgui-subbuild/imgui-populate-prefix/src/imgui-populate-stamp/imgui-populate-configure.rule"
+		},
+		{
+			"file" : "/app/build-linux/_deps/imgui-subbuild/imgui-populate-prefix/src/imgui-populate-stamp/imgui-populate-download.rule"
+		},
+		{
+			"file" : "/app/build-linux/_deps/imgui-subbuild/imgui-populate-prefix/src/imgui-populate-stamp/imgui-populate-install.rule"
+		},
+		{
+			"file" : "/app/build-linux/_deps/imgui-subbuild/imgui-populate-prefix/src/imgui-populate-stamp/imgui-populate-mkdir.rule"
+		},
+		{
+			"file" : "/app/build-linux/_deps/imgui-subbuild/imgui-populate-prefix/src/imgui-populate-stamp/imgui-populate-patch.rule"
+		},
+		{
+			"file" : "/app/build-linux/_deps/imgui-subbuild/imgui-populate-prefix/src/imgui-populate-stamp/imgui-populate-test.rule"
+		},
+		{
+			"file" : "/app/build-linux/_deps/imgui-subbuild/imgui-populate-prefix/src/imgui-populate-stamp/imgui-populate-update.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"imgui-populate"
+		],
+		"name" : "imgui-populate"
+	}
+}

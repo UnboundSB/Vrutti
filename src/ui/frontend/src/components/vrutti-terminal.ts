@@ -106,9 +106,9 @@ export class VruttiTerminal extends LitElement {
     window.addEventListener('resize', this.handleResize);
     
     // Bind global output callback for C++ backend
-    (window as any).vruttiTerminalOutput = (data: string) => {
+    (window as any).vruttiTerminalOutput = (b64data: string) => {
       if (this.terminal) {
-        this.terminal.write(data);
+        this.terminal.write(atob(b64data));
       }
     };
   }
@@ -160,10 +160,10 @@ export class VruttiTerminal extends LitElement {
     this.fitAddon.fit();
 
     // Send input to backend
-    this.terminal.onData(async (data) => {
+    this.terminal.onData((data) => {
       if ((window as any).vruttiTerminalInput) {
         try {
-          await (window as any).vruttiTerminalInput(data);
+          (window as any).vruttiTerminalInput(btoa(data));
         } catch (e) {
           console.error('Failed to send terminal input', e);
         }

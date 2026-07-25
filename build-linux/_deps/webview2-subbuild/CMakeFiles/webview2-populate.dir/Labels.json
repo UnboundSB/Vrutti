@@ -1,0 +1,46 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/app/build-linux/_deps/webview2-subbuild/CMakeFiles/webview2-populate"
+		},
+		{
+			"file" : "/app/build-linux/_deps/webview2-subbuild/CMakeFiles/webview2-populate.rule"
+		},
+		{
+			"file" : "/app/build-linux/_deps/webview2-subbuild/CMakeFiles/webview2-populate-complete.rule"
+		},
+		{
+			"file" : "/app/build-linux/_deps/webview2-subbuild/webview2-populate-prefix/src/webview2-populate-stamp/webview2-populate-build.rule"
+		},
+		{
+			"file" : "/app/build-linux/_deps/webview2-subbuild/webview2-populate-prefix/src/webview2-populate-stamp/webview2-populate-configure.rule"
+		},
+		{
+			"file" : "/app/build-linux/_deps/webview2-subbuild/webview2-populate-prefix/src/webview2-populate-stamp/webview2-populate-download.rule"
+		},
+		{
+			"file" : "/app/build-linux/_deps/webview2-subbuild/webview2-populate-prefix/src/webview2-populate-stamp/webview2-populate-install.rule"
+		},
+		{
+			"file" : "/app/build-linux/_deps/webview2-subbuild/webview2-populate-prefix/src/webview2-populate-stamp/webview2-populate-mkdir.rule"
+		},
+		{
+			"file" : "/app/build-linux/_deps/webview2-subbuild/webview2-populate-prefix/src/webview2-populate-stamp/webview2-populate-patch.rule"
+		},
+		{
+			"file" : "/app/build-linux/_deps/webview2-subbuild/webview2-populate-prefix/src/webview2-populate-stamp/webview2-populate-test.rule"
+		},
+		{
+			"file" : "/app/build-linux/_deps/webview2-subbuild/webview2-populate-prefix/src/webview2-populate-stamp/webview2-populate-update.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"webview2-populate"
+		],
+		"name" : "webview2-populate"
+	}
+}

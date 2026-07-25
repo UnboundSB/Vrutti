@@ -1,0 +1,1 @@
+/usr/bin/c++ CMakeFiles/test_ui_core.dir/tests/test_ui_core.cpp.o -o test_ui_core  libvrutti_core.a -lwebkit2gtk-4.0 -lgtk-3 -lgdk-3 -lpangocairo-1.0 -lpango-1.0 -lharfbuzz -latk-1.0 -lcairo-gobject -lcairo -lgdk_pixbuf-2.0 -lsoup-2.4 -lgmodule-2.0 -lgio-2.0 -ljavascriptcoregtk-4.0 -lgobject-2.0 -lglib-2.0 

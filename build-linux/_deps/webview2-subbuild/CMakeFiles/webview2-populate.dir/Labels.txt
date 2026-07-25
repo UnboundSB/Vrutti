@@ -1,0 +1,14 @@
+# Target labels
+ webview2-populate
+# Source files and their labels
+/app/build-linux/_deps/webview2-subbuild/CMakeFiles/webview2-populate
+/app/build-linux/_deps/webview2-subbuild/CMakeFiles/webview2-populate.rule
+/app/build-linux/_deps/webview2-subbuild/CMakeFiles/webview2-populate-complete.rule
+/app/build-linux/_deps/webview2-subbuild/webview2-populate-prefix/src/webview2-populate-stamp/webview2-populate-build.rule
+/app/build-linux/_deps/webview2-subbuild/webview2-populate-prefix/src/webview2-populate-stamp/webview2-populate-configure.rule
+/app/build-linux/_deps/webview2-subbuild/webview2-populate-prefix/src/webview2-populate-stamp/webview2-populate-download.rule
+/app/build-linux/_deps/webview2-subbuild/webview2-populate-prefix/src/webview2-populate-stamp/webview2-populate-install.rule
+/app/build-linux/_deps/webview2-subbuild/webview2-populate-prefix/src/webview2-populate-stamp/webview2-populate-mkdir.rule
+/app/build-linux/_deps/webview2-subbuild/webview2-populate-prefix/src/webview2-populate-stamp/webview2-populate-patch.rule
+/app/build-linux/_deps/webview2-subbuild/webview2-populate-prefix/src/webview2-populate-stamp/webview2-populate-test.rule
+/app/build-linux/_deps/webview2-subbuild/webview2-populate-prefix/src/webview2-populate-stamp/webview2-populate-update.rule
