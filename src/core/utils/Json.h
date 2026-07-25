@@ -52,10 +52,10 @@ namespace vrutti::core::utils {
     class JsonSerializer {
     public:
         static std::string stringify(const std::shared_ptr<JsonNode>& node, int indentLevel = 0, bool pretty = true);
+        static std::string escapeString(std::string_view str);
     
     private:
         static void serializeNode(const std::shared_ptr<JsonNode>& node, std::string& out, int indentLevel, bool pretty);
-        static std::string escapeString(std::string_view str);
     };
 
 } // namespace vrutti::core::utils
