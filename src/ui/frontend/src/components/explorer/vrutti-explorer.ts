@@ -32,7 +32,6 @@ export class VruttiExplorer extends LitElement {
     }
     
     .tree-node:hover {
-      background: var(--vrutti-surface-border);
       color: var(--vrutti-text-bright);
     }
     
@@ -65,9 +64,9 @@ export class VruttiExplorer extends LitElement {
     }
   `];
 
-  private toggle() {
+  private async toggle() {
     if (this.item && this.item.isDirectory) {
-      this.item.toggle();
+      await this.item.toggle();
       this.requestUpdate();
     }
   }
