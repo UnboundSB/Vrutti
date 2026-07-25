@@ -147,12 +147,17 @@ namespace vrutti::core::utils {
 
     std::string JsonSerializer::escapeString(std::string_view str) {
         std::string out = "\"";
-        for (char c : str) {
+        for (unsigned char c : str) {
             if (c == '"') out += "\\\"";
             else if (c == '\\') out += "\\\\";
             else if (c == '\n') out += "\\n";
             else if (c == '\r') out += "\\r";
             else if (c == '\t') out += "\\t";
+            else if (c < 0x20) {
+                char buf[8];
+                snprintf(buf, sizeof(buf), "\\u%04x", c);
+                out += buf;
+            }
             else out += c;
         }
         out += "\"";
