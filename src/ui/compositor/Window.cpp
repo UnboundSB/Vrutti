@@ -168,7 +168,7 @@ namespace vrutti::ui {
             if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
                 auto inputNode = parsedReq->arrayElements[0];
                 if (inputNode && inputNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    std::string input = base64_decode(inputNode->stringValue);
+                    std::string input = base64_decode(std::string(inputNode->stringValue));
                     this->m_terminal->writeInput(input);
                 }
             }
