@@ -2,8 +2,13 @@
 #include "ui/compositor/Window.h"
 #include "core/ipc/IPCClient.h"
 
-int main() {
+int main(int argc, char* argv[]) {
     std::cout << "--- Vrutti IDE Core ---" << std::endl;
+    
+    std::string initialWorkspace = "";
+    if (argc > 1) {
+        initialWorkspace = argv[1];
+    }
     
     // Initialize IPC Client for Extension Host
     // In a real app we might pass a dynamic pipe name or start the Node host here
@@ -11,7 +16,7 @@ int main() {
     ipc.start();
 
     // Launch UI
-    vrutti::ui::Window window(1280, 720, "Vrutti IDE", &ipc);
+    vrutti::ui::Window window(1280, 720, "Vrutti IDE", &ipc, initialWorkspace);
     if (!window.init()) {
         std::cerr << "Failed to initialize UI window!" << std::endl;
         return 1;
