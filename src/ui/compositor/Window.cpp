@@ -5,16 +5,18 @@
 
 // We must include webview.h here. It's a single header library.
 #include "../vendor/webview.h"
+#include "../../core/utils/Json.h"
+#include "../../core/config/SettingsManager.h"
+
 #ifdef _WIN32
+#include <windows.h>
 #include <shobjidl.h>
 #endif
-#include "../../core/config/SettingsManager.h"
 
 namespace vrutti::ui {
 
-    Window::Window(int width, int height, const std::string& title, vrutti::core::ipc::IPCClient* ipc)
-        : m_width(width), m_height(height), m_title(title), m_windowHandle(nullptr), m_ipc(ipc) 
-    {
+    Window::Window(int width, int height, const std::string& title, vrutti::core::ipc::IPCClient* ipc, const std::string& initialWorkspace) 
+        : m_width(width), m_height(height), m_title(title), m_ipc(ipc), m_initialWorkspace(initialWorkspace), m_windowHandle(nullptr) {
     }
 
     Window::~Window() {
@@ -154,7 +156,7 @@ namespace vrutti::ui {
             if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
                 auto pathNode = parsedReq->arrayElements[0];
                 if (pathNode && pathNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    std::string path(pathNode->stringValue);
+                    std::string path = vrutti::core::utils::JsonParser::unescapeString(pathNode->stringValue);
                     
                     std::string json = "[";
                     bool first = true;
@@ -220,7 +222,7 @@ namespace vrutti::ui {
             if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
                 auto pathNode = parsedReq->arrayElements[0];
                 if (pathNode && pathNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    std::string path(pathNode->stringValue);
+                    std::string path = vrutti::core::utils::JsonParser::unescapeString(pathNode->stringValue);
                     try {
                         std::filesystem::create_directory(path);
                         return "{\"success\":true}";
@@ -235,7 +237,7 @@ namespace vrutti::ui {
             if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
                 auto pathNode = parsedReq->arrayElements[0];
                 if (pathNode && pathNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    std::string path(pathNode->stringValue);
+                    std::string path = vrutti::core::utils::JsonParser::unescapeString(pathNode->stringValue);
                     try {
                         std::ofstream f(path);
                         f.close();
@@ -244,6 +246,26 @@ namespace vrutti::ui {
                 }
             }
             return "{\"success\":false}";
+        });
+
+        w->bind("vruttiOpenNewWindow", [this](const std::string& req) -> std::string {
+            auto parsedReq = vrutti::core::utils::JsonParser::parse(req);
+            if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
+                auto pathNode = parsedReq->arrayElements[0];
+                if (pathNode && pathNode->type == vrutti::core::utils::JsonNode::Type::String) {
+                    std::string path = vrutti::core::utils::JsonParser::unescapeString(pathNode->stringValue);
+#ifdef _WIN32
+                    std::string cmd = "start \"\" \"vrutti_app.exe\" \"" + path + "\"";
+                    std::system(cmd.c_str());
+#endif
+                }
+            }
+            return "{}";
+        });
+
+        w->bind("vruttiGetInitialWorkspace", [this](const std::string& req) -> std::string {
+            std::string json = "{\"path\":\"" + vrutti::core::utils::JsonSerializer::escapeString(m_initialWorkspace) + "\"}";
+            return json;
         });
 
         w->bind("vruttiGetSettings", [this](const std::string& req) -> std::string {
