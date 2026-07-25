@@ -17,22 +17,26 @@ export class VruttiTerminal extends LitElement {
       display: flex;
       width: 100%;
       height: 100%;
-      background: var(--vrutti-bg, #0d1117);
+      background: rgba(13, 17, 23, 0.65);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
       flex-direction: column;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.4);
     }
     
     .terminal-header {
-      height: 28px;
-      background: var(--vrutti-surface, #161b22);
-      border-bottom: 1px solid var(--vrutti-surface-border, #30363d);
+      height: 32px;
+      background: rgba(22, 27, 34, 0.5);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
       display: flex;
       align-items: center;
-      padding: 0 10px;
+      padding: 0 14px;
       font-size: 11px;
-      color: var(--vrutti-text, #c9d1d9);
+      color: #82aaff;
       text-transform: uppercase;
-      font-weight: 600;
-      letter-spacing: 0.5px;
+      font-weight: 700;
+      letter-spacing: 1px;
       user-select: none;
     }
 
@@ -87,8 +91,8 @@ export class VruttiTerminal extends LitElement {
   private initTerminal() {
     this.terminal = new Terminal({
       theme: {
-        background: '#0d1117',
-        foreground: '#c9d1d9',
+        background: 'transparent',
+        foreground: '#e4f0fb',
         cursor: '#58a6ff',
         selectionBackground: 'rgba(88, 166, 255, 0.3)',
         black: '#484f58',
@@ -108,8 +112,9 @@ export class VruttiTerminal extends LitElement {
         brightCyan: '#56d4dd',
         brightWhite: '#ffffff'
       },
-      fontFamily: "Consolas, 'Courier New', monospace",
-      fontSize: 14,
+      fontFamily: "'Fira Code', 'Cascadia Code', Consolas, monospace",
+      fontSize: 13,
+      fontWeight: '500',
       cursorBlink: true,
       allowTransparency: true
     });
