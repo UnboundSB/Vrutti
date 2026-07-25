@@ -9,3 +9,4 @@ Instead of drawing graphics manually via OpenGL, this layer initializes an embed
   - Uses Win32 `WM_NCCALCSIZE` subclassing to create a fully frameless window that retains native resize borders and DWM shadows.
   - Spawns the `webview::webview` instance and navigates it to the bundled frontend HTML.
   - Bridges JavaScript IPC commands directly to native C++ APIs (`minimizeWindow`, `maximizeWindow`, `closeWindow`, `startWindowDrag`). It handles `startWindowDrag` via an asynchronous `PostMessage` to ensure the IPC event loop is not blocked during dragging.
+  - Binds data access APIs directly into the `window` namespace (e.g. `vruttiGetSettings`, `vruttiUpdateSetting`, `vruttiReadDirectory`) to bypass the Extension Host for critical synchronous or near-synchronous UI features like the File Explorer and Settings menu.
