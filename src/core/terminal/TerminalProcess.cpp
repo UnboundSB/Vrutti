@@ -3,6 +3,13 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#include <strsafe.h>
+
+// Typedefs for dynamically loading ConPTY APIs (in case we need to build against older SDKs, but here we assume modern SDK is used, but dynamically load for safety/compatibility)
+typedef HRESULT (WINAPI *PFNCREATEPSEUDOCONSOLE)(COORD c, HANDLE hIn, HANDLE hOut, DWORD dwFlags, HPCON *phpcon);
+typedef void (WINAPI *PFNRESIZEPSEUDOCONSOLE)(HPCON hpc, COORD size);
+typedef void (WINAPI *PFNCLOSEPSEUDOCONSOLE)(HPCON hpc);
+
 #endif
 
 namespace vrutti::core::terminal {
@@ -19,41 +26,72 @@ namespace vrutti::core::terminal {
         m_outputCallback = callback;
 
 #ifdef _WIN32
+        HMODULE hKernel32 = GetModuleHandleW(L"kernel32.dll");
+        if (!hKernel32) return false;
+
+        auto pfnCreatePseudoConsole = (PFNCREATEPSEUDOCONSOLE)GetProcAddress(hKernel32, "CreatePseudoConsole");
+        if (!pfnCreatePseudoConsole) return false;
+
+        HANDLE hPipePTYInRd = NULL, hPipePTYInWr = NULL;
+        HANDLE hPipePTYOutRd = NULL, hPipePTYOutWr = NULL;
         SECURITY_ATTRIBUTES saAttr; 
         saAttr.nLength = sizeof(SECURITY_ATTRIBUTES); 
-        saAttr.bInheritHandle = TRUE; 
+        saAttr.bInheritHandle = FALSE; 
         saAttr.lpSecurityDescriptor = NULL; 
 
-        if (!CreatePipe(&m_hChildStd_OUT_Rd, &m_hChildStd_OUT_Wr, &saAttr, 0)) return false;
-        if (!SetHandleInformation(m_hChildStd_OUT_Rd, HANDLE_FLAG_INHERIT, 0)) return false;
+        if (!CreatePipe(&hPipePTYInRd, &m_hChildStd_IN_Wr, &saAttr, 0)) return false;
+        if (!CreatePipe(&m_hChildStd_OUT_Rd, &hPipePTYOutWr, &saAttr, 0)) {
+            CloseHandle(hPipePTYInRd);
+            CloseHandle(m_hChildStd_IN_Wr);
+            return false;
+        }
 
-        if (!CreatePipe(&m_hChildStd_IN_Rd, &m_hChildStd_IN_Wr, &saAttr, 0)) return false;
-        if (!SetHandleInformation(m_hChildStd_IN_Wr, HANDLE_FLAG_INHERIT, 0)) return false;
+        COORD consoleSize = { 120, 30 };
+        HPCON hPC = NULL;
+        HRESULT hr = pfnCreatePseudoConsole(consoleSize, hPipePTYInRd, hPipePTYOutWr, 0, &hPC);
+        if (FAILED(hr)) {
+            CloseHandle(hPipePTYInRd);
+            CloseHandle(m_hChildStd_IN_Wr);
+            CloseHandle(m_hChildStd_OUT_Rd);
+            CloseHandle(hPipePTYOutWr);
+            return false;
+        }
+        m_hPC = (void*)hPC;
 
-        PROCESS_INFORMATION piProcInfo; 
-        STARTUPINFO siStartInfo;
+        // Initialize StartupInfoEx
+        STARTUPINFOEXW siEx;
+        ZeroMemory(&siEx, sizeof(STARTUPINFOEXW));
+        siEx.StartupInfo.cb = sizeof(STARTUPINFOEXW);
+
+        SIZE_T attrListSize = 0;
+        InitializeProcThreadAttributeList(NULL, 1, 0, &attrListSize);
+        siEx.lpAttributeList = (LPPROC_THREAD_ATTRIBUTE_LIST)HeapAlloc(GetProcessHeap(), 0, attrListSize);
+        if (!InitializeProcThreadAttributeList(siEx.lpAttributeList, 1, 0, &attrListSize)) {
+            // error
+        }
+
+        UpdateProcThreadAttribute(siEx.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE, hPC, sizeof(HPCON), NULL, NULL);
+
+        PROCESS_INFORMATION piProcInfo;
         ZeroMemory(&piProcInfo, sizeof(PROCESS_INFORMATION));
-        ZeroMemory(&siStartInfo, sizeof(STARTUPINFO));
-        siStartInfo.cb = sizeof(STARTUPINFO); 
-        siStartInfo.hStdError = m_hChildStd_OUT_Wr;
-        siStartInfo.hStdOutput = m_hChildStd_OUT_Wr;
-        siStartInfo.hStdInput = m_hChildStd_IN_Rd;
-        siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
 
-        char cmd[] = "cmd.exe";
-        if (!CreateProcessA(NULL, cmd, NULL, NULL, TRUE, 0, NULL, NULL, (STARTUPINFOA*)&siStartInfo, &piProcInfo)) {
+        wchar_t cmd[] = L"cmd.exe";
+        BOOL bSuccess = CreateProcessW(NULL, cmd, NULL, NULL, FALSE, EXTENDED_STARTUPINFO_PRESENT, NULL, NULL, &siEx.StartupInfo, &piProcInfo);
+        
+        DeleteProcThreadAttributeList(siEx.lpAttributeList);
+        HeapFree(GetProcessHeap(), 0, siEx.lpAttributeList);
+
+        CloseHandle(hPipePTYInRd);
+        CloseHandle(hPipePTYOutWr);
+
+        if (!bSuccess) {
+            auto pfnClosePseudoConsole = (PFNCLOSEPSEUDOCONSOLE)GetProcAddress(hKernel32, "ClosePseudoConsole");
+            if (pfnClosePseudoConsole) pfnClosePseudoConsole((HPCON)m_hPC);
             return false;
         }
 
         m_hProcess = piProcInfo.hProcess;
         CloseHandle(piProcInfo.hThread);
-        
-        // Close handles to the write end of stdout and read end of stdin,
-        // because they belong to the child process.
-        CloseHandle(m_hChildStd_OUT_Wr);
-        m_hChildStd_OUT_Wr = NULL;
-        CloseHandle(m_hChildStd_IN_Rd);
-        m_hChildStd_IN_Rd = NULL;
 
         m_running = true;
         m_readThread = std::thread(&TerminalProcess::readLoop, this);
@@ -75,6 +113,15 @@ namespace vrutti::core::terminal {
         }
         if (m_hChildStd_IN_Wr) CloseHandle(m_hChildStd_IN_Wr);
         if (m_hChildStd_OUT_Rd) CloseHandle(m_hChildStd_OUT_Rd);
+
+        if (m_hPC) {
+            HMODULE hKernel32 = GetModuleHandleW(L"kernel32.dll");
+            if (hKernel32) {
+                auto pfnClosePseudoConsole = (PFNCLOSEPSEUDOCONSOLE)GetProcAddress(hKernel32, "ClosePseudoConsole");
+                if (pfnClosePseudoConsole) pfnClosePseudoConsole((HPCON)m_hPC);
+            }
+            m_hPC = NULL;
+        }
 #endif
 
         if (m_readThread.joinable()) {
@@ -91,8 +138,20 @@ namespace vrutti::core::terminal {
     }
 
     void TerminalProcess::resize(int cols, int rows) {
-        // Pseudo-terminal resize not easily supported with simple pipes.
-        // Requires ConPTY for Windows.
+#ifdef _WIN32
+        if (m_hPC) {
+            HMODULE hKernel32 = GetModuleHandleW(L"kernel32.dll");
+            if (hKernel32) {
+                auto pfnResizePseudoConsole = (PFNRESIZEPSEUDOCONSOLE)GetProcAddress(hKernel32, "ResizePseudoConsole");
+                if (pfnResizePseudoConsole) {
+                    COORD size;
+                    size.X = cols;
+                    size.Y = rows;
+                    pfnResizePseudoConsole((HPCON)m_hPC, size);
+                }
+            }
+        }
+#endif
     }
 
     void TerminalProcess::readLoop() {
