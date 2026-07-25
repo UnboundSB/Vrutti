@@ -111,8 +111,6 @@ namespace vrutti::core::terminal {
             CloseHandle(m_hProcess);
             m_hProcess = NULL;
         }
-        if (m_hChildStd_IN_Wr) CloseHandle(m_hChildStd_IN_Wr);
-        if (m_hChildStd_OUT_Rd) CloseHandle(m_hChildStd_OUT_Rd);
 
         if (m_hPC) {
             HMODULE hKernel32 = GetModuleHandleW(L"kernel32.dll");
@@ -127,6 +125,17 @@ namespace vrutti::core::terminal {
         if (m_readThread.joinable()) {
             m_readThread.join();
         }
+
+#ifdef _WIN32
+        if (m_hChildStd_IN_Wr) {
+            CloseHandle(m_hChildStd_IN_Wr);
+            m_hChildStd_IN_Wr = NULL;
+        }
+        if (m_hChildStd_OUT_Rd) {
+            CloseHandle(m_hChildStd_OUT_Rd);
+            m_hChildStd_OUT_Rd = NULL;
+        }
+#endif
     }
 
     void TerminalProcess::writeInput(const std::string& input) {

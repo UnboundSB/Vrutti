@@ -130,6 +130,27 @@ namespace vrutti::core::utils {
                 else if (sv[i+1] == 'n') out += '\n';
                 else if (sv[i+1] == 'r') out += '\r';
                 else if (sv[i+1] == 't') out += '\t';
+                else if (sv[i+1] == 'u' && i + 5 < sv.length()) {
+                    int val = 0;
+                    for (int j = 0; j < 4; j++) {
+                        char c = sv[i + 2 + j];
+                        val *= 16;
+                        if (c >= '0' && c <= '9') val += c - '0';
+                        else if (c >= 'a' && c <= 'f') val += c - 'a' + 10;
+                        else if (c >= 'A' && c <= 'F') val += c - 'A' + 10;
+                    }
+                    if (val <= 0x7F) {
+                        out += (char)val;
+                    } else if (val <= 0x7FF) {
+                        out += (char)(0xC0 | ((val >> 6) & 0x1F));
+                        out += (char)(0x80 | (val & 0x3F));
+                    } else {
+                        out += (char)(0xE0 | ((val >> 12) & 0x0F));
+                        out += (char)(0x80 | ((val >> 6) & 0x3F));
+                        out += (char)(0x80 | (val & 0x3F));
+                    }
+                    i += 4;
+                }
                 else out += sv[i+1];
                 i++;
             } else {
