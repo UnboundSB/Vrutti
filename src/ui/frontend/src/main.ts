@@ -71,6 +71,20 @@ export class VruttiApp extends LitElement {
         await import('./components/vrutti-settings');
       }
       this.showSettings = true;
+    } else if (detail.action === 'openFolder') {
+      if ((window as any).vruttiOpenFolderDialog) {
+        try {
+          const res = await (window as any).vruttiOpenFolderDialog();
+          const json = JSON.parse(res);
+          if (json.path && json.path !== "") {
+            window.dispatchEvent(new CustomEvent('workspace-changed', {
+              detail: { path: json.path }
+            }));
+          }
+        } catch (err) {
+          console.error("Failed to open folder dialog", err);
+        }
+      }
     }
   };
 
