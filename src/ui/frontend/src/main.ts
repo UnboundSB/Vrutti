@@ -19,6 +19,34 @@ export class VruttiApp extends LitElement {
   private terminalHeight = 250;
 
   private isResizingTerminal = false;
+
+  @state()
+  private terminals: {id: string, name: string}[] = [{id: 'term-1', name: 'bash'}];
+
+  @state()
+  private activeTerminalId = 'term-1';
+
+  private nextTerminalId = 2;
+
+  createTerminal() {
+    const id = `term-${this.nextTerminalId++}`;
+    this.terminals = [...this.terminals, { id, name: 'bash' }];
+    this.activeTerminalId = id;
+    this.showTerminal = true;
+  }
+
+  closeTerminal(id: string, e?: Event) {
+    if (e) {
+      e.stopPropagation();
+    }
+    this.terminals = this.terminals.filter(t => t.id !== id);
+    if (this.terminals.length === 0) {
+      this.showTerminal = false;
+      this.createTerminal(); // Always keep one terminal alive in state but hide panel
+    } else if (this.activeTerminalId === id) {
+      this.activeTerminalId = this.terminals[this.terminals.length - 1].id;
+    }
+  }
   private startY = 0;
   private startHeight = 0;
 
@@ -57,8 +85,7 @@ export class VruttiApp extends LitElement {
   @state()
   private showSettings = false;
 
-  @state()
-  private showTerminal = false;
+
 
   async connectedCallback() {
     super.connectedCallback();
@@ -339,28 +366,111 @@ export class VruttiApp extends LitElement {
     }
 
     .terminal-panel {
-      height: 250px;
-      border-top: 1px solid var(--vrutti-surface-border);
+      border-top: 1px solid #1f2335;
+      background: #1a1b26;
       display: flex;
       flex-direction: column;
-      z-index: 2;
-      background: var(--vrutti-bg);
       position: relative;
     }
-
     .terminal-resizer {
+      height: 4px;
+      cursor: ns-resize;
+      background: transparent;
       position: absolute;
-      top: -3px;
+      top: -2px;
       left: 0;
       right: 0;
-      height: 6px;
-      cursor: ns-resize;
-      z-index: 10;
-      transition: background-color 0.2s;
+      z-index: 100;
     }
-    
     .terminal-resizer:hover {
-      background-color: var(--vrutti-accent);
+      background: #3b4261;
+    }
+    .terminal-body {
+      display: flex;
+      height: 100%;
+      overflow: hidden;
+      background: var(--vscode-terminal-background, #1a1b26);
+    }
+    .terminal-instances {
+      flex: 1;
+      position: relative;
+    }
+    .terminal-tabs-container {
+      width: 150px;
+      border-left: 1px solid #1f2335;
+      display: flex;
+      flex-direction: column;
+      background: #1a1b26;
+    }
+    .terminal-tabs-actions {
+      display: flex;
+      justify-content: flex-end;
+      padding: 4px;
+      border-bottom: 1px solid #1f2335;
+    }
+    .terminal-tabs-actions button {
+      background: transparent;
+      border: none;
+      color: #a9b1d6;
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .terminal-tabs-actions button:hover {
+      background: #292e42;
+      color: #c0caf5;
+    }
+    .terminal-tabs-list {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+    .terminal-tab {
+      display: flex;
+      align-items: center;
+      padding: 4px 10px;
+      cursor: pointer;
+      color: #a9b1d6;
+      font-size: 11px;
+      user-select: none;
+    }
+    .terminal-tab:hover {
+      background: #292e42;
+    }
+    .terminal-tab.active {
+      color: #c0caf5;
+      background: #292e42;
+      border-left: 2px solid #7aa2f7;
+    }
+    .terminal-tab-icon {
+      margin-right: 6px;
+      display: flex;
+      align-items: center;
+    }
+    .terminal-tab-label {
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .terminal-tab-close {
+      display: none;
+      padding: 2px;
+      border-radius: 4px;
+      color: #a9b1d6;
+    }
+    .terminal-tab:hover .terminal-tab-close {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .terminal-tab-close:hover {
+      background: #3b4261;
+      color: #c0caf5;
     }
     
     .splash-screen {
@@ -471,7 +581,38 @@ export class VruttiApp extends LitElement {
             ${this.showTerminal ? html`
               <div class="terminal-panel" style="height: ${this.terminalHeight}px">
                 <div class="terminal-resizer" @mousedown=${this.startTerminalResize}></div>
-                <vrutti-terminal></vrutti-terminal>
+                <div class="terminal-body">
+                  <div class="terminal-instances">
+                    ${this.terminals.map(t => html`
+                      <div style="display: ${this.activeTerminalId === t.id ? 'block' : 'none'}; height: 100%; width: 100%;">
+                        <vrutti-terminal .terminalId=${t.id}></vrutti-terminal>
+                      </div>
+                    `)}
+                  </div>
+                  <div class="terminal-tabs-container">
+                    <div class="terminal-tabs-actions">
+                      <button title="New Terminal" @click=${this.createTerminal}>
+                        <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"/></svg>
+                      </button>
+                      <button title="Kill Terminal" @click=${() => this.closeTerminal(this.activeTerminalId)}>
+                        <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M11 1.75V3h2.25a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1 0-1.5H5V1.75C5 .784 5.784 0 6.75 0h2.5C10.216 0 11 .784 11 1.75ZM4.496 6.675l.66 6.6a.25.25 0 0 0 .249.225h5.19a.25.25 0 0 0 .249-.225l.66-6.6a.75.75 0 0 1 1.492.149l-.66 6.6A1.748 1.748 0 0 1 10.595 15h-5.19a1.75 1.75 0 0 1-1.741-1.575l-.66-6.6a.75.75 0 1 1 1.492-.15ZM6.5 1.75V3h3V1.75a.25.25 0 0 0-.25-.25h-2.5a.25.25 0 0 0-.25.25Z"/></svg>
+                      </button>
+                    </div>
+                    <div class="terminal-tabs-list">
+                      ${this.terminals.map(t => html`
+                        <div class="terminal-tab ${this.activeTerminalId === t.id ? 'active' : ''}" @click=${() => this.activeTerminalId = t.id}>
+                          <div class="terminal-tab-icon">
+                            <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M2.5 1A1.5 1.5 0 0 0 1 2.5v11A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-11A1.5 1.5 0 0 0 13.5 1h-11zm.5 13V2h10v12H3zm2.5-9v1h5V5H5zm0 3v1h5V8H5z"/></svg>
+                          </div>
+                          <div class="terminal-tab-label">${t.name}</div>
+                          <div class="terminal-tab-close" @click=${(e: Event) => this.closeTerminal(t.id, e)}>
+                            <svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor"><path d="M12.28 4.78a.75.75 0 0 0-1.06-1.06L8 6.94 4.78 3.72a.75.75 0 0 0-1.06 1.06L6.94 8l-3.22 3.22a.75.75 0 1 0 1.06 1.06L8 9.06l3.22 3.22a.75.75 0 1 0 1.06-1.06L9.06 8l3.22-3.22z"/></svg>
+                          </div>
+                        </div>
+                      `)}
+                    </div>
+                  </div>
+                </div>
               </div>
             ` : ''}
           `}
