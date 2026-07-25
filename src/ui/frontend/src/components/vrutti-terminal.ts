@@ -17,7 +17,7 @@ export class VruttiTerminal extends LitElement {
       display: flex;
       width: 100%;
       height: 100%;
-      background: rgba(13, 17, 23, 0.65);
+      background: rgba(13, 17, 23, 0.8);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
       flex-direction: column;
@@ -25,19 +25,53 @@ export class VruttiTerminal extends LitElement {
       box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.4);
     }
     
-    .terminal-header {
-      height: 32px;
-      background: rgba(22, 27, 34, 0.5);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    .panel-tabs {
+      height: 35px;
+      background: transparent;
+      display: flex;
+      align-items: flex-end;
+      padding: 0 16px;
+      font-size: 11px;
+      text-transform: uppercase;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+      user-select: none;
+    }
+    
+    .tab {
+      padding: 8px 12px;
+      color: rgba(255, 255, 255, 0.5);
+      cursor: pointer;
+      border-bottom: 1px solid transparent;
+      transition: color 0.1s, border-color 0.1s;
+    }
+    
+    .tab:hover {
+      color: rgba(255, 255, 255, 0.8);
+    }
+    
+    .tab.active {
+      color: #82aaff;
+      border-bottom: 1px solid #82aaff;
+    }
+
+    .panel-actions {
+      margin-left: auto;
       display: flex;
       align-items: center;
-      padding: 0 14px;
-      font-size: 11px;
-      color: #82aaff;
-      text-transform: uppercase;
-      font-weight: 700;
-      letter-spacing: 1px;
-      user-select: none;
+      padding-bottom: 8px;
+    }
+    
+    .panel-actions button {
+      background: none;
+      border: none;
+      color: rgba(255, 255, 255, 0.5);
+      cursor: pointer;
+      padding: 0 4px;
+    }
+    
+    .panel-actions button:hover {
+      color: #fff;
     }
 
     #terminal-container {
@@ -164,7 +198,18 @@ export class VruttiTerminal extends LitElement {
 
   render() {
     return html`
-      <div class="terminal-header">Terminal</div>
+      <div class="panel-tabs">
+        <div class="tab">Problems</div>
+        <div class="tab">Output</div>
+        <div class="tab">Debug Console</div>
+        <div class="tab active">Terminal</div>
+        <div class="tab">Ports</div>
+        <div class="panel-actions">
+          <button title="Clear" @click=${() => this.terminal.clear()}>
+            <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M2.5 1A1.5 1.5 0 0 0 1 2.5v11A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-11A1.5 1.5 0 0 0 13.5 1h-11zm4.854 4.146a.5.5 0 0 1 0 .708L5.707 7.5H11.5a.5.5 0 0 1 0 1H5.707l1.647 1.646a.5.5 0 0 1-.708.708l-2.5-2.5a.5.5 0 0 1 0-.708l2.5-2.5a.5.5 0 0 1 .708 0z"/></svg>
+          </button>
+        </div>
+      </div>
       <div id="terminal-container"></div>
     `;
   }
