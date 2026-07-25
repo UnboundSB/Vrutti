@@ -17,6 +17,7 @@ namespace vrutti::ui {
 
     Window::Window(int width, int height, const std::string& title, vrutti::core::ipc::IPCClient* ipc, const std::string& initialWorkspace) 
         : m_width(width), m_height(height), m_title(title), m_ipc(ipc), m_initialWorkspace(initialWorkspace), m_windowHandle(nullptr) {
+        m_terminal = std::make_unique<vrutti::core::terminal::TerminalProcess>();
     }
 
     Window::~Window() {
@@ -150,6 +151,32 @@ namespace vrutti::ui {
                 this->m_ipc->handleIncomingMessage(req);
             }
         }, nullptr);
+
+        w->bind("vruttiTerminalInit", [this, w](const std::string& req) -> std::string {
+            this->m_terminal->start([w](const std::string& out) {
+                std::string escaped = vrutti::core::utils::JsonSerializer::escapeString(out);
+                w->dispatch([w, escaped]() {
+                    w->eval("if (window.vruttiTerminalOutput) window.vruttiTerminalOutput(" + escaped + ");");
+                });
+            });
+            return "{}";
+        });
+
+        w->bind("vruttiTerminalInput", [this](const std::string& req) -> std::string {
+            auto parsedReq = vrutti::core::utils::JsonParser::parse(req);
+            if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
+                auto inputNode = parsedReq->arrayElements[0];
+                if (inputNode && inputNode->type == vrutti::core::utils::JsonNode::Type::String) {
+                    std::string input = vrutti::core::utils::JsonParser::unescapeString(inputNode->stringValue);
+                    this->m_terminal->writeInput(input);
+                }
+            }
+            return "{}";
+        });
+
+        w->bind("vruttiTerminalResize", [this](const std::string& req) -> std::string {
+            return "{}";
+        });
 
         w->bind("vruttiReadDirectory", [this](const std::string& req) -> std::string {
             auto parsedReq = vrutti::core::utils::JsonParser::parse(req);

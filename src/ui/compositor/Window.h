@@ -1,7 +1,8 @@
 #pragma once
 #include <string>
 #include "../../core/ipc/IPCClient.h"
-
+#include "../../core/terminal/TerminalProcess.h"
+#include <memory>
 namespace vrutti::ui {
     class Window {
     public:
@@ -20,5 +21,6 @@ namespace vrutti::ui {
         std::string m_initialWorkspace;
         void* m_windowHandle; // Type erased webview handle
         vrutti::core::ipc::IPCClient* m_ipc;
+        std::unique_ptr<vrutti::core::terminal::TerminalProcess> m_terminal;
     };
 }
