@@ -21,23 +21,19 @@ export class VruttiSidebar extends LitElement {
   @state()
   private explorerRoot!: ExplorerItem;
 
-  connectedCallback() {
+  async connectedCallback() {
     super.connectedCallback();
     const model = new ExplorerModel();
+    // Default workspace to application folder for now
+    const workspacePath = 'D:/vrutti/vrutti_ide';
     model.setRoot({
       name: 'Vrutti IDE Workspace',
       isDirectory: true,
-      resource: 'file:///d:/vrutti/vrutti_ide',
-      children: [
-        { name: 'src', isDirectory: true, resource: 'file:///d:/vrutti/vrutti_ide/src', children: [
-          { name: 'main.ts', isDirectory: false, resource: 'file:///d:/vrutti/vrutti_ide/src/main.ts' },
-          { name: 'ThemeBridge.ts', isDirectory: false, resource: 'file:///d:/vrutti/vrutti_ide/src/ThemeBridge.ts' }
-        ]},
-        { name: 'package.json', isDirectory: false, resource: 'file:///d:/vrutti/vrutti_ide/package.json' },
-        { name: 'README.md', isDirectory: false, resource: 'file:///d:/vrutti/vrutti_ide/README.md' }
-      ]
+      resource: workspacePath
     });
     this.explorerRoot = model.root!;
+    await this.explorerRoot.loadChildren();
+    this.requestUpdate();
   }
 
   static styles = [globalHoverStyle, css`
