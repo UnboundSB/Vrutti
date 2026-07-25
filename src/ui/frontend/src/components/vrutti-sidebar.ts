@@ -28,9 +28,8 @@ export class VruttiSidebar extends LitElement {
     let initialPath = 'D:/vrutti/vrutti_ide';
     if ((window as any).vruttiGetInitialWorkspace) {
       try {
-        const res = await (window as any).vruttiGetInitialWorkspace();
-        const json = JSON.parse(res);
-        if (json.path && json.path !== "") {
+        const json = await (window as any).vruttiGetInitialWorkspace();
+        if (json && json.path && json.path !== "") {
           initialPath = json.path;
         }
       } catch (e) {}
