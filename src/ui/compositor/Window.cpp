@@ -154,7 +154,16 @@ namespace vrutti::ui {
         }, nullptr);
 
         w->bind("vruttiTerminalInit", [this, w](const std::string& req) -> std::string {
-            this->m_terminal->start([w](const std::string& out) {
+            std::string cwd = "";
+            auto parsedReq = vrutti::core::utils::JsonParser::parse(req);
+            if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
+                auto pathNode = parsedReq->arrayElements[0];
+                if (pathNode && pathNode->type == vrutti::core::utils::JsonNode::Type::String) {
+                    cwd = vrutti::core::utils::JsonParser::unescapeString(pathNode->stringValue);
+                }
+            }
+
+            this->m_terminal->start(cwd, [w](const std::string& out) {
                 std::string b64 = base64_encode(out);
                 w->dispatch([w, b64]() {
                     w->eval("if (window.vruttiTerminalOutput) window.vruttiTerminalOutput('" + b64 + "');");
@@ -176,6 +185,23 @@ namespace vrutti::ui {
         });
 
         w->bind("vruttiTerminalResize", [this](const std::string& req) -> std::string {
+            auto parsedReq = vrutti::core::utils::JsonParser::parse(req);
+            if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 2) {
+                int cols = 120;
+                int rows = 30;
+                
+                auto colsNode = parsedReq->arrayElements[0];
+                auto rowsNode = parsedReq->arrayElements[1];
+                
+                if (colsNode && colsNode->type == vrutti::core::utils::JsonNode::Type::Number) {
+                    cols = (int)colsNode->numberValue;
+                }
+                if (rowsNode && rowsNode->type == vrutti::core::utils::JsonNode::Type::Number) {
+                    rows = (int)rowsNode->numberValue;
+                }
+                
+                this->m_terminal->resize(cols, rows);
+            }
             return "{}";
         });
 

@@ -127,7 +127,7 @@ export class VruttiTerminal extends LitElement {
     (window as any).vruttiTerminalOutput = undefined;
   }
 
-  private initTerminal() {
+  private async initTerminal() {
     this.terminal = new Terminal({
       theme: {
         background: 'transparent',
@@ -176,11 +176,15 @@ export class VruttiTerminal extends LitElement {
     });
 
     // Notify backend of initial size
-    this.reportSize();
+    await this.reportSize();
 
     // Init backend terminal
     if ((window as any).vruttiTerminalInit) {
-      (window as any).vruttiTerminalInit().catch(console.error);
+      let cwd = (window as any).currentWorkspace || '';
+      if (cwd.startsWith('file:///')) cwd = cwd.substring(8);
+      else if (cwd.startsWith('file://')) cwd = cwd.substring(7);
+      
+      (window as any).vruttiTerminalInit(cwd).catch(console.error);
     }
   }
 

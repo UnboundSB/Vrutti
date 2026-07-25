@@ -17,12 +17,14 @@ namespace vrutti::core::terminal {
         TerminalProcess();
         ~TerminalProcess();
 
-        bool start(OutputCallback callback);
+        bool start(const std::string& cwd, OutputCallback callback);
         void stop();
         void writeInput(const std::string& input);
         void resize(int cols, int rows);
 
     private:
+        int m_cols = 120;
+        int m_rows = 30;
         void readLoop();
 
         std::atomic<bool> m_running{false};

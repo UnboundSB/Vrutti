@@ -21,7 +21,7 @@ namespace vrutti::core::terminal {
         stop();
     }
 
-    bool TerminalProcess::start(OutputCallback callback) {
+    bool TerminalProcess::start(const std::string& cwd, OutputCallback callback) {
         if (m_running) return false;
         m_outputCallback = callback;
 
@@ -46,7 +46,7 @@ namespace vrutti::core::terminal {
             return false;
         }
 
-        COORD consoleSize = { 120, 30 };
+        COORD consoleSize = { (SHORT)m_cols, (SHORT)m_rows };
         HPCON hPC = NULL;
         HRESULT hr = pfnCreatePseudoConsole(consoleSize, hPipePTYInRd, hPipePTYOutWr, 0, &hPC);
         if (FAILED(hr)) {
@@ -76,7 +76,17 @@ namespace vrutti::core::terminal {
         ZeroMemory(&piProcInfo, sizeof(PROCESS_INFORMATION));
 
         wchar_t cmd[] = L"powershell.exe";
-        BOOL bSuccess = CreateProcessW(NULL, cmd, NULL, NULL, FALSE, EXTENDED_STARTUPINFO_PRESENT, NULL, NULL, &siEx.StartupInfo, &piProcInfo);
+
+        LPCWSTR pCwd = NULL;
+        std::wstring wCwd;
+        if (!cwd.empty()) {
+            int size_needed = MultiByteToWideChar(CP_UTF8, 0, &cwd[0], (int)cwd.size(), NULL, 0);
+            wCwd.resize(size_needed, 0);
+            MultiByteToWideChar(CP_UTF8, 0, &cwd[0], (int)cwd.size(), &wCwd[0], size_needed);
+            pCwd = wCwd.c_str();
+        }
+
+        BOOL bSuccess = CreateProcessW(NULL, cmd, NULL, NULL, FALSE, EXTENDED_STARTUPINFO_PRESENT, NULL, pCwd, &siEx.StartupInfo, &piProcInfo);
         
         DeleteProcThreadAttributeList(siEx.lpAttributeList);
         HeapFree(GetProcessHeap(), 0, siEx.lpAttributeList);
@@ -147,6 +157,8 @@ namespace vrutti::core::terminal {
     }
 
     void TerminalProcess::resize(int cols, int rows) {
+        m_cols = cols;
+        m_rows = rows;
 #ifdef _WIN32
         if (m_hPC) {
             HMODULE hKernel32 = GetModuleHandleW(L"kernel32.dll");

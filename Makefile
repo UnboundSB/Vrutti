@@ -20,7 +20,9 @@ SRCS = $(SRC_DIR)/app/main.cpp \
        $(SRC_DIR)/core/utils/Json.cpp \
        $(SRC_DIR)/core/utils/StringPool.cpp \
        $(SRC_DIR)/core/utils/LineScanner.cpp \
-       $(SRC_DIR)/core/ipc/IPCClient.cpp
+       $(SRC_DIR)/core/ipc/IPCClient.cpp \
+       $(SRC_DIR)/core/terminal/TerminalProcess.cpp \
+       $(SRC_DIR)/ui/compositor/Window.cpp
 
 # Object files
 OBJS = $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(SRCS))
