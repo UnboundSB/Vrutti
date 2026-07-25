@@ -12,7 +12,7 @@ export class VruttiTerminal extends LitElement {
   @query('#terminal-container')
   private container!: HTMLElement;
 
-  static styles = [globalHoverStyle, xtermStyles, css`
+  static styles = [xtermStyles, css`
     :host {
       display: flex;
       width: 100%;
@@ -95,7 +95,7 @@ export class VruttiTerminal extends LitElement {
     .xterm-viewport::-webkit-scrollbar-thumb:hover {
       background: rgba(255, 255, 255, 0.2);
     }
-  `;
+  `];
 
   async connectedCallback() {
     super.connectedCallback();
