@@ -255,7 +255,9 @@ namespace vrutti::ui {
                 if (pathNode && pathNode->type == vrutti::core::utils::JsonNode::Type::String) {
                     std::string path = vrutti::core::utils::JsonParser::unescapeString(pathNode->stringValue);
 #ifdef _WIN32
-                    std::string cmd = "start \"\" \"vrutti_app.exe\" \"" + path + "\"";
+                    char exePath[MAX_PATH];
+                    GetModuleFileNameA(NULL, exePath, MAX_PATH);
+                    std::string cmd = "start \"\" \"" + std::string(exePath) + "\" \"" + path + "\"";
                     std::system(cmd.c_str());
 #endif
                 }
