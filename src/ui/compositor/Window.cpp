@@ -145,6 +145,39 @@ namespace vrutti::ui {
             }
         }, nullptr);
 
+        w->bind("vruttiReadDirectory", [this](const std::string& req) -> std::string {
+            auto parsedReq = vrutti::core::utils::JsonParser::parse(req);
+            if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
+                auto pathNode = parsedReq->arrayElements[0];
+                if (pathNode && pathNode->type == vrutti::core::utils::JsonNode::Type::String) {
+                    std::string path(pathNode->stringValue);
+                    
+                    std::string json = "[";
+                    bool first = true;
+                    try {
+                        for (const auto& entry : std::filesystem::directory_iterator(path)) {
+                            if (!first) json += ",";
+                            json += "{";
+                            json += "\"name\":\"" + vrutti::core::utils::JsonSerializer::escapeString(entry.path().filename().string()) + "\",";
+                            json += "\"isDirectory\":" + std::string(entry.is_directory() ? "true" : "false") + ",";
+                            
+                            std::string resStr = entry.path().string();
+                            for (char& c : resStr) { if (c == '\\') c = '/'; }
+                            json += "\"resource\":\"file:///" + vrutti::core::utils::JsonSerializer::escapeString(resStr) + "\"";
+                            
+                            json += "}";
+                            first = false;
+                        }
+                    } catch (...) {
+                        // Return empty on error
+                    }
+                    json += "]";
+                    return json;
+                }
+            }
+            return "[]";
+        });
+
         w->bind("vruttiGetSettings", [this](const std::string& req) -> std::string {
             return vrutti::core::config::SettingsManager::getInstance().getSettingsJson();
         });
