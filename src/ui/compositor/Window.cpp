@@ -164,12 +164,12 @@ namespace vrutti::ui {
                         for (const auto& entry : std::filesystem::directory_iterator(path)) {
                             if (!first) json += ",";
                             json += "{";
-                            json += "\"name\":\"" + vrutti::core::utils::JsonSerializer::escapeString(entry.path().filename().string()) + "\",";
+                            json += "\"name\":" + vrutti::core::utils::JsonSerializer::escapeString(entry.path().filename().string()) + ",";
                             json += "\"isDirectory\":" + std::string(entry.is_directory() ? "true" : "false") + ",";
                             
                             std::string resStr = entry.path().string();
                             for (char& c : resStr) { if (c == '\\') c = '/'; }
-                            json += "\"resource\":\"file:///" + vrutti::core::utils::JsonSerializer::escapeString(resStr) + "\"";
+                            json += "\"resource\":\"file:///" + vrutti::core::utils::JsonSerializer::escapeString(resStr).substr(1); // substr(1) to remove leading quote since file:/// is inside the string
                             
                             json += "}";
                             first = false;
@@ -213,7 +213,7 @@ namespace vrutti::ui {
             }
 #endif
             // JSON stringify the result
-            std::string json = "{\"path\":\"" + vrutti::core::utils::JsonSerializer::escapeString(result) + "\"}";
+            std::string json = "{\"path\":" + vrutti::core::utils::JsonSerializer::escapeString(result) + "}";
             return json;
         });
 
@@ -264,7 +264,7 @@ namespace vrutti::ui {
         });
 
         w->bind("vruttiGetInitialWorkspace", [this](const std::string& req) -> std::string {
-            std::string json = "{\"path\":\"" + vrutti::core::utils::JsonSerializer::escapeString(m_initialWorkspace) + "\"}";
+            std::string json = "{\"path\":" + vrutti::core::utils::JsonSerializer::escapeString(m_initialWorkspace) + "}";
             return json;
         });
 
