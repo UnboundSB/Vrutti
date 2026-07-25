@@ -13,19 +13,36 @@ Vrutti is a high-performance, resource-efficient code editor designed for maximu
 
 ## Getting Started
 
-To build Vrutti, you need a C++20 compatible compiler and CMake. We recommend using MSYS2 on Windows.
+To build and run Vrutti, you need a C++20 compatible compiler (CMake) for the native core, and Node.js for the Lit frontend.
 
-1. Install MSYS2.
-2. Open the MSYS2 UCRT64 terminal and install the toolchain (ensure Microsoft WebView2 SDK headers are accessible):
+### 1. Running Using Self System (Local Node.js)
+1. Install MSYS2 and open the UCRT64 terminal.
+2. Install the toolchain:
    ```bash
    pacman -S --noconfirm mingw-w64-ucrt-x86_64-cmake mingw-w64-ucrt-x86_64-gcc
    ```
-3. Clone the repository and run CMake:
+3. Build the native app:
    ```bash
    cmake -B build
    cmake --build build
    ```
-4. Run the executable from `build/vrutti_app.exe`.
+4. Build the frontend (requires Node.js):
+   ```bash
+   cd src/ui/frontend
+   npm install
+   npm run build
+   cd ../../../
+   ```
+5. Run the executable from `build/vrutti_app.exe`.
+
+### 2. Running Using Docker (Isolated Frontend Build)
+If you do not want to install Node.js locally, you can use Docker to compile the frontend:
+1. Compile the native app using CMake (Steps 1-3 above).
+2. Start the Docker frontend compiler:
+   ```bash
+   docker-compose -f docker-compose.frontend.yml up -d
+   ```
+3. Run the executable from `build/vrutti_app.exe`.
 
 ## Testing
 
