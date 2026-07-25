@@ -31,7 +31,7 @@ export class VruttiMenuBar extends LitElement {
         { label: 'New Window' },
         { separator: true, label: '' },
         { label: 'Open File' },
-        { label: 'Open Folder' },
+        { label: 'Open Folder...', action: 'openFolder' },
         { label: 'Open Workspace from File' },
         { label: 'Open Recent' },
         { separator: true, label: '' },
