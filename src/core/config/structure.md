@@ -1,13 +1,13 @@
-# Core Config Module
+# Folder: config
 
-This directory contains the global configuration backend for Vrutti IDE.
+**Path**: `src/core/config`
+**Purpose**: Configuration and settings management.
 
-## Architecture
+## Contents
 
-The Vrutti IDE settings are managed by a purely native C++ module rather than relying on the frontend. This ensures settings persist and load instantly before the webview is even fully initialized.
+### Files
+- **`SettingsManager.cpp`**: Manages IDE settings and user preferences (implementation).
+- **`SettingsManager.h`**: Manages IDE settings and user preferences (header).
 
-- `SettingsManager.h / .cpp`:
-  - Implements a thread-safe singleton that manages the parsed `settings.json` tree in memory.
-  - Automatically loads from `%APPDATA%\Vrutti\settings.json` (on Windows) or `~/.config/Vrutti/settings.json` on Unix.
-  - Exposes `getSettingsJson()` and `updateSetting()` methods which are tightly bound to the native `WebView2` JS IPC layer.
-  - Background tasks (via `std::thread` / `ThreadPool`) ensure disk writes are asynchronous and completely non-blocking to the main event loop.
+### Files
+- **`structure.md`**: Documentation describing the high-level purpose of items in this folder.

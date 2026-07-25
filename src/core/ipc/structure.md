@@ -1,10 +1,13 @@
-# Core IPC Module
+# Folder: ipc
 
-This directory contains the Inter-Process Communication (IPC) architecture for Vrutti IDE.
-It is responsible for establishing a zero-copy or highly optimized bridge between the C++ Native Core and the Node.js Extension Host.
+**Path**: `src/core/ipc`
+**Purpose**: Inter-Process Communication logic to communicate with the extension host.
 
-## Files
-- `IPCClient.h / IPCClient.cpp`:
-  - Implements the named pipe / Unix domain socket client that connects to the Node.js backend.
-  - Handles bidirectional JSON payload serialization/deserialization.
-  - Exposes `send(message)` and `start()` lifecycle methods for the C++ backend to push filesystem syncs and LSP requests to the Extension Host.
+## Contents
+
+### Files
+- **`IPCClient.cpp`**: IPC communication client implementation.
+- **`IPCClient.h`**: Handles named pipes and sockets for Extension Host communication (header).
+
+### Files
+- **`structure.md`**: Documentation describing the high-level purpose of items in this folder.

@@ -1,12 +1,13 @@
-# UI Compositor Module
+# Folder: compositor
 
-This folder contains the native C++ window manager layer for Vrutti IDE. 
-Instead of drawing graphics manually via OpenGL, this layer initializes an embedded OS webview (WebView2 on Windows) and hosts the Lit web frontend.
+**Path**: `src/ui/compositor`
+**Purpose**: Native window management and Webview2 compositor.
 
-## Files
-- `Window.h / Window.cpp`: 
-  - Initializes the native OS window (HWND).
-  - Uses Win32 `WM_NCCALCSIZE` subclassing to create a fully frameless window that retains native resize borders and DWM shadows.
-  - Spawns the `webview::webview` instance and navigates it to the bundled frontend HTML.
-  - Bridges JavaScript IPC commands directly to native C++ APIs (`minimizeWindow`, `maximizeWindow`, `closeWindow`, `startWindowDrag`). It handles `startWindowDrag` via an asynchronous `PostMessage` to ensure the IPC event loop is not blocked during dragging.
-  - Binds data access APIs directly into the `window` namespace (e.g. `vruttiGetSettings`, `vruttiUpdateSetting`, `vruttiReadDirectory`) to bypass the Extension Host for critical synchronous or near-synchronous UI features like the File Explorer and Settings menu.
+## Contents
+
+### Files
+- **`Window.cpp`**: Win32 window creation and Webview2 compositor implementation.
+- **`Window.h`**: Manages the Win32 window and Webview2 environment (header).
+
+### Files
+- **`structure.md`**: Documentation describing the high-level purpose of items in this folder.

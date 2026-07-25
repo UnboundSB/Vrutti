@@ -1,19 +1,19 @@
-# Frontend Components Structure
+# Folder: components
 
-This directory contains reusable Web Components built with Lit for the Vrutti IDE frontend. 
-The components are designed using the Shadow DOM to encapsulate styles and behavior, ensuring a clean, modern architecture that doesn't conflict with global styles.
+**Path**: `src/ui/frontend/src/components`
+**Purpose**: UI components (sidebar, explorer, settings, etc.).
 
-## Directory Layout
+## Contents
 
-- `vrutti-menubar.ts` - The top titlebar menus component. Handles the classic File, Edit, Selection, View dropdowns seamlessly mirroring the original VS Code dropdown structure using glassmorphic UI.
-- `vrutti-settings.ts` - A completely lazy-loaded Settings/Preferences overlay. Manages global configurations (e.g. Themes, Editor Fonts) and communicates with the native C++ IPC bridge.
-- `vrutti-sidebar.ts` - The main sidebar docking overlay. Controls the activity bar (tool icons) and coordinates which side panel (e.g., explorer, search) is currently active.
-- `vrutti-statusbar.ts` - The bottom status bar component. Displays critical workspace info such as Git branch, error/warning counts, cursor position, and language modes.
-- `codicons.ts` - Contains all the inline SVG definitions used for the tool icons (adapted from VS Code's codicon library).
-- `explorer/` - The File Explorer component module, responsible for visualizing the workspace file tree.
+### Subfolders
+- **`explorer/`**: Explorer tree and file mapping logic.
 
-## Architecture Guidelines
+### Files
+- **`codicons.ts`**: SVG icon constants for standard IDE action buttons.
+- **`vrutti-menubar.ts`**: Custom element for the top application menu bar.
+- **`vrutti-settings.ts`**: Settings panel UI component.
+- **`vrutti-sidebar.ts`**: Sidebar layout containing the explorer and other sidepanes.
+- **`vrutti-statusbar.ts`**: Bottom status bar UI element.
 
-- All new components must be defined as standard custom elements using `@customElement`.
-- Use `:host` styles to define the layout container for the component.
-- Limit the use of global state. Complex data should be passed down via properties (`@property`) or injected via dedicated models.
+### Files
+- **`structure.md`**: Documentation describing the high-level purpose of items in this folder.

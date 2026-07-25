@@ -1,9 +1,20 @@
-# Vrutti Core File System Structure
+# Folder: fs
 
-This directory handles the optimized file system interactions for the native core, specifically focusing on path resolution, glob matching, and lazy-loading directory trees.
+**Path**: `src/core/fs`
+**Purpose**: File system abstraction, URI handling, and workspace management.
 
-## Files
-- `Glob.h` / `Glob.cpp`: Minimalist string pattern matcher for file exclusions (avoids regex overhead).
-- `Path.h` / `Path.cpp`: Abstract representation of a file path, ensuring cross-platform slash normalization.
-- `URI.h` / `URI.cpp`: Uniform Resource Identifier parser for handling `file://` schemes passed from the Extension Host.
-- `Workspace.h` / `Workspace.cpp`: The central hub for file discovery. Implements a lazy-loading scanner that only queries the operating system for directory contents when explicitly requested, saving significant RAM and CPU on startup.
+## Contents
+
+### Files
+- **`Glob.cpp`**: File globbing utility implementation.
+- **`Glob.h`**: File globbing utility header for search and filtering.
+- **`Path.cpp`**: Path manipulation implementation.
+- **`Path.h`**: Path manipulation and cross-platform resolution header.
+- **`Stream.h`**: Abstract base class for I/O streams.
+- **`URI.cpp`**: Uniform Resource Identifier implementation.
+- **`URI.h`**: Uniform Resource Identifier representation header.
+- **`Workspace.cpp`**: Manages the active workspace directory state (implementation).
+- **`Workspace.h`**: Manages the active workspace directory state (header).
+
+### Files
+- **`structure.md`**: Documentation describing the high-level purpose of items in this folder.
