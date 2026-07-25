@@ -137,7 +137,17 @@ export class VruttiExplorer extends LitElement {
 
   private renderIcon() {
     const iconPath = getIconForFile(this.item.name, this.item.isDirectory, this.item.isExpanded);
-    return html`<img class="icon" src="${iconPath}" />`;
+    
+    let inlineStyle = "";
+    // Only color code normal folders based on depth
+    if (this.item.isDirectory && (iconPath === './icons/folder.svg' || iconPath === './icons/folder-open.svg')) {
+      const hueShift = (this.depth * 55) % 360;
+      if (hueShift > 0) {
+        inlineStyle = `filter: hue-rotate(${hueShift}deg);`;
+      }
+    }
+    
+    return html`<img class="icon" src="${iconPath}" style="${inlineStyle}" />`;
   }
 
   private renderChevron() {
