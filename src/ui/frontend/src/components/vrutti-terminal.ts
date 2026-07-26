@@ -176,7 +176,8 @@ export class VruttiTerminal extends LitElement {
       fontSize: 13,
       fontWeight: '500',
       cursorBlink: true,
-      allowTransparency: true
+      allowTransparency: true,
+      windowsMode: true
     });
 
     this.fitAddon = new FitAddon();
