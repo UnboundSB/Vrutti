@@ -209,17 +209,6 @@ export class VruttiTerminal extends LitElement {
     }
   }
 
-  disconnectedCallback() {
-    super.disconnectedCallback();
-    window.removeEventListener('resize', this.handleResize);
-    if (this.terminal) {
-      this.terminal.dispose();
-    }
-    if ((window as any).vruttiTerminalClose) {
-      (window as any).vruttiTerminalClose(this.terminalId).catch(console.error);
-    }
-  }
-
   private handleResize = () => {
     if (this.fitAddon) {
       this.fitAddon.fit();
