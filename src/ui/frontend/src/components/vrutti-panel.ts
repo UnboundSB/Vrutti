@@ -181,6 +181,7 @@ export class VruttiPanel extends LitElement {
   private doSplitResize = (e: MouseEvent) => {
     if (this.activeResizerIndex === -1 || !this.leftSplitEl || !this.rightSplitEl) return;
     
+    const dx = e.clientX - this.startX;
     const containerWidth = (this.shadowRoot?.querySelector('.terminal-instances') as HTMLElement).getBoundingClientRect().width;
     const dxPct = (dx / containerWidth) * 100;
 
@@ -221,6 +222,8 @@ export class VruttiPanel extends LitElement {
       background: #1a1b26;
       border-top: 1px solid #1f2335;
       position: relative;
+      min-width: 0;
+      overflow: hidden;
     }
     
     .panel-header {
@@ -431,8 +434,6 @@ export class VruttiPanel extends LitElement {
   `;
 
   render() {
-    const activeGroup = this.terminalGroups.find(g => g.id === this.activeGroupId);
-
     return html`
       <div class="panel-header">
         <div class="panel-top-tab ${this.activePanelTab === 'PROBLEMS' ? 'active' : ''}" @click=${() => this.activePanelTab = 'PROBLEMS'}>PROBLEMS</div>

@@ -35,6 +35,7 @@ namespace vrutti::core::terminal {
         HANDLE m_hChildStd_IN_Wr = NULL;
         HANDLE m_hChildStd_OUT_Rd = NULL;
         HANDLE m_hProcess = NULL;
+        HANDLE m_hJob = NULL;
         void* m_hPC = NULL; // HPCON type-erased
 #endif
     };

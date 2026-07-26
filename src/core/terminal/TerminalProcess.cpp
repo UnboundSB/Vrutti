@@ -103,6 +103,15 @@ namespace vrutti::core::terminal {
         m_hProcess = piProcInfo.hProcess;
         CloseHandle(piProcInfo.hThread);
 
+        // Assign to Job Object to ensure child processes (like node, python) are killed when IDE exits or crashes
+        m_hJob = CreateJobObject(NULL, NULL);
+        if (m_hJob) {
+            JOBOBJECT_EXTENDED_LIMIT_INFORMATION jeli = { 0 };
+            jeli.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+            SetInformationJobObject(m_hJob, JobObjectExtendedLimitInformation, &jeli, sizeof(jeli));
+            AssignProcessToJobObject(m_hJob, m_hProcess);
+        }
+
         m_running = true;
         m_readThread = std::thread(&TerminalProcess::readLoop, this);
         return true;
@@ -120,6 +129,11 @@ namespace vrutti::core::terminal {
             TerminateProcess(m_hProcess, 0);
             CloseHandle(m_hProcess);
             m_hProcess = NULL;
+        }
+
+        if (m_hJob) {
+            CloseHandle(m_hJob);
+            m_hJob = NULL;
         }
 
         if (m_hPC) {

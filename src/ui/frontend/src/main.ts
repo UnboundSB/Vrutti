@@ -317,6 +317,8 @@ export class VruttiApp extends LitElement {
       flex: 1;
       height: 100%;
       position: relative;
+      min-width: 0;
+      overflow: hidden;
     }
     
     vrutti-editor {
@@ -345,6 +347,8 @@ export class VruttiApp extends LitElement {
       display: flex;
       flex-direction: column;
       position: relative;
+      min-width: 0;
+      overflow: hidden;
     }
     .terminal-resizer {
       height: 4px;
