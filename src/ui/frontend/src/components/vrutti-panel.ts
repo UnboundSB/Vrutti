@@ -457,20 +457,24 @@ export class VruttiPanel extends LitElement {
       ${this.activePanelTab === 'TERMINAL' ? html`
         <div class="terminal-body">
           <div class="terminal-instances">
-            ${activeGroup ? activeGroup.terminals.map((t, index) => html`
-              ${index > 0 ? html`
-                <div class="split-resizer ${this.activeResizerIndex === index - 1 ? 'active' : ''}" 
-                     @mousedown=${(e: MouseEvent) => this.startSplitResize(e, index - 1)}></div>
-              ` : ''}
-              <div class="terminal-split-container ${activeGroup.activeTerminalId === t.id ? 'active-split' : ''}" @click=${() => this.setActiveSplit(activeGroup.id, t.id)}>
-                <div class="split-overlay-actions">
-                  <button title="Kill Split" @click=${(e: Event) => this.closeSplitTerminal(activeGroup.id, t.id, e)}>
-                    <svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor"><path d="M12.28 4.78a.75.75 0 0 0-1.06-1.06L8 6.94 4.78 3.72a.75.75 0 0 0-1.06 1.06L6.94 8l-3.22 3.22a.75.75 0 1 0 1.06 1.06L8 9.06l3.22 3.22a.75.75 0 1 0 1.06-1.06L9.06 8l3.22-3.22z"/></svg>
-                  </button>
-                </div>
-                <vrutti-terminal id="${t.id}" .terminalId=${t.id}></vrutti-terminal>
+            ${this.terminalGroups.map(group => html`
+              <div class="terminal-group-wrapper" style="display: ${this.activeGroupId === group.id ? 'flex' : 'none'}; flex: 1; min-width: 0; position: relative;">
+                ${group.terminals.map((t, index) => html`
+                  ${index > 0 ? html`
+                    <div class="split-resizer ${this.activeResizerIndex === index - 1 ? 'active' : ''}" 
+                         @mousedown=${(e: MouseEvent) => this.startSplitResize(e, index - 1)}></div>
+                  ` : ''}
+                  <div class="terminal-split-container ${group.activeTerminalId === t.id ? 'active-split' : ''}" @click=${() => this.setActiveSplit(group.id, t.id)}>
+                    <div class="split-overlay-actions">
+                      <button title="Kill Split" @click=${(e: Event) => this.closeSplitTerminal(group.id, t.id, e)}>
+                        <svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor"><path d="M12.28 4.78a.75.75 0 0 0-1.06-1.06L8 6.94 4.78 3.72a.75.75 0 0 0-1.06 1.06L6.94 8l-3.22 3.22a.75.75 0 1 0 1.06 1.06L8 9.06l3.22 3.22a.75.75 0 1 0 1.06-1.06L9.06 8l3.22-3.22z"/></svg>
+                      </button>
+                    </div>
+                    <vrutti-terminal id="${t.id}" .terminalId=${t.id}></vrutti-terminal>
+                  </div>
+                `)}
               </div>
-            `) : ''}
+            `)}
           </div>
           <div class="terminal-tabs-container">
             <div class="terminal-tabs-actions">
