@@ -75,7 +75,7 @@ namespace vrutti::core::terminal {
         PROCESS_INFORMATION piProcInfo;
         ZeroMemory(&piProcInfo, sizeof(PROCESS_INFORMATION));
 
-        wchar_t cmd[] = L"powershell.exe";
+        wchar_t cmd[] = L"powershell.exe -NoLogo";
 
         LPCWSTR pCwd = NULL;
         std::wstring wCwd;
