@@ -41,18 +41,18 @@ export class VruttiPanel extends LitElement {
     this.setActiveGroup(newGroupId);
   }
 
-  splitTerminal() {
-    const activeGroup = this.terminalGroups.find(g => g.id === this.activeGroupId);
-    if (activeGroup) {
+  splitTerminalGroup(groupId: string) {
+    const group = this.terminalGroups.find(g => g.id === groupId);
+    if (group) {
       const newTermId = `term-${this.nextTerminalId++}`;
-      const newGroup = { ...activeGroup };
+      const newGroup = { ...group };
       newGroup.terminals = [...newGroup.terminals, { id: newTermId, name: 'bash' }];
       newGroup.name = newGroup.terminals.map(t => t.name).join(', ');
       newGroup.activeTerminalId = newTermId;
       
       this.terminalGroups = this.terminalGroups.map(g => g.id === newGroup.id ? newGroup : g);
       this.resetSplitFlexLayout();
-      this.focusActiveTerminal();
+      this.setActiveGroup(groupId);
     }
   }
 
@@ -160,14 +160,17 @@ export class VruttiPanel extends LitElement {
     if (containers && containers.length > index + 1) {
       this.leftSplitEl = containers[index] as HTMLElement;
       this.rightSplitEl = containers[index + 1] as HTMLElement;
-      this.leftStartWidth = this.leftSplitEl.getBoundingClientRect().width;
-      this.rightStartWidth = this.rightSplitEl.getBoundingClientRect().width;
+      // Calculate percentages instead of pixels to avoid sub-pixel overflow pushing the sidebar
+      const containerWidth = (this.shadowRoot?.querySelector('.terminal-instances') as HTMLElement).getBoundingClientRect().width;
       
-      // Convert all containers to fixed pixel widths to prevent flex from fighting the resize
       containers.forEach((el: any) => {
         el.style.flex = 'none';
-        el.style.width = el.getBoundingClientRect().width + 'px';
+        const pct = (el.getBoundingClientRect().width / containerWidth) * 100;
+        el.style.width = pct + '%';
       });
+
+      this.leftStartWidth = (this.leftSplitEl.getBoundingClientRect().width / containerWidth) * 100;
+      this.rightStartWidth = (this.rightSplitEl.getBoundingClientRect().width / containerWidth) * 100;
 
       window.addEventListener('mousemove', this.doSplitResize);
       window.addEventListener('mouseup', this.stopSplitResize);
@@ -178,21 +181,24 @@ export class VruttiPanel extends LitElement {
   private doSplitResize = (e: MouseEvent) => {
     if (this.activeResizerIndex === -1 || !this.leftSplitEl || !this.rightSplitEl) return;
     
-    const dx = e.clientX - this.startX;
-    let newLeftWidth = this.leftStartWidth + dx;
-    let newRightWidth = this.rightStartWidth - dx;
+    const containerWidth = (this.shadowRoot?.querySelector('.terminal-instances') as HTMLElement).getBoundingClientRect().width;
+    const dxPct = (dx / containerWidth) * 100;
+
+    let newLeftWidth = this.leftStartWidth + dxPct;
+    let newRightWidth = this.rightStartWidth - dxPct;
     
-    if (newLeftWidth < 100) {
-      newRightWidth -= (100 - newLeftWidth);
-      newLeftWidth = 100;
+    // min width 5%
+    if (newLeftWidth < 5) {
+      newRightWidth -= (5 - newLeftWidth);
+      newLeftWidth = 5;
     }
-    if (newRightWidth < 100) {
-      newLeftWidth -= (100 - newRightWidth);
-      newRightWidth = 100;
+    if (newRightWidth < 5) {
+      newLeftWidth -= (5 - newRightWidth);
+      newRightWidth = 5;
     }
 
-    this.leftSplitEl.style.width = newLeftWidth + 'px';
-    this.rightSplitEl.style.width = newRightWidth + 'px';
+    this.leftSplitEl.style.width = newLeftWidth + '%';
+    this.rightSplitEl.style.width = newRightWidth + '%';
     
     window.dispatchEvent(new Event('resize'));
   };
@@ -269,6 +275,7 @@ export class VruttiPanel extends LitElement {
       display: flex;
       flex: 1;
       overflow: hidden;
+      min-width: 0;
       background: var(--vscode-terminal-background, #1a1b26);
     }
     .terminal-instances {
@@ -278,6 +285,7 @@ export class VruttiPanel extends LitElement {
       position: relative;
       background: #1a1b26;
       min-width: 0;
+      overflow: hidden;
     }
     .terminal-split-container {
       flex: 1;
@@ -371,20 +379,26 @@ export class VruttiPanel extends LitElement {
       overflow: hidden;
       text-overflow: ellipsis;
     }
+    .terminal-tab-split,
     .terminal-tab-close {
       display: none;
       padding: 2px;
       border-radius: 4px;
       color: #a9b1d6;
     }
+    .terminal-tab:hover .terminal-tab-split,
     .terminal-tab:hover .terminal-tab-close {
       display: flex;
       align-items: center;
       justify-content: center;
     }
+    .terminal-tab-split:hover,
     .terminal-tab-close:hover {
       background: #3b4261;
       color: #c0caf5;
+    }
+    .terminal-tab-split svg {
+      transform: rotate(90deg); /* Style it similarly to split icon */
     }
     
     /* Split layout tools overlay inside the terminal container */
@@ -460,9 +474,6 @@ export class VruttiPanel extends LitElement {
           </div>
           <div class="terminal-tabs-container">
             <div class="terminal-tabs-actions">
-              <button title="Split Terminal" @click=${this.splitTerminal}>
-                <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M2.75 2a.75.75 0 0 0-.75.75v10.5c0 .414.336.75.75.75h10.5a.75.75 0 0 0 .75-.75V2.75a.75.75 0 0 0-.75-.75H2.75zM3.5 12.5V3.5h3.5v9H3.5zm5 0V3.5h4v9h-4z"/></svg>
-              </button>
               <button title="New Terminal" @click=${this.createTerminalGroup}>
                 <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"/></svg>
               </button>
@@ -480,6 +491,9 @@ export class VruttiPanel extends LitElement {
                     }
                   </div>
                   <div class="terminal-tab-label">${g.name}</div>
+                  <div class="terminal-tab-split" @click=${(e: Event) => { e.stopPropagation(); this.splitTerminalGroup(g.id); }}>
+                    <svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor"><path d="M2.75 2a.75.75 0 0 0-.75.75v10.5c0 .414.336.75.75.75h10.5a.75.75 0 0 0 .75-.75V2.75a.75.75 0 0 0-.75-.75H2.75zM3.5 12.5V3.5h3.5v9H3.5zm5 0V3.5h4v9h-4z"/></svg>
+                  </div>
                   <div class="terminal-tab-close" @click=${(e: Event) => this.closeTerminalGroup(g.id, e)}>
                     <svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor"><path d="M12.28 4.78a.75.75 0 0 0-1.06-1.06L8 6.94 4.78 3.72a.75.75 0 0 0-1.06 1.06L6.94 8l-3.22 3.22a.75.75 0 1 0 1.06 1.06L8 9.06l3.22 3.22a.75.75 0 1 0 1.06-1.06L9.06 8l3.22-3.22z"/></svg>
                   </div>
