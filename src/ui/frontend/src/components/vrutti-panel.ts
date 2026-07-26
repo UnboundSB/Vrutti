@@ -28,7 +28,6 @@ export class VruttiPanel extends LitElement {
   private nextGroupId = 2;
   private nextTerminalId = 2;
 
-  // Create a whole new group (Tab)
   createTerminalGroup() {
     const newGroupId = `group-${this.nextGroupId++}`;
     const newTermId = `term-${this.nextTerminalId++}`;
@@ -42,7 +41,6 @@ export class VruttiPanel extends LitElement {
     this.setActiveGroup(newGroupId);
   }
 
-  // Split the current active group
   splitTerminal() {
     const activeGroup = this.terminalGroups.find(g => g.id === this.activeGroupId);
     if (activeGroup) {
@@ -53,11 +51,11 @@ export class VruttiPanel extends LitElement {
       newGroup.activeTerminalId = newTermId;
       
       this.terminalGroups = this.terminalGroups.map(g => g.id === newGroup.id ? newGroup : g);
+      this.resetSplitFlexLayout();
       this.focusActiveTerminal();
     }
   }
 
-  // Close an entire group (tab)
   closeTerminalGroup(groupId: string, e?: Event) {
     if (e) e.stopPropagation();
     
@@ -65,7 +63,6 @@ export class VruttiPanel extends LitElement {
     
     if (this.terminalGroups.length === 0) {
       this.dispatchEvent(new Event('close-panel', { bubbles: true, composed: true }));
-      // Secretly create a new group for next time
       const newGroupId = `group-${this.nextGroupId++}`;
       const newTermId = `term-${this.nextTerminalId++}`;
       this.terminalGroups = [{
@@ -80,7 +77,6 @@ export class VruttiPanel extends LitElement {
     }
   }
 
-  // Close a specific split within a group
   closeSplitTerminal(groupId: string, termId: string, e?: Event) {
     if (e) e.stopPropagation();
     
@@ -88,7 +84,6 @@ export class VruttiPanel extends LitElement {
     if (!group) return;
 
     if (group.terminals.length === 1) {
-      // If it's the last terminal in the group, close the whole group
       this.closeTerminalGroup(groupId);
       return;
     }
@@ -102,6 +97,9 @@ export class VruttiPanel extends LitElement {
     }
 
     this.terminalGroups = this.terminalGroups.map(g => g.id === newGroup.id ? newGroup : g);
+    
+    this.resetSplitFlexLayout();
+
     if (this.activeGroupId === groupId) {
       this.focusActiveTerminal();
     }
@@ -114,7 +112,7 @@ export class VruttiPanel extends LitElement {
 
   setActiveSplit(groupId: string, termId: string) {
     const group = this.terminalGroups.find(g => g.id === groupId);
-    if (group) {
+    if (group && group.activeTerminalId !== termId) {
       const newGroup = { ...group, activeTerminalId: termId };
       this.terminalGroups = this.terminalGroups.map(g => g.id === newGroup.id ? newGroup : g);
       this.focusActiveTerminal();
@@ -132,6 +130,81 @@ export class VruttiPanel extends LitElement {
       }
     }, 50);
   }
+
+  // --- Horizontal Split Resizing ---
+  private activeResizerIndex = -1;
+  private startX = 0;
+  private leftStartWidth = 0;
+  private rightStartWidth = 0;
+  private leftSplitEl: HTMLElement | null = null;
+  private rightSplitEl: HTMLElement | null = null;
+
+  private resetSplitFlexLayout() {
+    // When a terminal is added or removed, restore everyone to flex: 1
+    setTimeout(() => {
+      const containers = this.shadowRoot?.querySelectorAll('.terminal-split-container');
+      containers?.forEach((el: any) => {
+        el.style.flex = '1';
+        el.style.width = 'auto';
+      });
+      window.dispatchEvent(new Event('resize'));
+    }, 10);
+  }
+
+  private startSplitResize = (e: MouseEvent, index: number) => {
+    e.preventDefault();
+    this.activeResizerIndex = index;
+    this.startX = e.clientX;
+    
+    const containers = this.shadowRoot?.querySelectorAll('.terminal-split-container');
+    if (containers && containers.length > index + 1) {
+      this.leftSplitEl = containers[index] as HTMLElement;
+      this.rightSplitEl = containers[index + 1] as HTMLElement;
+      this.leftStartWidth = this.leftSplitEl.getBoundingClientRect().width;
+      this.rightStartWidth = this.rightSplitEl.getBoundingClientRect().width;
+      
+      // Convert all containers to fixed pixel widths to prevent flex from fighting the resize
+      containers.forEach((el: any) => {
+        el.style.flex = 'none';
+        el.style.width = el.getBoundingClientRect().width + 'px';
+      });
+
+      window.addEventListener('mousemove', this.doSplitResize);
+      window.addEventListener('mouseup', this.stopSplitResize);
+      document.body.style.cursor = 'ew-resize';
+    }
+  }
+
+  private doSplitResize = (e: MouseEvent) => {
+    if (this.activeResizerIndex === -1 || !this.leftSplitEl || !this.rightSplitEl) return;
+    
+    const dx = e.clientX - this.startX;
+    let newLeftWidth = this.leftStartWidth + dx;
+    let newRightWidth = this.rightStartWidth - dx;
+    
+    if (newLeftWidth < 100) {
+      newRightWidth -= (100 - newLeftWidth);
+      newLeftWidth = 100;
+    }
+    if (newRightWidth < 100) {
+      newLeftWidth -= (100 - newRightWidth);
+      newRightWidth = 100;
+    }
+
+    this.leftSplitEl.style.width = newLeftWidth + 'px';
+    this.rightSplitEl.style.width = newRightWidth + 'px';
+    
+    window.dispatchEvent(new Event('resize'));
+  };
+
+  private stopSplitResize = () => {
+    this.activeResizerIndex = -1;
+    this.leftSplitEl = null;
+    this.rightSplitEl = null;
+    window.removeEventListener('mousemove', this.doSplitResize);
+    window.removeEventListener('mouseup', this.stopSplitResize);
+    document.body.style.cursor = '';
+  };
 
   static styles = css`
     :host {
@@ -204,6 +277,7 @@ export class VruttiPanel extends LitElement {
       flex-direction: row;
       position: relative;
       background: #1a1b26;
+      min-width: 0;
     }
     .terminal-split-container {
       flex: 1;
@@ -211,10 +285,20 @@ export class VruttiPanel extends LitElement {
       position: relative;
       display: flex;
       flex-direction: column;
+      min-width: 0;
     }
-    .terminal-split-container + .terminal-split-container {
-      border-left: 1px solid #1f2335;
+    .split-resizer {
+      width: 4px;
+      cursor: ew-resize;
+      background: transparent;
+      position: relative;
+      z-index: 100;
+      transition: background 0.1s;
     }
+    .split-resizer:hover, .split-resizer.active {
+      background: #7aa2f7;
+    }
+    
     /* Indicator for active split */
     .terminal-split-container.active-split::after {
       content: '';
@@ -226,6 +310,7 @@ export class VruttiPanel extends LitElement {
     }
     .terminal-tabs-container {
       width: 150px;
+      flex-shrink: 0;
       border-left: 1px solid #1f2335;
       display: flex;
       flex-direction: column;
@@ -358,7 +443,11 @@ export class VruttiPanel extends LitElement {
       ${this.activePanelTab === 'TERMINAL' ? html`
         <div class="terminal-body">
           <div class="terminal-instances">
-            ${activeGroup ? activeGroup.terminals.map((t) => html`
+            ${activeGroup ? activeGroup.terminals.map((t, index) => html`
+              ${index > 0 ? html`
+                <div class="split-resizer ${this.activeResizerIndex === index - 1 ? 'active' : ''}" 
+                     @mousedown=${(e: MouseEvent) => this.startSplitResize(e, index - 1)}></div>
+              ` : ''}
               <div class="terminal-split-container ${activeGroup.activeTerminalId === t.id ? 'active-split' : ''}" @click=${() => this.setActiveSplit(activeGroup.id, t.id)}>
                 <div class="split-overlay-actions">
                   <button title="Kill Split" @click=${(e: Event) => this.closeSplitTerminal(activeGroup.id, t.id, e)}>
