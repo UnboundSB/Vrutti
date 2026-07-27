@@ -25,8 +25,52 @@ export class VruttiPanel extends LitElement {
   @state()
   private activeGroupId = 'group-1';
 
+  @state()
+  private outputChannels: string[] = ['System', 'Extension Host', 'Tasks'];
+
+  @state()
+  private activeOutputChannel = 'System';
+
+  @state()
+  private outputLogs: Record<string, string[]> = {
+    'System': ['[System] Vrutti IDE initialized...'],
+    'Extension Host': ['[Extension Host] Starting...'],
+    'Tasks': []
+  };
+
   private nextGroupId = 2;
   private nextTerminalId = 2;
+
+  connectedCallback() {
+    super.connectedCallback();
+    window.addEventListener('vrutti-output-write', this.handleOutputWrite);
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    window.removeEventListener('vrutti-output-write', this.handleOutputWrite);
+  }
+
+  private handleOutputWrite = (e: Event) => {
+    const detail = (e as CustomEvent).detail;
+    const channel = detail.channel;
+    const text = detail.text;
+    if (channel && text) {
+      if (!this.outputChannels.includes(channel)) {
+        this.outputChannels = [...this.outputChannels, channel];
+      }
+      const logs = this.outputLogs[channel] || [];
+      this.outputLogs = { ...this.outputLogs, [channel]: [...logs, text] };
+      
+      // Auto scroll if active
+      if (this.activePanelTab === 'OUTPUT' && this.activeOutputChannel === channel) {
+        setTimeout(() => {
+          const container = this.shadowRoot?.querySelector('.output-log-container');
+          if (container) container.scrollTop = container.scrollHeight;
+        }, 10);
+      }
+    }
+  };
 
   createTerminalGroup() {
     const newGroupId = `group-${this.nextGroupId++}`;
@@ -431,6 +475,42 @@ export class VruttiPanel extends LitElement {
     .split-overlay-actions button:hover {
       color: #c0caf5;
     }
+
+    /* --- OUTPUT TAB STYLES --- */
+    .output-channel-selector {
+      margin-right: 12px;
+      display: flex;
+      align-items: center;
+    }
+    .output-channel-selector select {
+      background: #1a1b26;
+      color: #a9b1d6;
+      border: 1px solid #1f2335;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+      outline: none;
+      cursor: pointer;
+    }
+    .output-body {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+      background: var(--vscode-editor-background, #1a1b26);
+    }
+    .output-log-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 12px;
+      font-family: 'Fira Code', 'Cascadia Code', Consolas, monospace;
+      font-size: 13px;
+      color: #b1bac4;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .output-line {
+      min-height: 1.2em;
+    }
   `;
 
   render() {
@@ -445,6 +525,15 @@ export class VruttiPanel extends LitElement {
         }}>TERMINAL</div>
         <div class="panel-top-tab ${this.activePanelTab === 'PORTS' ? 'active' : ''}" @click=${() => this.activePanelTab = 'PORTS'}>PORTS</div>
         <div style="flex: 1;"></div>
+        ${this.activePanelTab === 'OUTPUT' ? html`
+          <div class="output-channel-selector">
+            <select @change=${(e: Event) => this.activeOutputChannel = (e.target as HTMLSelectElement).value}>
+              ${this.outputChannels.map(c => html`
+                <option value="${c}" ?selected=${this.activeOutputChannel === c}>${c}</option>
+              `)}
+            </select>
+          </div>
+        ` : ''}
         <div class="panel-header-actions">
           <button title="Maximize Panel">
             <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M3 3h10v10H3V3zm1-1a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1H4z"/></svg>
@@ -505,6 +594,14 @@ export class VruttiPanel extends LitElement {
                 </div>
               `)}
             </div>
+          </div>
+        </div>
+      ` : this.activePanelTab === 'OUTPUT' ? html`
+        <div class="output-body">
+          <div class="output-log-container">
+            ${(this.outputLogs[this.activeOutputChannel] || []).map(log => html`
+              <div class="output-line">${log}</div>
+            `)}
           </div>
         </div>
       ` : html`

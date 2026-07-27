@@ -64,6 +64,11 @@ export class VruttiApp extends LitElement {
   async connectedCallback() {
     super.connectedCallback();
     
+    // Expose global output writer
+    (window as any).vruttiWriteOutput = (channel: string, text: string) => {
+      window.dispatchEvent(new CustomEvent('vrutti-output-write', { detail: { channel, text } }));
+    };
+
     // Load user configuration
     const storedName = localStorage.getItem('vrutti-username');
     if (storedName) {
