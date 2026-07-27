@@ -239,6 +239,34 @@ namespace vrutti::ui {
             return "{}";
         });
 
+        w->bind("vruttiDebugInit", [this, w](const std::string& req) -> std::string {
+            if (this->m_repl) {
+                this->m_repl->stop();
+            }
+            this->m_repl = std::make_unique<vrutti::core::terminal::ReplProcess>();
+            this->m_repl->start([w](const std::string& out) {
+                std::string b64 = base64_encode(out);
+                w->dispatch([w, b64]() {
+                    w->eval("if (window.vruttiDebugLog) window.vruttiDebugLog('" + b64 + "');");
+                });
+            });
+            return "{}";
+        });
+
+        w->bind("vruttiDebugEval", [this](const std::string& req) -> std::string {
+            auto parsedReq = vrutti::core::utils::JsonParser::parse(req);
+            if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
+                auto inputNode = parsedReq->arrayElements[0];
+                if (inputNode && inputNode->type == vrutti::core::utils::JsonNode::Type::String) {
+                    std::string input = vrutti::core::utils::JsonParser::unescapeString(inputNode->stringValue);
+                    if (this->m_repl) {
+                        this->m_repl->evaluate(input);
+                    }
+                }
+            }
+            return "{}";
+        });
+
         w->bind("vruttiReadDirectory", [this](const std::string& req) -> std::string {
             auto parsedReq = vrutti::core::utils::JsonParser::parse(req);
             if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
@@ -452,6 +480,12 @@ namespace vrutti::ui {
             if (term) term->stop();
         }
         m_terminals.clear();
+        
+        if (m_repl) {
+            m_repl->stop();
+            m_repl.reset();
+        }
+
         if (m_windowHandle) {
             webview::webview* w = static_cast<webview::webview*>(m_windowHandle);
             w->terminate();

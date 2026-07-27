@@ -2,6 +2,7 @@
 #include <string>
 #include "../../core/ipc/IPCClient.h"
 #include "../../core/terminal/TerminalProcess.h"
+#include "../../core/terminal/ReplProcess.h"
 #include <memory>
 #include <unordered_map>
 namespace vrutti::ui {
@@ -24,5 +25,6 @@ namespace vrutti::ui {
         void* m_windowHandle; // Type erased webview handle
         vrutti::core::ipc::IPCClient* m_ipc;
         std::unordered_map<std::string, std::unique_ptr<vrutti::core::terminal::TerminalProcess>> m_terminals;
+        std::unique_ptr<vrutti::core::terminal::ReplProcess> m_repl;
     };
 }

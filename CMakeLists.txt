@@ -38,6 +38,7 @@ add_library(vrutti_core STATIC
     src/core/config/SettingsManager.cpp
     src/core/plugins/PluginLoader.cpp
     src/core/terminal/TerminalProcess.cpp
+    src/core/terminal/ReplProcess.cpp
     src/ui/compositor/Window.cpp
 )
 target_include_directories(vrutti_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
