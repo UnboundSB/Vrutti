@@ -14,6 +14,7 @@ namespace vrutti::ui {
         void run();
         void shutdown();
         bool shouldClose() const;
+        void logToOutput(const std::string& channel, const std::string& text);
 
     private:
         int m_width;

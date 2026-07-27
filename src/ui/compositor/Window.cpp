@@ -461,4 +461,16 @@ namespace vrutti::ui {
     bool Window::shouldClose() const {
         return m_windowHandle == nullptr;
     }
+
+    void Window::logToOutput(const std::string& channel, const std::string& text) {
+        if (!m_windowHandle) return;
+        webview::webview* w = static_cast<webview::webview*>(m_windowHandle);
+        std::string safeChannel = vrutti::core::utils::JsonSerializer::escapeString(channel);
+        std::string safeText = vrutti::core::utils::JsonSerializer::escapeString(text);
+        
+        w->dispatch([w, safeChannel, safeText]() {
+            std::string script = "if (window.vruttiWriteOutput) window.vruttiWriteOutput(" + safeChannel + ", " + safeText + ");";
+            w->eval(script);
+        });
+    }
 }
