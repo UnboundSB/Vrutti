@@ -1,6 +1,7 @@
 import { LitElement, css, html } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import './vrutti-terminal';
+import './vrutti-debug-console';
 
 interface TerminalGroup {
   id: string;
@@ -605,15 +606,7 @@ export class VruttiPanel extends LitElement {
           </div>
         </div>
       ` : this.activePanelTab === 'DEBUG CONSOLE' ? html`
-        <div class="debug-console-body" style="display: flex; flex-direction: column; flex: 1; overflow: hidden; background: var(--vscode-editor-background, #1a1b26);">
-          <div class="debug-log-container" style="flex: 1; overflow-y: auto; padding: 8px 12px; font-family: 'Fira Code', 'Cascadia Code', Consolas, monospace; font-size: 13px; color: #b1bac4; white-space: pre-wrap;">
-            <div class="debug-line">[Debug] Not yet connected to a debug session.</div>
-          </div>
-          <div class="debug-input-container" style="display: flex; border-top: 1px solid #1f2335; padding: 4px 8px; align-items: center;">
-            <span style="color: #7aa2f7; margin-right: 8px; font-weight: bold;">&gt;</span>
-            <input type="text" class="debug-input" placeholder="Evaluate expression" style="flex: 1; background: transparent; border: none; color: #a9b1d6; font-family: 'Fira Code', 'Cascadia Code', Consolas, monospace; outline: none; font-size: 13px;" />
-          </div>
-        </div>
+        <vrutti-debug-console></vrutti-debug-console>
       ` : this.activePanelTab === 'PORTS' ? html`
         <div class="ports-body" style="display: flex; flex-direction: column; flex: 1; overflow: hidden; background: var(--vscode-editor-background, #1a1b26);">
           <div class="ports-header" style="display: flex; padding: 4px 12px; border-bottom: 1px solid #1f2335; color: #717cb4; font-size: 11px; text-transform: uppercase;">
