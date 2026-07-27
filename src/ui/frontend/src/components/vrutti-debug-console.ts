@@ -23,8 +23,6 @@ export class VruttiDebugConsole extends LitElement {
   @state()
   private inputValue = '';
 
-  private inputRef?: HTMLInputElement;
-
   connectedCallback() {
     super.connectedCallback();
     window.addEventListener('vrutti-debug-log', this.handleDebugLog as EventListener);
@@ -33,10 +31,6 @@ export class VruttiDebugConsole extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
     window.removeEventListener('vrutti-debug-log', this.handleDebugLog as EventListener);
-  }
-
-  protected firstUpdated() {
-    this.inputRef = this.shadowRoot?.querySelector('.debug-input') as HTMLInputElement;
   }
 
   private handleDebugLog = (e: CustomEvent<{ type: DebugLog['type'], text: string }>) => {
