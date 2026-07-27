@@ -1,4 +1,6 @@
 #include <iostream>
+#include <thread>
+#include <chrono>
 #include "ui/compositor/Window.h"
 #include "core/ipc/IPCClient.h"
 
@@ -21,9 +23,19 @@ int main(int argc, char* argv[]) {
         std::cerr << "Failed to initialize UI window!" << std::endl;
         return 1;
     }
+    // Start a background thread to simulate streaming logs to the frontend
+    std::thread log_streamer([&window]() {
+        std::this_thread::sleep_for(std::chrono::seconds(3));
+        window.logToOutput("System", "[System] C++ Native Engine connected to frontend successfully.");
+        
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+        window.logToOutput("Tasks", "[Tasks] Build daemon is idle.");
+    });
 
     // Run the main IDE render loop
     window.run();
+
+    log_streamer.detach();
 
     return 0;
 }
