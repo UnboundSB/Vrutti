@@ -1,15 +1,14 @@
-# Folder: concurrency
+# Directory: concurrency
 
-**Path**: `src/core/concurrency`
-**Purpose**: Thread pool, async tasks, and cancellation tokens.
+## Purpose
+Responsible for managing asynchronous tasks and thread pools to keep the IDE responsive.
 
-## Contents
+## Child Directories
+*(No child directories)*
 
-### Files
-- **`Async.h`**: Asynchronous task execution primitives.
-- **`CancellationToken.h`**: Cooperative cancellation tokens for async operations.
-- **`ThreadPool.cpp`**: Thread pool implementation for concurrent background tasks.
-- **`ThreadPool.h`**: Thread pool header for worker thread management.
-
-### Files
-- **`structure.md`**: Documentation describing the high-level purpose of items in this folder.
+## Files
+- **Async.h**: Defines the interface and data structures for Async.
+- **CancellationToken.h**: Defines the interface and data structures for CancellationToken.
+- **ThreadPool.cpp**: Manages a pool of worker threads for parallel task execution.
+- **ThreadPool.h**: Defines the interface and data structures for ThreadPool.
+- **structure.md**: Documents the purpose of this directory, its child directories, and files.
