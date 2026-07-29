@@ -1,13 +1,12 @@
-# Folder: app
+# Directory: app
 
-**Path**: `src/app`
-**Purpose**: Contains the main application entry point and resource files.
+## Purpose
+Contains the application entry point and main executable logic.
 
-## Contents
+## Child Directories
+*(No child directories)*
 
-### Files
-- **`main.cpp`**: Main application entry point initializing the compositor and IPC.
-- **`vrutti_app.rc`**: Windows resource file for application icon and metadata.
-
-### Files
-- **`structure.md`**: Documentation describing the high-level purpose of items in this folder.
+## Files
+- **main.cpp**: The main C++ entry point that bootstraps the IDE window and core systems.
+- **structure.md**: Documents the purpose of this directory, its child directories, and files.
+- **vrutti_app.rc**: Responsible for storing data related to vrutti_app.rc.
