@@ -1,13 +1,12 @@
-# Folder: ipc
+# Directory: ipc
 
-**Path**: `src/core/ipc`
-**Purpose**: Inter-Process Communication logic to communicate with the extension host.
+## Purpose
+Handles inter-process communication between the C++ backend and the Node.js/Webview frontends.
 
-## Contents
+## Child Directories
+*(No child directories)*
 
-### Files
-- **`IPCClient.cpp`**: IPC communication client implementation.
-- **`IPCClient.h`**: Handles named pipes and sockets for Extension Host communication (header).
-
-### Files
-- **`structure.md`**: Documentation describing the high-level purpose of items in this folder.
+## Files
+- **IPCClient.cpp**: Implements the client for inter-process communication.
+- **IPCClient.h**: Defines the interface and data structures for IPCClient.
+- **structure.md**: Documents the purpose of this directory, its child directories, and files.
