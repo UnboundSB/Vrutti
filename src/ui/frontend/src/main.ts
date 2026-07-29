@@ -4,7 +4,7 @@ import './components/vrutti-sidebar';
 import './components/vrutti-statusbar';
 import './components/vrutti-menubar';
 import './components/vrutti-panel';
-import './components/vrutti-editor';
+import './components/vrutti-editor-layout';
 
 import { globalHoverStyle } from './shared-styles';
 
@@ -174,6 +174,10 @@ export class VruttiApp extends LitElement {
 
   private handleOpenFile = (e: CustomEvent) => {
     this.activeFilePath = e.detail.path;
+    const layout = this.shadowRoot?.querySelector('#main-layout') as any;
+    if (layout && layout.openFile) {
+        layout.openFile(e.detail.path);
+    }
   };
 
   private handleCloseSettings = () => {
@@ -596,9 +600,7 @@ export class VruttiApp extends LitElement {
             <vrutti-settings style="position: absolute; top: 0; left: 0; right: 0; bottom: 0;"></vrutti-settings>
           ` : html`
             <div style="flex: 1; display: flex; flex-direction: column; position: relative;">
-              ${this.activeFilePath ? html`
-                <vrutti-editor .filePath=${this.activeFilePath}></vrutti-editor>
-              ` : ''}
+              <vrutti-editor-layout id="main-layout"></vrutti-editor-layout>
             </div>
             ${this.showTerminal ? html`
               <div class="terminal-panel" style="height: ${this.terminalHeight}px">
