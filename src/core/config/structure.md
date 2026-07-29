@@ -1,13 +1,12 @@
-# Folder: config
+# Directory: config
 
-**Path**: `src/core/config`
-**Purpose**: Configuration and settings management.
+## Purpose
+Manages the IDE settings and configuration persistence.
 
-## Contents
+## Child Directories
+*(No child directories)*
 
-### Files
-- **`SettingsManager.cpp`**: Manages IDE settings and user preferences (implementation).
-- **`SettingsManager.h`**: Manages IDE settings and user preferences (header).
-
-### Files
-- **`structure.md`**: Documentation describing the high-level purpose of items in this folder.
+## Files
+- **SettingsManager.cpp**: Implements the SettingsManager core logic and functionality.
+- **SettingsManager.h**: Defines the interface and data structures for SettingsManager.
+- **structure.md**: Documents the purpose of this directory, its child directories, and files.
