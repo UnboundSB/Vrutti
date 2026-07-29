@@ -1,20 +1,19 @@
-# Folder: fs
+# Directory: fs
 
-**Path**: `src/core/fs`
-**Purpose**: File system abstraction, URI handling, and workspace management.
+## Purpose
+Responsible for file system operations, paths, URIs, and workspace management.
 
-## Contents
+## Child Directories
+*(No child directories)*
 
-### Files
-- **`Glob.cpp`**: File globbing utility implementation.
-- **`Glob.h`**: File globbing utility header for search and filtering.
-- **`Path.cpp`**: Path manipulation implementation.
-- **`Path.h`**: Path manipulation and cross-platform resolution header.
-- **`Stream.h`**: Abstract base class for I/O streams.
-- **`URI.cpp`**: Uniform Resource Identifier implementation.
-- **`URI.h`**: Uniform Resource Identifier representation header.
-- **`Workspace.cpp`**: Manages the active workspace directory state (implementation).
-- **`Workspace.h`**: Manages the active workspace directory state (header).
-
-### Files
-- **`structure.md`**: Documentation describing the high-level purpose of items in this folder.
+## Files
+- **Glob.cpp**: Implements the Glob core logic and functionality.
+- **Glob.h**: Defines the interface and data structures for Glob.
+- **Path.cpp**: Implements the Path core logic and functionality.
+- **Path.h**: Defines the interface and data structures for Path.
+- **Stream.h**: Defines the interface and data structures for Stream.
+- **URI.cpp**: Implements the URI core logic and functionality.
+- **URI.h**: Defines the interface and data structures for URI.
+- **Workspace.cpp**: Implements the Workspace core logic and functionality.
+- **Workspace.h**: Defines the interface and data structures for Workspace.
+- **structure.md**: Documents the purpose of this directory, its child directories, and files.
