@@ -1,13 +1,12 @@
-# Folder: search
+# Directory: search
 
-**Path**: `src/plugins/search`
-**Purpose**: File and text search plugin implementation.
+## Purpose
+Implements the high-performance search plugin for finding text across the workspace.
 
-## Contents
+## Child Directories
+*(No child directories)*
 
-### Files
-- **`SearchPlugin.cpp`**: Native search plugin implementation.
-- **`SearchPlugin.h`**: Native text/file search plugin (header).
-
-### Files
-- **`structure.md`**: Documentation describing the high-level purpose of items in this folder.
+## Files
+- **SearchPlugin.cpp**: Implements the SearchPlugin core logic and functionality.
+- **SearchPlugin.h**: Defines the interface and data structures for SearchPlugin.
+- **structure.md**: Documents the purpose of this directory, its child directories, and files.
