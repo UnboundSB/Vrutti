@@ -40,7 +40,10 @@ If you do not want to install Node.js locally, you can use Docker to compile the
 1. Compile the native app using CMake (Steps 1-3 above).
 2. Start the Docker frontend compiler:
    ```bash
-   docker-compose -f docker-compose.frontend.yml up -d
+   cd src/ui/frontend
+   docker build -f Dockerfile.frontend -t vrutti-frontend .
+   docker run --rm -v ${PWD}:/app vrutti-frontend
+   cd ../../../
    ```
 3. Run the executable from `build/vrutti_app.exe`.
 
