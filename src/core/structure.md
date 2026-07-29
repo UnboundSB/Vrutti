@@ -1,23 +1,20 @@
-# Folder: core
+# Directory: core
 
-**Path**: `src/core`
-**Purpose**: Core C++ backend components for file system, memory, events, and concurrency.
+## Purpose
+Houses the core backend C++ subsystems like concurrency, memory, and filesystem management.
 
-## Contents
+## Child Directories
+- **concurrency/**: Responsible for managing asynchronous tasks and thread pools to keep the IDE responsive.
+- **config/**: Manages the IDE settings and configuration persistence.
+- **editor/**: Implements the core text editing data structures, such as the Piece Table for efficient text manipulation.
+- **events/**: Provides event buses and observable patterns for internal messaging.
+- **fs/**: Responsible for file system operations, paths, URIs, and workspace management.
+- **ipc/**: Handles inter-process communication between the C++ backend and the Node.js/Webview frontends.
+- **memory/**: Implements custom memory allocators like Arena Allocators for high-performance memory management.
+- **plugins/**: Responsible for the plugin architecture and dynamic library loading. Under core, it is the loader; at root, it contains specific plugins.
+- **terminal/**: Manages pseudo-terminal processes and the read-eval-print loop (REPL) backend.
+- **utils/**: Contains general purpose utility classes for JSON parsing, string manipulation, and base64 encoding.
 
-### Subfolders
-- **`concurrency/`**: Thread pool, async tasks, and cancellation tokens.
-- **`config/`**: Configuration and settings management.
-- **`editor/`**: Text editor core logic (e.g., PieceTable for efficient edits).
-- **`events/`**: Event system and observable patterns.
-- **`fs/`**: File system abstraction, URI handling, and workspace management.
-- **`ipc/`**: Inter-Process Communication logic to communicate with the extension host.
-- **`memory/`**: Memory management utilities like arena allocators.
-- **`plugins/`**: Plugin architecture and dynamic loading.
-- **`utils/`**: Utility functions, JSON parsing, and string pools.
-
-### Files
-- **`task.md`**: No description available yet.
-
-### Files
-- **`structure.md`**: Documentation describing the high-level purpose of items in this folder.
+## Files
+- **structure.md**: Documents the purpose of this directory, its child directories, and files.
+- **task.md**: Responsible for storing data related to task.md.
