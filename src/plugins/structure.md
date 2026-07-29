@@ -1,12 +1,10 @@
-# Folder: plugins
+# Directory: plugins
 
-**Path**: `src/plugins`
-**Purpose**: Plugin architecture and dynamic loading.
+## Purpose
+Responsible for the plugin architecture and dynamic library loading. Under core, it is the loader; at root, it contains specific plugins.
 
-## Contents
+## Child Directories
+- **search/**: Implements the high-performance search plugin for finding text across the workspace.
 
-### Subfolders
-- **`search/`**: File and text search plugin implementation.
-
-### Files
-- **`structure.md`**: Documentation describing the high-level purpose of items in this folder.
+## Files
+- **structure.md**: Documents the purpose of this directory, its child directories, and files.
