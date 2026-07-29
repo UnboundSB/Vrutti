@@ -1,14 +1,13 @@
-# Folder: plugins
+# Directory: plugins
 
-**Path**: `src/core/plugins`
-**Purpose**: Plugin architecture and dynamic loading.
+## Purpose
+Responsible for the plugin architecture and dynamic library loading. Under core, it is the loader; at root, it contains specific plugins.
 
-## Contents
+## Child Directories
+*(No child directories)*
 
-### Files
-- **`IPlugin.h`**: Native C++ plugin interface definition.
-- **`PluginLoader.cpp`**: Plugin loader implementation.
-- **`PluginLoader.h`**: Loads dynamic libraries and manages native plugins (header).
-
-### Files
-- **`structure.md`**: Documentation describing the high-level purpose of items in this folder.
+## Files
+- **IPlugin.h**: Defines the interface and data structures for IPlugin.
+- **PluginLoader.cpp**: Implements the PluginLoader core logic and functionality.
+- **PluginLoader.h**: Defines the interface and data structures for PluginLoader.
+- **structure.md**: Documents the purpose of this directory, its child directories, and files.
