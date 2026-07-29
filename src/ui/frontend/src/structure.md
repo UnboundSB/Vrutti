@@ -1,18 +1,14 @@
-# Folder: src
+# Directory: src
 
-**Path**: `src/ui/frontend/src`
-**Purpose**: Root source directory of the Vrutti IDE containing all application code.
+## Purpose
+The main source code directory containing all C++ and frontend components.
 
-## Contents
+## Child Directories
+- **components/**: Reusable Lit Web Components forming the UI building blocks of the IDE.
 
-### Subfolders
-- **`components/`**: UI components (sidebar, explorer, settings, etc.).
-
-### Files
-- **`ThemeBridge.ts`**: Bridges native system themes with the frontend UI CSS variables.
-- **`globalHover.ts`**: Global CSS hover effect styles for UI elements.
-- **`main.ts`**: Frontend application entry point bootstrapping Lit elements.
-- **`shared-styles.ts`**: Shared Lit CSS styles across multiple UI components.
-
-### Files
-- **`structure.md`**: Documentation describing the high-level purpose of items in this folder.
+## Files
+- **ThemeBridge.ts**: Implements the ThemeBridge frontend logic and UI components.
+- **globalHover.ts**: Implements the globalHover frontend logic and UI components.
+- **main.ts**: The main TypeScript entry point for the frontend Web Components application.
+- **shared-styles.ts**: Implements the shared-styles frontend logic and UI components.
+- **structure.md**: Documents the purpose of this directory, its child directories, and files.
