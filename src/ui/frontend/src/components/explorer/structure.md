@@ -1,14 +1,13 @@
-# Folder: explorer
+# Directory: explorer
 
-**Path**: `src/ui/frontend/src/components/explorer`
-**Purpose**: Explorer tree and file mapping logic.
+## Purpose
+Components responsible for the file explorer tree and file navigation.
 
-## Contents
+## Child Directories
+*(No child directories)*
 
-### Files
-- **`explorerModel.ts`**: State model representing the file explorer tree.
-- **`iconMapper.ts`**: Maps filenames and extensions to specific Material Theme icons.
-- **`vrutti-explorer.ts`**: The file explorer tree rendering Lit component.
-
-### Files
-- **`structure.md`**: Documentation describing the high-level purpose of items in this folder.
+## Files
+- **explorerModel.ts**: Implements the explorerModel frontend logic and UI components.
+- **iconMapper.ts**: Implements the iconMapper frontend logic and UI components.
+- **structure.md**: Documents the purpose of this directory, its child directories, and files.
+- **vrutti-explorer.ts**: Implements the file explorer UI and directory traversal logic.
