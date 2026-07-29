@@ -1,13 +1,12 @@
-# Folder: events
+# Directory: events
 
-**Path**: `src/core/events`
-**Purpose**: Event system and observable patterns.
+## Purpose
+Provides event buses and observable patterns for internal messaging.
 
-## Contents
+## Child Directories
+*(No child directories)*
 
-### Files
-- **`Event.h`**: Event dispatching and subscription system.
-- **`Observable.h`**: Observable state patterns for reactive updates.
-
-### Files
-- **`structure.md`**: Documentation describing the high-level purpose of items in this folder.
+## Files
+- **Event.h**: Defines the interface and data structures for Event.
+- **Observable.h**: Defines the interface and data structures for Observable.
+- **structure.md**: Documents the purpose of this directory, its child directories, and files.
