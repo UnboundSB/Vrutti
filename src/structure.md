@@ -1,16 +1,14 @@
-# Folder: src
+# Directory: src
 
-**Path**: `src`
-**Purpose**: Root source directory of the Vrutti IDE containing all application code.
+## Purpose
+The main source code directory containing all C++ and frontend components.
 
-## Contents
+## Child Directories
+- **app/**: Contains the application entry point and main executable logic.
+- **core/**: Houses the core backend C++ subsystems like concurrency, memory, and filesystem management.
+- **ext/**: Contains the Node.js extension host scripts and API bindings for extensions.
+- **plugins/**: Responsible for the plugin architecture and dynamic library loading. Under core, it is the loader; at root, it contains specific plugins.
+- **ui/**: Responsible for the user interface, bridging the native compositor and the web frontend.
 
-### Subfolders
-- **`app/`**: Contains the main application entry point and resource files.
-- **`core/`**: Core C++ backend components for file system, memory, events, and concurrency.
-- **`ext/`**: Node.js extension host scripts and IPC bridges for VS Code extensions.
-- **`plugins/`**: Plugin architecture and dynamic loading.
-- **`ui/`**: UI layer components.
-
-### Files
-- **`structure.md`**: Documentation describing the high-level purpose of items in this folder.
+## Files
+- **structure.md**: Documents the purpose of this directory, its child directories, and files.
