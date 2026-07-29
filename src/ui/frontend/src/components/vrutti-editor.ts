@@ -90,8 +90,12 @@ export class VruttiEditor extends LitElement {
 
     private async loadFile() {
         try {
+            let actualPath = this.filePath;
+            if (actualPath.startsWith('file:///')) actualPath = actualPath.substring(8);
+            else if (actualPath.startsWith('file://')) actualPath = actualPath.substring(7);
+
             // Read file properly using the C++ backend
-            const rawContent = await (window as any).vruttiReadFile(this.filePath);
+            const rawContent = await (window as any).vruttiReadFile(actualPath);
             this._fileContent = rawContent;
         } catch (e) {
             console.error("Failed to load file:", e);
@@ -103,7 +107,11 @@ export class VruttiEditor extends LitElement {
         if (!this._editorView) return;
         const currentContent = this._editorView.state.doc.toString();
         try {
-            const result = await (window as any).vruttiWriteFile(this.filePath, currentContent);
+            let actualPath = this.filePath;
+            if (actualPath.startsWith('file:///')) actualPath = actualPath.substring(8);
+            else if (actualPath.startsWith('file://')) actualPath = actualPath.substring(7);
+
+            const result = await (window as any).vruttiWriteFile(actualPath, currentContent);
             const parsed = JSON.parse(result);
             if (parsed.success) {
                 console.log("File saved successfully.");
