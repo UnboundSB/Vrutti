@@ -86,11 +86,35 @@ export class VruttiExplorer extends LitElement {
     }
   `];
 
-  private async toggle() {
+  private async toggle(e?: Event) {
     if (this.item && this.item.isDirectory) {
       await this.item.toggle();
       this.requestUpdate();
+    } else if (e && e.type === 'click') {
+        // Just select it on single click, or maybe we want single click to open?
+        // The user said: "2. on double click file it should open"
     }
+  }
+
+  private handleDoubleClick(e: MouseEvent) {
+    e.stopPropagation();
+    if (!this.item.isDirectory) {
+      this.dispatchEvent(new CustomEvent('open-file', {
+        detail: { path: this.item.resource, name: this.item.name },
+        bubbles: true,
+        composed: true
+      }));
+    }
+  }
+
+  private handleContextMenu(e: MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    this.dispatchEvent(new CustomEvent('open-context-menu', {
+      detail: { path: this.item.resource, name: this.item.name, x: e.clientX, y: e.clientY, isDirectory: this.item.isDirectory },
+      bubbles: true,
+      composed: true
+    }));
   }
 
   private async createFile(e: Event) {
@@ -111,6 +135,11 @@ export class VruttiExplorer extends LitElement {
         await this.item.loadChildren();
         this.requestUpdate();
       }
+      this.dispatchEvent(new CustomEvent('open-file', {
+        detail: { path: targetPath, name: name },
+        bubbles: true,
+        composed: true
+      }));
     }
   }
 
@@ -168,7 +197,10 @@ export class VruttiExplorer extends LitElement {
     const paddingLeft = this.depth * 12 + 8;
     
     return html`
-      <div class="tree-node" style="padding-left: ${paddingLeft}px" @click="${this.toggle}">
+      <div class="tree-node" style="padding-left: ${paddingLeft}px" 
+           @click="${this.toggle}" 
+           @dblclick="${this.handleDoubleClick}" 
+           @contextmenu="${this.handleContextMenu}">
         ${this.renderChevron()}
         ${this.renderIcon()}
         <span>${this.item.name}</span>

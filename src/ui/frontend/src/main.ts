@@ -4,6 +4,7 @@ import './components/vrutti-sidebar';
 import './components/vrutti-statusbar';
 import './components/vrutti-menubar';
 import './components/vrutti-panel';
+import './components/vrutti-editor';
 
 import { globalHoverStyle } from './shared-styles';
 
@@ -11,6 +12,12 @@ import { globalHoverStyle } from './shared-styles';
 export class VruttiApp extends LitElement {
   @state()
   private isLoading = true;
+
+  @state()
+  private contextMenu: { x: number, y: number, path: string, name: string, isDirectory: boolean } | null = null;
+
+  @state()
+  private activeFilePath: string | null = null;
 
   @state()
   private showTerminal = true;
@@ -101,6 +108,9 @@ export class VruttiApp extends LitElement {
     this.addEventListener('menu-action', this.handleMenuAction);
     this.addEventListener('close-settings', this.handleCloseSettings);
     this.addEventListener('setting-changed', this.handleSettingChanged);
+    this.addEventListener('open-file', this.handleOpenFile as EventListener);
+    this.addEventListener('open-context-menu', this.handleContextMenu as EventListener);
+    window.addEventListener('click', this.closeContextMenu);
   }
 
   disconnectedCallback() {
@@ -108,6 +118,9 @@ export class VruttiApp extends LitElement {
     this.removeEventListener('menu-action', this.handleMenuAction);
     this.removeEventListener('close-settings', this.handleCloseSettings);
     this.removeEventListener('setting-changed', this.handleSettingChanged);
+    this.removeEventListener('open-file', this.handleOpenFile as EventListener);
+    this.removeEventListener('open-context-menu', this.handleContextMenu as EventListener);
+    window.removeEventListener('click', this.closeContextMenu);
   }
 
   private handleMenuAction = async (e: Event) => {
@@ -143,6 +156,24 @@ export class VruttiApp extends LitElement {
     } else if (detail.action === 'toggleTerminal') {
       this.toggleTerminal();
     }
+  };
+
+  private handleContextMenu = (e: CustomEvent) => {
+    this.contextMenu = {
+      x: e.detail.x,
+      y: e.detail.y,
+      path: e.detail.path,
+      name: e.detail.name,
+      isDirectory: e.detail.isDirectory
+    };
+  };
+
+  private closeContextMenu = () => {
+    this.contextMenu = null;
+  };
+
+  private handleOpenFile = (e: CustomEvent) => {
+    this.activeFilePath = e.detail.path;
   };
 
   private handleCloseSettings = () => {
@@ -325,25 +356,32 @@ export class VruttiApp extends LitElement {
       min-width: 0;
       overflow: hidden;
     }
+
+    .context-menu {
+      position: fixed;
+      background: var(--vrutti-surface);
+      border: 1px solid var(--vrutti-surface-border);
+      border-radius: 6px;
+      padding: 4px 0;
+      min-width: 150px;
+      z-index: 10000;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    }
+    .context-menu-item {
+      padding: 6px 12px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .context-menu-item:hover {
+      background: var(--vrutti-surface-border);
+      color: var(--vrutti-text-bright);
+    }
     
     vrutti-editor {
       flex: 1;
       background-color: transparent;
       min-height: 0;
       z-index: 1;
-    }
-
-    .underlay {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      opacity: 0.05;
-      pointer-events: none;
-      z-index: 0;
-      width: 40vw;
-      max-width: 512px;
-      object-fit: contain;
     }
 
     .terminal-panel {
@@ -558,8 +596,9 @@ export class VruttiApp extends LitElement {
             <vrutti-settings style="position: absolute; top: 0; left: 0; right: 0; bottom: 0;"></vrutti-settings>
           ` : html`
             <div style="flex: 1; display: flex; flex-direction: column; position: relative;">
-              <vrutti-editor></vrutti-editor>
-              <img src="../../../../logos/logo-512x512.png" class="underlay" />
+              ${this.activeFilePath ? html`
+                <vrutti-editor .filePath=${this.activeFilePath}></vrutti-editor>
+              ` : ''}
             </div>
             ${this.showTerminal ? html`
               <div class="terminal-panel" style="height: ${this.terminalHeight}px">
@@ -570,6 +609,18 @@ export class VruttiApp extends LitElement {
           `}
         </div>
       </div>
+      ${this.contextMenu ? html`
+        <div class="context-menu" style="left: ${this.contextMenu.x}px; top: ${this.contextMenu.y}px;">
+          ${!this.contextMenu.isDirectory ? html`
+            <div class="context-menu-item" @click=${() => {
+              this.activeFilePath = this.contextMenu!.path;
+              this.closeContextMenu();
+            }}>Open File</div>
+          ` : ''}
+          <div class="context-menu-item" @click=${this.closeContextMenu}>Rename</div>
+          <div class="context-menu-item" @click=${this.closeContextMenu}>Delete</div>
+        </div>
+      ` : ''}
       <vrutti-statusbar></vrutti-statusbar>
     `;
   }

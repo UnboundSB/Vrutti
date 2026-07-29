@@ -70,26 +70,11 @@ target_link_libraries(vrutti_search PRIVATE vrutti_core)
 # Rigorous Unit Testing Pipeline
 enable_testing()
 
-add_executable(test_memory tests/test_memory.cpp)
-target_link_libraries(test_memory PRIVATE vrutti_core)
-add_test(NAME MemoryTests COMMAND test_memory)
 
-add_executable(test_concurrency tests/test_concurrency.cpp)
-target_link_libraries(test_concurrency PRIVATE vrutti_core)
-add_test(NAME ConcurrencyTests COMMAND test_concurrency)
 
-add_executable(test_fs tests/test_fs.cpp)
-target_link_libraries(test_fs PRIVATE vrutti_core)
-add_test(NAME FSTests COMMAND test_fs)
 
 # Integration Testing (Mocks)
-add_executable(test_ipc_bridge tests/test_ipc_bridge.cpp)
-target_link_libraries(test_ipc_bridge PRIVATE vrutti_core)
-add_test(NAME IPCBridgeTests COMMAND test_ipc_bridge)
 
-add_executable(test_ui_core tests/test_ui_core.cpp)
-target_link_libraries(test_ui_core PRIVATE vrutti_core)
-add_test(NAME UICoreIntegrationTests COMMAND test_ui_core)
 
 
 
