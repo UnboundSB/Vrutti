@@ -1,14 +1,13 @@
-# Folder: memory
+# Directory: memory
 
-**Path**: `src/core/memory`
-**Purpose**: Memory management utilities like arena allocators.
+## Purpose
+Implements custom memory allocators like Arena Allocators for high-performance memory management.
 
-## Contents
+## Child Directories
+*(No child directories)*
 
-### Files
-- **`ArenaAllocator.cpp`**: Arena allocator implementation.
-- **`ArenaAllocator.h`**: High-performance bump/arena memory allocator (header).
-- **`Disposable.h`**: Standard interface for deterministic resource cleanup.
-
-### Files
-- **`structure.md`**: Documentation describing the high-level purpose of items in this folder.
+## Files
+- **ArenaAllocator.cpp**: Implements high-performance memory allocation strategies.
+- **ArenaAllocator.h**: Defines the interface and data structures for ArenaAllocator.
+- **Disposable.h**: Defines the interface and data structures for Disposable.
+- **structure.md**: Documents the purpose of this directory, its child directories, and files.
