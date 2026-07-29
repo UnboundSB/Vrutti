@@ -1,13 +1,12 @@
-# Folder: ui
+# Directory: ui
 
-**Path**: `src/ui`
-**Purpose**: UI layer components.
+## Purpose
+Responsible for the user interface, bridging the native compositor and the web frontend.
 
-## Contents
+## Child Directories
+- **compositor/**: The native C++ window compositor that hosts the Webview and sets up native window styles.
+- **frontend/**: Contains the web-based frontend application built with Vite and TypeScript.
+- **vendor/**: Third-party dependencies and vendor libraries used by the UI.
 
-### Subfolders
-- **`compositor/`**: Native window management and Webview2 compositor.
-- **`frontend/`**: Web frontend (Vite/TypeScript) for the IDE UI.
-
-### Files
-- **`structure.md`**: Documentation describing the high-level purpose of items in this folder.
+## Files
+- **structure.md**: Documents the purpose of this directory, its child directories, and files.
