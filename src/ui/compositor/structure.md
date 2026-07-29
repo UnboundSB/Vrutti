@@ -1,13 +1,12 @@
-# Folder: compositor
+# Directory: compositor
 
-**Path**: `src/ui/compositor`
-**Purpose**: Native window management and Webview2 compositor.
+## Purpose
+The native C++ window compositor that hosts the Webview and sets up native window styles.
 
-## Contents
+## Child Directories
+*(No child directories)*
 
-### Files
-- **`Window.cpp`**: Win32 window creation and Webview2 compositor implementation.
-- **`Window.h`**: Manages the Win32 window and Webview2 environment (header).
-
-### Files
-- **`structure.md`**: Documentation describing the high-level purpose of items in this folder.
+## Files
+- **Window.cpp**: Implements the native window creation, Webview initialization, and IPC bindings.
+- **Window.h**: Defines the interface and data structures for Window.
+- **structure.md**: Documents the purpose of this directory, its child directories, and files.
