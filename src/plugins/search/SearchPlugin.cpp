@@ -1,6 +1,7 @@
 #include "SearchPlugin.h"
 #include <iostream>
 #include <filesystem>
+#include "../../core/utils/Json.h"
 
 #ifdef _WIN32
 #define PLUGIN_EXPORT __declspec(dllexport)
@@ -39,6 +40,38 @@ namespace vrutti::plugins::search {
 
     const char* SearchPlugin::getName() const {
         return "Search";
+    }
+
+    std::string SearchPlugin::executeCommand(const std::string& command, const std::string& payload) {
+        if (command == "search") {
+            auto req = vrutti::core::utils::JsonParser::parse(payload);
+            std::string query = "";
+            std::string dir = "";
+            
+            if (req && req->type == vrutti::core::utils::JsonNode::Type::Object) {
+                auto queryNode = req->get("query");
+                if (queryNode && queryNode->type == vrutti::core::utils::JsonNode::Type::String) {
+                    query = vrutti::core::utils::JsonParser::unescapeString(queryNode->stringValue);
+                }
+                auto dirNode = req->get("directory");
+                if (dirNode && dirNode->type == vrutti::core::utils::JsonNode::Type::String) {
+                    dir = vrutti::core::utils::JsonParser::unescapeString(dirNode->stringValue);
+                }
+            }
+            
+            if (query.empty() || dir.empty()) return "[]";
+            
+            auto results = performSearch(query, dir);
+            
+            std::string json = "[";
+            for (size_t i = 0; i < results.size(); ++i) {
+                if (i > 0) json += ",";
+                json += vrutti::core::utils::JsonSerializer::escapeString(results[i]);
+            }
+            json += "]";
+            return json;
+        }
+        return "{}";
     }
 
     std::vector<std::string> SearchPlugin::performSearch(const std::string& query, const std::string& directory) {

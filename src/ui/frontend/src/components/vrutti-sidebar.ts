@@ -3,6 +3,7 @@ import { customElement, state } from 'lit/decorators.js';
 import { unsafeSVG } from 'lit/directives/unsafe-svg.js';
 import { icon_files, icon_search, icon_source_control, icon_debug_alt, icon_extensions, icon_chevron_left, icon_chevron_right, icon_close } from './codicons';
 import './explorer/vrutti-explorer';
+import './vrutti-search';
 import { ExplorerModel, ExplorerItem } from './explorer/explorerModel';
 
 import { globalHoverStyle } from '../shared-styles';
@@ -446,6 +447,8 @@ export class VruttiSidebar extends LitElement {
                   ` : ''}
                 </div>
               `
+            : this.activeTab === 'search'
+            ? html`<vrutti-search></vrutti-search>`
             : html`<div style="padding: 15px; opacity: 0.5;">${this.activeTab} panel not yet implemented.</div>`
           }
         </div>

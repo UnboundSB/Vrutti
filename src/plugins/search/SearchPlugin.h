@@ -15,6 +15,8 @@ namespace vrutti::plugins::search {
         void shutdown() override;
         const char* getName() const override;
 
+        std::string executeCommand(const std::string& command, const std::string& payload) override;
+
         std::vector<std::string> performSearch(const std::string& query, const std::string& directory);
     };
 

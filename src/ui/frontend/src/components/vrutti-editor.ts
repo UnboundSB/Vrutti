@@ -46,6 +46,7 @@ export class VruttiEditor extends LitElement {
 
     private _editorView?: EditorView;
     private _fileContent = '';
+    private _saveTimeout?: number;
 
     async firstUpdated() {
         if (this.filePath) {
@@ -141,7 +142,12 @@ export class VruttiEditor extends LitElement {
 
         const updateListener = EditorView.updateListener.of((update) => {
             if (update.docChanged) {
-                // file modified
+                if (this._saveTimeout) {
+                    clearTimeout(this._saveTimeout);
+                }
+                this._saveTimeout = window.setTimeout(() => {
+                    this.saveFile();
+                }, 800); // Auto-save after 800ms of inactivity
             }
         });
 
