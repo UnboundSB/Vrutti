@@ -1,7 +1,11 @@
-# UI Vendor Structure
+# Directory: vendor
 
-This folder contains external libraries and third-party code that the Vrutti IDE UI relies on.
+## Purpose
+Third-party dependencies and vendor libraries used by the UI.
 
-## Subdirectories
+## Child Directories
+- **imgui/**: Dear ImGui library source code for immediate mode UI rendering.
 
-* **`imgui/`**: This directory contains the Dear ImGui library. It is an extremely lightweight and fast C++ UI framework that we use to render the editor's visual interface. See its internal `structure.md` for more details.
+## Files
+- **structure.md**: Documents the purpose of this directory, its child directories, and files.
+- **webview.h**: Defines the interface and data structures for webview.
