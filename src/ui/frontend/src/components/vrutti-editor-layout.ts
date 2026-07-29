@@ -229,10 +229,15 @@ export class VruttiEditorLayout extends LitElement {
         }
         
         if (targetLeaf) {
-            if (!targetLeaf.tabs.includes(filePath)) {
-                targetLeaf.tabs = [...targetLeaf.tabs, filePath];
-            }
-            targetLeaf.activeTab = filePath;
+            const newTabs = targetLeaf.tabs.includes(filePath) 
+                ? targetLeaf.tabs 
+                : [...targetLeaf.tabs, filePath];
+                
+            this.replaceNode(targetLeaf.id, {
+                ...targetLeaf,
+                tabs: newTabs,
+                activeTab: filePath
+            });
             this.requestUpdate();
         }
     }
@@ -321,15 +326,21 @@ export class VruttiEditorLayout extends LitElement {
         const leaf = this.findNode(this.rootNode, leafId) as LeafNode;
         if (!leaf) return;
 
-        leaf.tabs = leaf.tabs.filter(t => t !== filePath);
+        const newTabs = leaf.tabs.filter(t => t !== filePath);
+        let newActive = leaf.activeTab;
         if (leaf.activeTab === filePath) {
-            leaf.activeTab = leaf.tabs.length > 0 ? leaf.tabs[leaf.tabs.length - 1] : null;
+            newActive = newTabs.length > 0 ? newTabs[newTabs.length - 1] : null;
         }
         
         // Auto-close pane if empty and not root
-        if (leaf.tabs.length === 0 && this.rootNode.id !== leafId) {
+        if (newTabs.length === 0 && this.rootNode.id !== leafId) {
             this.closePane(leafId);
         } else {
+            this.replaceNode(leafId, {
+                ...leaf,
+                tabs: newTabs,
+                activeTab: newActive
+            });
             this.requestUpdate();
         }
     }
@@ -337,7 +348,10 @@ export class VruttiEditorLayout extends LitElement {
     private activateTab(leafId: string, filePath: string) {
         const leaf = this.findNode(this.rootNode, leafId) as LeafNode;
         if (leaf) {
-            leaf.activeTab = filePath;
+            this.replaceNode(leafId, {
+                ...leaf,
+                activeTab: filePath
+            });
             this.activePaneId = leafId;
             this.requestUpdate();
         }

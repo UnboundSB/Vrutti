@@ -16,8 +16,7 @@ export class VruttiApp extends LitElement {
   @state()
   private contextMenu: { x: number, y: number, path: string, name: string, isDirectory: boolean } | null = null;
 
-  @state()
-  private activeFilePath: string | null = null;
+
 
   @state()
   private showTerminal = true;
@@ -173,7 +172,6 @@ export class VruttiApp extends LitElement {
   };
 
   private handleOpenFile = (e: CustomEvent) => {
-    this.activeFilePath = e.detail.path;
     const layout = this.shadowRoot?.querySelector('#main-layout') as any;
     if (layout && layout.openFile) {
         layout.openFile(e.detail.path);
@@ -615,7 +613,10 @@ export class VruttiApp extends LitElement {
         <div class="context-menu" style="left: ${this.contextMenu.x}px; top: ${this.contextMenu.y}px;">
           ${!this.contextMenu.isDirectory ? html`
             <div class="context-menu-item" @click=${() => {
-              this.activeFilePath = this.contextMenu!.path;
+              const layout = this.shadowRoot?.querySelector('#main-layout') as any;
+              if (layout && layout.openFile) {
+                  layout.openFile(this.contextMenu!.path);
+              }
               this.closeContextMenu();
             }}>Open File</div>
           ` : ''}

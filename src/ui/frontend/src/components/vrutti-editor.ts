@@ -55,7 +55,7 @@ export class VruttiEditor extends LitElement {
     }
 
     updated(changedProperties: Map<string, any>) {
-        if (changedProperties.has('filePath') && changedProperties.get('filePath') !== undefined) {
+        if (changedProperties.has('filePath')) {
             if (this.filePath !== changedProperties.get('filePath')) {
                 this.loadFile().then(() => {
                     if (this._editorView) {
