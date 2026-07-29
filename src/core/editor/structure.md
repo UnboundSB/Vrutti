@@ -1,13 +1,12 @@
-# Folder: editor
+# Directory: editor
 
-**Path**: `src/core/editor`
-**Purpose**: Text editor core logic (e.g., PieceTable for efficient edits).
+## Purpose
+Implements the core text editing data structures, such as the Piece Table for efficient text manipulation.
 
-## Contents
+## Child Directories
+*(No child directories)*
 
-### Files
-- **`PieceTable.cpp`**: Piece Table implementation for editor buffers.
-- **`PieceTable.h`**: Piece Table data structure for efficient text buffer modifications (header).
-
-### Files
-- **`structure.md`**: Documentation describing the high-level purpose of items in this folder.
+## Files
+- **PieceTable.cpp**: Implements the Piece Table data structure for efficient text editing.
+- **PieceTable.h**: Defines the interface and data structures for PieceTable.
+- **structure.md**: Documents the purpose of this directory, its child directories, and files.
