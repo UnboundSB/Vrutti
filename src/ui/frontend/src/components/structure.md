@@ -1,21 +1,23 @@
-# Folder: components
+# Directory: components
 
-**Path**: `src/ui/frontend/src/components`
-**Purpose**: UI components (sidebar, explorer, settings, etc.).
+## Purpose
+Reusable Lit Web Components forming the UI building blocks of the IDE.
 
-## Contents
+## Child Directories
+- **explorer/**: Components responsible for the file explorer tree and file navigation.
 
-### Subfolders
-- **`explorer/`**: Explorer tree and file mapping logic.
-
-### Files
-- **`codicons.ts`**: SVG icon constants for standard IDE action buttons.
-- **`vrutti-menubar.ts`**: Custom element for the top application menu bar.
-- **`vrutti-panel.ts`**: Main container element for terminal instances, split views, and bottom-panel management.
-- **`vrutti-settings.ts`**: Settings panel UI component.
-- **`vrutti-sidebar.ts`**: Sidebar layout containing the explorer and other sidepanes.
-- **`vrutti-statusbar.ts`**: Bottom status bar UI element.
-- **`vrutti-terminal.ts`**: Xterm.js integration wrapper for individual shell instances.
-
-### Files
-- **`structure.md`**: Documentation describing the high-level purpose of items in this folder.
+## Files
+- **codicons.ts**: Implements the codicons frontend logic and UI components.
+- **structure.md**: Documents the purpose of this directory, its child directories, and files.
+- **vrutti-debug-console.ts**: Implements the vrutti-debug-console frontend logic and UI components.
+- **vrutti-editor-layout.ts**: Manages the split-pane layout and tab system for code editors.
+- **vrutti-editor.ts**: Wraps the CodeMirror editor and handles file loading/saving via IPC.
+- **vrutti-menubar.ts**: Implements the vrutti-menubar frontend logic and UI components.
+- **vrutti-panel.ts**: Implements the vrutti-panel frontend logic and UI components.
+- **vrutti-settings.ts**: Implements the vrutti-settings frontend logic and UI components.
+- **vrutti-sidebar.ts**: Manages the collapsible sidebar layout and panels.
+- **vrutti-statusbar.ts**: Implements the vrutti-statusbar frontend logic and UI components.
+- **vrutti-terminal.ts**: Implements the vrutti-terminal frontend logic and UI components.
+- **xterm-css.ts**: Implements the xterm-css frontend logic and UI components.
+- **xterm-styles.ts**: Implements the xterm-styles frontend logic and UI components.
+- **xterm.css**: Defines styling rules for the frontend.
