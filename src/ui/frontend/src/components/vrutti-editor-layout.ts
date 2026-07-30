@@ -500,9 +500,7 @@ export class VruttiEditorLayout extends LitElement {
                         <vrutti-editor .filePath=${leaf.activeTab} style="width: 100%; height: 100%;"></vrutti-editor>
                     ` : html`
                         <div class="empty-pane" style="position: relative; width: 100%; height: 100%; overflow: hidden;">
-                            <svg style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.05; pointer-events: none; user-select: none; width: 300px; height: 300px;" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M12 2L2 22H6L12 10L18 22H22L12 2Z" fill="currentColor"/>
-                            </svg>
+                            <img src="./vrutti-logo.png" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.15; pointer-events: none; user-select: none; width: 400px; height: 400px; object-fit: contain;" />
                         </div>
                     `}
                 </div>
