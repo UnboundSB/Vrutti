@@ -23,6 +23,7 @@ The root directory of the Vrutti IDE workspace, containing the main build config
 - **package-lock.json**: Responsible for storing data related to package-lock.json.
 - **package.json**: Defines the NPM dependencies and scripts for the frontend project.
 - **product.json**: Responsible for storing data related to product.json.
+- **structure.md**: Documents the purpose of this directory, its child directories, and files.
 - **summary.md**: Responsible for storing data related to summary.md.
 - **task.md**: Responsible for storing data related to task.md.
 - **tasks.md**: Responsible for storing data related to tasks.md.
