@@ -5,6 +5,7 @@ Reusable Lit Web Components forming the UI building blocks of the IDE.
 
 ## Child Directories
 - **explorer/**: Components responsible for the file explorer tree and file navigation.
+- **scm/**: Source control management components, including git status models and UI.
 
 ## Files
 - **codicons.ts**: Implements the codicons frontend logic and UI components.
