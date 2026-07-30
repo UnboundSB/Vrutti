@@ -407,13 +407,74 @@ export class VruttiEditorLayout extends LitElement {
     private getBasename(path: string) {
         return path.split(/[\\/]/).pop() || path;
     }
+    
+    private onDragStart(e: DragEvent, sourceLeafId: string, filePath: string) {
+        if (e.dataTransfer) {
+            e.dataTransfer.setData('application/json', JSON.stringify({ sourceLeafId, filePath }));
+            e.dataTransfer.effectAllowed = 'move';
+        }
+    }
+
+    private onDrop(e: DragEvent, targetLeafId: string) {
+        e.preventDefault();
+        if (e.dataTransfer) {
+            const dataStr = e.dataTransfer.getData('application/json');
+            if (dataStr) {
+                try {
+                    const data = JSON.parse(dataStr);
+                    if (data.sourceLeafId && data.filePath) {
+                        this.moveTab(data.sourceLeafId, targetLeafId, data.filePath);
+                    }
+                } catch (e) {}
+            }
+        }
+    }
+
+    private moveTab(sourceLeafId: string, targetLeafId: string, filePath: string) {
+        if (sourceLeafId === targetLeafId) return;
+
+        const sourceLeaf = this.findNode(this.rootNode, sourceLeafId) as LeafNode;
+        const targetLeaf = this.findNode(this.rootNode, targetLeafId) as LeafNode;
+        if (!sourceLeaf || !targetLeaf) return;
+
+        const newSourceTabs = sourceLeaf.tabs.filter(t => t !== filePath);
+        let newSourceActive = sourceLeaf.activeTab;
+        if (sourceLeaf.activeTab === filePath) {
+            newSourceActive = newSourceTabs.length > 0 ? newSourceTabs[newSourceTabs.length - 1] : null;
+        }
+
+        const newTargetTabs = targetLeaf.tabs.includes(filePath) ? targetLeaf.tabs : [...targetLeaf.tabs, filePath];
+        
+        this.replaceNode(sourceLeafId, {
+            ...sourceLeaf,
+            tabs: newSourceTabs,
+            activeTab: newSourceActive
+        });
+
+        this.replaceNode(targetLeafId, {
+            ...targetLeaf,
+            tabs: newTargetTabs,
+            activeTab: filePath
+        });
+
+        this.activePaneId = targetLeafId;
+
+        if (newSourceTabs.length === 0 && this.rootNode.id !== sourceLeafId) {
+            this.closePane(sourceLeafId);
+        } else {
+            this.requestUpdate();
+        }
+    }
 
     private renderLeaf(leaf: LeafNode): TemplateResult {
         return html`
             <div class="leaf-container" @click=${() => { this.activePaneId = leaf.id; this.requestUpdate(); }}>
-                <div class="tabs-header">
+                <div class="tabs-header" @dragover=${(e: DragEvent) => e.preventDefault()} @drop=${(e: DragEvent) => this.onDrop(e, leaf.id)}>
                     ${leaf.tabs.map(tab => html`
-                        <div class="tab ${leaf.activeTab === tab ? 'active' : ''}" @click=${() => this.activateTab(leaf.id, tab)}>
+                        <div class="tab ${leaf.activeTab === tab ? 'active' : ''}" 
+                             draggable="true" 
+                             @dragstart=${(e: DragEvent) => this.onDragStart(e, leaf.id, tab)}
+                             @click=${() => this.activateTab(leaf.id, tab)}>
                             <span class="tab-title" title="${tab}">${this.getBasename(tab)}</span>
                             <span class="tab-close" @click=${(e: Event) => this.closeTab(leaf.id, tab, e)}>
                                 <svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor"><path d="M4.28 3.22a.75.75 0 0 0-1.06 1.06L6.94 8l-3.72 3.72a.75.75 0 1 0 1.06 1.06L8 9.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L9.06 8l3.72-3.72a.75.75 0 0 0-1.06-1.06L8 6.94 4.28 3.22z"/></svg>
@@ -438,7 +499,11 @@ export class VruttiEditorLayout extends LitElement {
                     ${leaf.activeTab ? html`
                         <vrutti-editor .filePath=${leaf.activeTab} style="width: 100%; height: 100%;"></vrutti-editor>
                     ` : html`
-                        <div class="empty-pane">Double click a file in the explorer to open.</div>
+                        <div class="empty-pane" style="position: relative; width: 100%; height: 100%; overflow: hidden;">
+                            <svg style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.05; pointer-events: none; user-select: none; width: 300px; height: 300px;" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12 2L2 22H6L12 10L18 22H22L12 2Z" fill="currentColor"/>
+                            </svg>
+                        </div>
                     `}
                 </div>
             </div>
