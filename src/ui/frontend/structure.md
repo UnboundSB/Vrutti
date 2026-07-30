@@ -4,6 +4,7 @@
 Contains the web-based frontend application built with Vite and TypeScript.
 
 ## Child Directories
+- **public/**: Responsible for organizing public related components.
 - **src/**: Source files for the frontend web application.
 
 ## Files
