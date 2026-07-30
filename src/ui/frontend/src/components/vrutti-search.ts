@@ -1,6 +1,14 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
+import { unsafeSVG } from 'lit/directives/unsafe-svg.js';
 import { globalHoverStyle } from '../shared-styles';
+import { icon_chevron_down, icon_replace_all } from './codicons';
+
+interface SearchResult {
+    file: string;
+    line: number;
+    text: string;
+}
 
 @customElement('vrutti-search')
 export class VruttiSearch extends LitElement {
@@ -18,62 +26,163 @@ export class VruttiSearch extends LitElement {
         }
 
         .search-container {
-            padding: 12px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            border-bottom: 1px solid var(--vrutti-surface-border, #2a2e42);
-        }
-
-        .input-group {
+            padding: 12px 8px;
             display: flex;
             flex-direction: column;
             gap: 4px;
         }
 
-        label {
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: #a9b1d6;
+        .search-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 4px;
+        }
+
+        .toggle-chevron {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: #636b95;
+            margin-top: 2px;
+        }
+
+        .toggle-chevron:hover {
+            color: #a6accd;
+        }
+
+        .toggle-chevron svg {
+            width: 14px;
+            height: 14px;
+            transition: transform 0.2s;
+        }
+
+        .toggle-chevron.expanded svg {
+            transform: rotate(0deg);
+        }
+        .toggle-chevron:not(.expanded) svg {
+            transform: rotate(-90deg);
+        }
+
+        .input-wrapper {
+            position: relative;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .input-box {
+            position: relative;
+            display: flex;
+            align-items: center;
+            background: #1a1b26;
+            border: 1px solid #3b4261;
+            border-radius: 4px;
+            padding-right: 70px;
+        }
+        
+        .input-box.replace {
+            padding-right: 24px;
+        }
+
+        .input-box:focus-within {
+            border-color: #7aa2f7;
         }
 
         input {
             width: 100%;
-            box-sizing: border-box;
-            background: #1a1b26;
-            border: 1px solid #3b4261;
+            background: transparent;
+            border: none;
             color: #c0caf5;
-            padding: 6px 8px;
-            border-radius: 4px;
+            padding: 4px 6px;
             font-family: inherit;
             font-size: 13px;
             outline: none;
-            transition: border-color 0.2s;
         }
 
-        input:focus {
-            border-color: #7aa2f7;
+        .input-actions {
+            position: absolute;
+            right: 2px;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+        }
+
+        .action-btn {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: #636b95;
+            border-radius: 3px;
+            font-weight: 600;
+            font-size: 11px;
+            user-select: none;
+        }
+
+        .action-btn svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .action-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #a6accd;
+        }
+
+        .action-btn.active {
+            background: rgba(122, 162, 247, 0.2);
+            color: #7aa2f7;
         }
 
         .results-container {
             flex: 1;
             overflow-y: auto;
-            padding: 8px 0;
+            padding: 0;
+            margin-top: 8px;
+        }
+
+        .file-group {
+            margin-bottom: 8px;
+        }
+
+        .file-header {
+            padding: 4px 8px 4px 24px;
+            font-weight: 600;
+            color: #a9b1d6;
+            background: #1a1b26;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            word-break: break-all;
         }
 
         .result-item {
-            padding: 4px 12px;
+            padding: 2px 8px 2px 36px;
             cursor: pointer;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            color: #c0caf5;
             transition: background 0.1s;
+            display: flex;
+            gap: 8px;
         }
 
         .result-item:hover {
             background: #292e42;
-            color: #7aa2f7;
+        }
+
+        .line-num {
+            color: #565f89;
+            min-width: 24px;
+            text-align: right;
         }
 
         .no-results {
@@ -84,11 +193,17 @@ export class VruttiSearch extends LitElement {
     `];
 
     @state() private query = '';
+    @state() private replaceString = '';
     @state() private directory = '.';
-    @state() private results: string[] = [];
+    @state() private results: SearchResult[] = [];
     @state() private isSearching = false;
+    
+    @state() private replaceExpanded = false;
+    @state() private matchCase = false;
+    @state() private wholeWord = false;
+    @state() private useRegex = false;
 
-    private async performSearch() {
+    private async performSearch(isReplace: boolean = false) {
         if (!this.query.trim()) {
             this.results = [];
             return;
@@ -96,9 +211,21 @@ export class VruttiSearch extends LitElement {
 
         this.isSearching = true;
         try {
+            let actualDir = this.directory;
+            if (!actualDir || actualDir === '.') {
+                actualDir = (window as any).currentWorkspace || '.';
+                if (actualDir.startsWith('file:///')) actualDir = actualDir.substring(8);
+                else if (actualDir.startsWith('file://')) actualDir = actualDir.substring(7);
+            }
+
             const req = {
                 query: this.query,
-                directory: this.directory
+                directory: actualDir,
+                matchCase: this.matchCase,
+                wholeWord: this.wholeWord,
+                useRegex: this.useRegex,
+                isReplace: isReplace,
+                replaceString: this.replaceString
             };
             
             if ((window as any).vruttiSearch) {
@@ -113,59 +240,83 @@ export class VruttiSearch extends LitElement {
         }
     }
 
-    private handleQueryChange(e: Event) {
-        this.query = (e.target as HTMLInputElement).value;
-    }
-
     private handleQueryKeydown(e: KeyboardEvent) {
         if (e.key === 'Enter') {
-            this.performSearch();
+            this.performSearch(false);
         }
     }
 
-    private handleDirChange(e: Event) {
-        this.directory = (e.target as HTMLInputElement).value;
-    }
-    
-    private handleResultClick(result: string) {
-        console.log("Clicked search result:", result);
-        const pathMatch = result.match(/at\s+(.+?)(?::\d+)?$/);
-        if (pathMatch && pathMatch[1]) {
-            let path = pathMatch[1];
-            if (!path.startsWith("file:///")) {
-                path = "file:///" + path;
-            }
-            
-            this.dispatchEvent(new CustomEvent('open-file', {
-                detail: { path: path, name: path.split(/[\\/]/).pop() },
-                bubbles: true,
-                composed: true
-            }));
+    private handleReplaceKeydown(e: KeyboardEvent) {
+        if (e.key === 'Enter') {
+            this.performSearch(true);
         }
+    }
+
+    private handleResultClick(res: SearchResult) {
+        let path = res.file;
+        if (!path.startsWith("file:///")) {
+            path = "file:///" + path;
+        }
+        
+        this.dispatchEvent(new CustomEvent('open-file', {
+            detail: { path: path, name: path.split(/[\\/]/).pop(), line: res.line },
+            bubbles: true,
+            composed: true
+        }));
+    }
+
+    private groupResultsByFile() {
+        const groups: Record<string, SearchResult[]> = {};
+        for (const res of this.results) {
+            if (!groups[res.file]) groups[res.file] = [];
+            groups[res.file].push(res);
+        }
+        return groups;
     }
 
     render() {
+        const grouped = this.groupResultsByFile();
+        
         return html`
             <div class="search-container">
-                <div class="input-group">
-                    <label>Search</label>
-                    <input 
-                        type="text" 
-                        placeholder="Search query..." 
-                        .value=${this.query}
-                        @input=${this.handleQueryChange}
-                        @keydown=${this.handleQueryKeydown}
-                    />
-                </div>
-                <div class="input-group">
-                    <label>Files to include</label>
-                    <input 
-                        type="text" 
-                        placeholder="e.g. src/ or .cpp" 
-                        .value=${this.directory}
-                        @input=${this.handleDirChange}
-                        @keydown=${this.handleQueryKeydown}
-                    />
+                <div class="search-row">
+                    <div class="toggle-chevron ${this.replaceExpanded ? 'expanded' : ''}" @click=${() => this.replaceExpanded = !this.replaceExpanded}>
+                        ${unsafeSVG(icon_chevron_down)}
+                    </div>
+                    
+                    <div class="input-wrapper">
+                        <div class="input-box">
+                            <input 
+                                type="text" 
+                                placeholder="Search" 
+                                .value=${this.query}
+                                @input=${(e: Event) => this.query = (e.target as HTMLInputElement).value}
+                                @keydown=${this.handleQueryKeydown}
+                            />
+                            <div class="input-actions">
+                                <div class="action-btn ${this.matchCase ? 'active' : ''}" @click=${() => { this.matchCase = !this.matchCase; this.performSearch(); }} title="Match Case (Alt+C)">Aa</div>
+                                <div class="action-btn ${this.wholeWord ? 'active' : ''}" @click=${() => { this.wholeWord = !this.wholeWord; this.performSearch(); }} title="Match Whole Word (Alt+W)">ab</div>
+                                <div class="action-btn ${this.useRegex ? 'active' : ''}" @click=${() => { this.useRegex = !this.useRegex; this.performSearch(); }} title="Use Regular Expression (Alt+R)">.*</div>
+                            </div>
+                        </div>
+                        
+                        ${this.replaceExpanded ? html`
+                            <div class="input-box replace">
+                                <input 
+                                    type="text" 
+                                    placeholder="Replace" 
+                                    .value=${this.replaceString}
+                                    @input=${(e: Event) => this.replaceString = (e.target as HTMLInputElement).value}
+                                    @keydown=${this.handleReplaceKeydown}
+                                />
+                                <div class="input-actions">
+                                    <div class="action-btn" @click=${() => this.performSearch(true)} title="Replace All (Ctrl+Alt+Enter)">
+                                        ${unsafeSVG(icon_replace_all)}
+                                    </div>
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
                 </div>
             </div>
             
@@ -173,9 +324,15 @@ export class VruttiSearch extends LitElement {
                 ${this.isSearching ? html`<div class="no-results">Searching...</div>` : ''}
                 ${!this.isSearching && this.results.length === 0 && this.query ? html`<div class="no-results">No results found.</div>` : ''}
                 
-                ${this.results.map(res => html`
-                    <div class="result-item" @click=${() => this.handleResultClick(res)} title=${res}>
-                        ${res}
+                ${Object.entries(grouped).map(([file, items]) => html`
+                    <div class="file-group">
+                        <div class="file-header">${file.split(/[\\/]/).pop()} <span style="opacity:0.5; font-size:9px; margin-left:auto">${items.length}</span></div>
+                        ${items.map(res => html`
+                            <div class="result-item" @click=${() => this.handleResultClick(res)}>
+                                <span class="line-num">${res.line}</span>
+                                <span>${res.text.trim()}</span>
+                            </div>
+                        `)}
                     </div>
                 `)}
             </div>
