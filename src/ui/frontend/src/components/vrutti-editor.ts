@@ -1,7 +1,7 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property, query } from 'lit/decorators.js';
-import { EditorState } from '@codemirror/state';
-import { EditorView, keymap, lineNumbers, highlightActiveLineGutter, highlightSpecialChars, drawSelection, dropCursor, rectangularSelection, crosshairCursor, highlightActiveLine } from '@codemirror/view';
+import { EditorState, StateField, StateEffect, RangeSet } from '@codemirror/state';
+import { EditorView, keymap, lineNumbers, highlightActiveLineGutter, highlightSpecialChars, drawSelection, dropCursor, rectangularSelection, crosshairCursor, highlightActiveLine, gutter, GutterMarker } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { searchKeymap, highlightSelectionMatches } from '@codemirror/search';
 import { autocompletion, completionKeymap, closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
@@ -11,6 +11,58 @@ import { oneDark } from '@codemirror/theme-one-dark';
 import { javascript } from '@codemirror/lang-javascript';
 import { cpp } from '@codemirror/lang-cpp';
 import { json } from '@codemirror/lang-json';
+
+const breakpointEffect = StateEffect.define<{pos: number, on: boolean}>({
+    map: (val, mapping) => ({pos: mapping.mapPos(val.pos), on: val.on})
+});
+
+const breakpointMarker = new class extends GutterMarker {
+    toDOM() {
+        let span = document.createElement("span");
+        span.className = "cm-breakpoint";
+        return span;
+    }
+};
+
+const breakpointState = StateField.define<RangeSet<GutterMarker>>({
+    create() { return RangeSet.empty; },
+    update(set, transaction) {
+        set = set.map(transaction.changes);
+        for (let e of transaction.effects) {
+            if (e.is(breakpointEffect)) {
+                if (e.value.on)
+                    set = set.update({add: [breakpointMarker.range(e.value.pos)]});
+                else
+                    set = set.update({filter: from => from !== e.value.pos});
+            }
+        }
+        return set;
+    }
+});
+
+function toggleBreakpoint(view: EditorView, pos: number) {
+    let breakpoints = view.state.field(breakpointState);
+    let hasBreakpoint = false;
+    breakpoints.between(pos, pos, () => {hasBreakpoint = true});
+    view.dispatch({
+        effects: breakpointEffect.of({pos, on: !hasBreakpoint})
+    });
+}
+
+const breakpointGutter = [
+    breakpointState,
+    gutter({
+        class: "cm-breakpoint-gutter",
+        markers: v => v.state.field(breakpointState),
+        initialSpacer: () => breakpointMarker,
+        domEventHandlers: {
+            mousedown(view, line) {
+                toggleBreakpoint(view, line.from);
+                return true;
+            }
+        }
+    })
+];
 
 @customElement('vrutti-editor')
 export class VruttiEditor extends LitElement {
@@ -38,6 +90,21 @@ export class VruttiEditor extends LitElement {
         .cm-scroller {
             font-family: 'Consolas', 'Courier New', monospace;
             font-size: 14px;
+        }
+        
+        .cm-breakpoint-gutter {
+            width: 14px;
+            cursor: pointer;
+        }
+        
+        .cm-breakpoint {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background-color: #f7768e;
+            border-radius: 50%;
+            margin-top: 5px;
+            margin-left: 2px;
         }
     `;
 
@@ -161,6 +228,7 @@ export class VruttiEditor extends LitElement {
         const state = EditorState.create({
             doc: this._fileContent,
             extensions: [
+                breakpointGutter,
                 lineNumbers(),
                 highlightActiveLineGutter(),
                 highlightSpecialChars(),
