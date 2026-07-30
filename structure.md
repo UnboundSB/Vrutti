@@ -4,6 +4,7 @@
 The root directory of the Vrutti IDE workspace, containing the main build configuration and entry points.
 
 ## Child Directories
+- **.agents/**: Responsible for organizing .agents related components.
 - **build-linux/**: Responsible for organizing build-linux related components.
 - **logos/**: Responsible for storing visual branding assets and logos for the Vrutti IDE.
 - **src/**: The main source code directory containing all C++ and frontend components.
