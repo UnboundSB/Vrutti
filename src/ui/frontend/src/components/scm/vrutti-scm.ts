@@ -1,330 +1,381 @@
-import { LitElement, css, html } from 'lit';
+import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
-import { unsafeSVG } from 'lit/directives/unsafe-svg.js';
-import { SCMModel, SCMFile } from './scmModel';
-import { icon_chevron_down, icon_chevron_right } from '../codicons';
+import { globalHoverStyle } from '../../shared-styles';
+import { 
+    icon_check, 
+    icon_sync, 
+    icon_cloud_upload, 
+    icon_cloud_download, 
+    icon_add, 
+    icon_remove,
+    icon_chevron_down,
+    icon_chevron_right
+} from '../codicons';
 
-// Basic SVG icons for SCM actions
-const icon_add = '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M14 7v1H8v6H7V8H1V7h6V1h1v6h6z"/></svg>';
-const icon_remove = '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M14 7v1H2V7h12z"/></svg>';
-const icon_check = '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M14.431 3.323l-8.47 10-.79-.036-3.35-4.77.818-.574 2.978 4.24 8.051-9.506.763.646z"/></svg>';
-const icon_sync = '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M14.5 4.5l-2.5 2.5h-1l.7-.7H2.5v-1h9.2l-.7-.7v-1l2.5 2.5v-.6zm-13 7l2.5-2.5h1l-.7.7h9.2v1H4.3l.7.7v1L2.5 11.5v.6z"/></svg>';
+interface GitStatusItem {
+    status: string;
+    path: string;
+}
 
 @customElement('vrutti-scm')
-export class VruttiSCM extends LitElement {
-  @state() private model = new SCMModel();
-  @state() private commitMessage = '';
-  @state() private stagedExpanded = true;
-  @state() private changesExpanded = true;
-
-  async connectedCallback() {
-    super.connectedCallback();
-    await this.refreshStatus();
-  }
-
-  private get workspacePath() {
-    return (window as any).currentWorkspace || '';
-  }
-
-  private async runGitCommand(cmd: string): Promise<{ stdout: string, exitCode: number }> {
-    return new Promise((resolve) => {
-      if ((window as any).vruttiGitCommand) {
-        // Evaluate native binding sync via IPC is not supported directly in the stub,
-        // wait, the binding in Window.cpp returns JSON string synchronously via eval.
-        // Actually webview binds are sync or async depending on the wrapper, but usually they return a promise if called from JS.
-        const res = (window as any).vruttiGitCommand(this.workspacePath, cmd);
-        if (res && typeof res.then === 'function') {
-           res.then((jsonStr: string) => resolve(JSON.parse(jsonStr)));
-        } else {
-           resolve(JSON.parse(res));
+export class VruttiScm extends LitElement {
+    static styles = [globalHoverStyle, css`
+        :host {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+            background-color: var(--vrutti-bg, #1a1b26);
+            color: var(--vrutti-text, #c0caf5);
+            font-family: var(--vrutti-font, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif);
         }
-      } else {
-        resolve({ stdout: '', exitCode: -1 });
-      }
-    });
-  }
 
-  private async refreshStatus() {
-    if (!this.workspacePath) return;
-    const res = await this.runGitCommand('git status --porcelain');
-    if (res.exitCode === 0 || res.exitCode === 1) { // git status might exit 1 if changes? No, it exits 0 unless not a repo.
-      this.model.parseGitStatus(res.stdout);
-      this.requestUpdate();
-    } else {
-      // Maybe not a git repo, could init?
-      this.model.parseGitStatus('');
-      this.requestUpdate();
-    }
-  }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            text-transform: uppercase;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            color: var(--vrutti-text-muted, #565f89);
+        }
 
-  private async stageFile(file: SCMFile) {
-    await this.runGitCommand(`git add "${file.resource}"`);
-    await this.refreshStatus();
-  }
+        .actions {
+            display: flex;
+            gap: 4px;
+        }
 
-  private async unstageFile(file: SCMFile) {
-    await this.runGitCommand(`git reset HEAD "${file.resource}"`);
-    await this.refreshStatus();
-  }
+        .icon-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            color: var(--vrutti-text-muted, #565f89);
+        }
 
-  private async commit() {
-    if (!this.commitMessage) return;
-    const msg = this.commitMessage.replace(/"/g, '\\"');
-    await this.runGitCommand(`git commit -m "${msg}"`);
-    this.commitMessage = '';
-    await this.refreshStatus();
-  }
+        .icon-btn:hover {
+            background-color: var(--vrutti-surface-hover, #2a2e42);
+            color: var(--vrutti-text, #c0caf5);
+        }
 
-  private async sync() {
-    // Basic pull then push
-    await this.runGitCommand('git pull');
-    await this.runGitCommand('git push');
-    await this.refreshStatus();
-  }
+        .commit-box {
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            border-bottom: 1px solid var(--vrutti-surface-border, #2a2e42);
+        }
 
-  static styles = css`
-    :host {
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-      color: var(--vrutti-text, #636b95);
-      font-family: var(--vrutti-font, 'Inter', sans-serif);
-      font-size: 13px;
-    }
-    
-    .scm-header {
-      padding: 10px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
+        textarea {
+            width: 100%;
+            min-height: 60px;
+            background: var(--vrutti-input-bg, #1e1e2e);
+            border: 1px solid var(--vrutti-surface-border, #2a2e42);
+            color: var(--vrutti-text, #c0caf5);
+            border-radius: 2px;
+            padding: 6px;
+            font-family: inherit;
+            resize: vertical;
+            box-sizing: border-box;
+        }
 
-    .input-box {
-      width: 100%;
-      box-sizing: border-box;
-      background: var(--vrutti-bg, #0f111a);
-      border: 1px solid var(--vrutti-surface-border, #23273b);
-      color: var(--vrutti-text-bright, #a6accd);
-      padding: 8px;
-      border-radius: 2px;
-      resize: vertical;
-      min-height: 60px;
-      font-family: inherit;
-    }
+        textarea:focus {
+            outline: 1px solid var(--vrutti-accent, #7aa2f7);
+            border-color: transparent;
+        }
 
-    .input-box:focus {
-      outline: 1px solid var(--vrutti-accent, #82aaff);
-      border-color: transparent;
-    }
+        button.primary {
+            background-color: var(--vrutti-accent, #7aa2f7);
+            color: #1a1b26;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 2px;
+            cursor: pointer;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
 
-    .button-row {
-      display: flex;
-      gap: 5px;
-    }
+        button.primary:hover {
+            opacity: 0.9;
+        }
 
-    .btn {
-      flex: 1;
-      background: var(--vrutti-accent, #82aaff);
-      color: #000;
-      border: none;
-      padding: 6px;
-      border-radius: 2px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 5px;
-      font-weight: 600;
-    }
-    
-    .btn:hover {
-      background: var(--vrutti-accent-hover, #a6c4ff);
-    }
+        button.primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
 
-    .btn-secondary {
-      flex: 0 0 auto;
-      background: transparent;
-      color: var(--vrutti-text, #636b95);
-      border: 1px solid var(--vrutti-surface-border, #23273b);
-    }
-    
-    .btn-secondary:hover {
-      background: var(--vrutti-surface-border, #23273b);
-      color: var(--vrutti-text-bright, #a6accd);
-    }
+        .list-section {
+            flex-grow: 1;
+            overflow-y: auto;
+        }
 
-    .scm-list {
-      flex: 1;
-      overflow-y: auto;
-    }
+        .section-header {
+            display: flex;
+            align-items: center;
+            padding: 4px 8px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--vrutti-text, #c0caf5);
+        }
 
-    .section-header {
-      display: flex;
-      align-items: center;
-      padding: 4px 8px;
-      cursor: pointer;
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-    }
+        .section-header:hover {
+            background-color: var(--vrutti-surface-hover, #2a2e42);
+        }
 
-    .section-header:hover {
-      background: var(--vrutti-surface-border, rgba(255, 255, 255, 0.05));
-    }
-    
-    .chevron {
-      width: 16px;
-      height: 16px;
-      margin-right: 4px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    
-    .badge {
-      background: var(--vrutti-surface-border, #23273b);
-      color: var(--vrutti-text-bright, #a6accd);
-      border-radius: 10px;
-      padding: 1px 6px;
-      font-size: 10px;
-      margin-left: auto;
-    }
+        .chevron {
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 4px;
+        }
 
-    .file-item {
-      display: flex;
-      align-items: center;
-      padding: 4px 8px 4px 24px;
-      cursor: pointer;
-    }
-    
-    .file-item:hover {
-      background: var(--vrutti-surface-border, rgba(255, 255, 255, 0.05));
-    }
+        .badge {
+            background-color: var(--vrutti-surface-border, #2a2e42);
+            color: var(--vrutti-text, #c0caf5);
+            border-radius: 10px;
+            padding: 0 6px;
+            font-size: 10px;
+            margin-left: auto;
+        }
 
-    .file-name {
-      color: var(--vrutti-text-bright, #a6accd);
-      margin-right: 6px;
-    }
+        .file-item {
+            display: flex;
+            align-items: center;
+            padding: 2px 8px 2px 24px;
+            cursor: pointer;
+            font-size: 13px;
+        }
 
-    .file-dir {
-      color: var(--vrutti-text, #636b95);
-      font-size: 11px;
-      opacity: 0.7;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      flex: 1;
-    }
-    
-    .file-status {
-      font-size: 11px;
-      margin: 0 8px;
-      font-weight: 600;
-    }
-    
-    .status-modified { color: #e2c08d; }
-    .status-added { color: #81b88b; }
-    .status-deleted { color: #f14c4c; }
-    .status-untracked { color: #81b88b; }
+        .file-item:hover {
+            background-color: var(--vrutti-surface-hover, #2a2e42);
+        }
 
-    .file-actions {
-      display: none;
-      align-items: center;
+        .file-item .file-actions {
+            display: none;
+            margin-left: auto;
+            gap: 4px;
+        }
+
+        .file-item:hover .file-actions {
+            display: flex;
+        }
+
+        .file-name {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-right: 8px;
+        }
+
+        .file-status {
+            font-family: monospace;
+            font-size: 11px;
+            margin-right: 8px;
+            width: 16px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .status-M { color: #e0af68; } /* Modified */
+        .status-A { color: #9ece6a; } /* Added */
+        .status-D { color: #f7768e; } /* Deleted */
+        .status-U { color: #7aa2f7; } /* Untracked */
+    `];
+
+    @state() private workspacePath: string = '';
+    @state() private stagedFiles: GitStatusItem[] = [];
+    @state() private unstagedFiles: GitStatusItem[] = [];
+    @state() private commitMessage: string = '';
+    @state() private stagedExpanded: boolean = true;
+    @state() private unstagedExpanded: boolean = true;
+
+    async firstUpdated() {
+        this.workspacePath = await this.getWorkspacePath();
+        await this.refresh();
     }
 
-    .file-item:hover .file-actions {
-      display: flex;
+    private async getWorkspacePath(): Promise<string> {
+        try {
+            const res = await (window as any).vruttiGetInitialWorkspace();
+            const parsed = JSON.parse(res);
+            return parsed.path || '';
+        } catch (e) {
+            return '';
+        }
     }
 
-    .action-icon {
-      width: 20px;
-      height: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      opacity: 0.7;
+    private async runGit(args: string): Promise<{stdout: string, exitCode: number}> {
+        if (!this.workspacePath) return {stdout: '', exitCode: -1};
+        try {
+            const res = await (window as any).vruttiGitCommand(this.workspacePath, `git ${args}`);
+            return JSON.parse(res);
+        } catch (e) {
+            console.error("Git error:", e);
+            return {stdout: '', exitCode: -1};
+        }
     }
-    
-    .action-icon:hover {
-      opacity: 1;
-      background: var(--vrutti-surface-border, rgba(255, 255, 255, 0.1));
-      border-radius: 3px;
+
+    public async refresh() {
+        const res = await this.runGit('status --porcelain');
+        if (res.exitCode !== 0) return;
+
+        const staged: GitStatusItem[] = [];
+        const unstaged: GitStatusItem[] = [];
+
+        const lines = res.stdout.split('\n');
+        for (const line of lines) {
+            if (line.length < 4) continue;
+            const x = line[0];
+            const y = line[1];
+            const path = line.substring(3).trim();
+
+            if (x !== ' ' && x !== '?') {
+                staged.push({ status: x, path });
+            }
+            if (y !== ' ' && x !== '?') {
+                unstaged.push({ status: y, path });
+            }
+            if (x === '?' && y === '?') {
+                unstaged.push({ status: 'U', path });
+            }
+        }
+
+        this.stagedFiles = staged;
+        this.unstagedFiles = unstaged;
     }
-    
-    svg {
-      width: 16px;
-      height: 16px;
+
+    private async stageFile(path: string) {
+        await this.runGit(`add "${path}"`);
+        await this.refresh();
     }
-  `;
 
-  render() {
-    const changesCount = this.model.unstagedFiles.length + this.model.untrackedFiles.length;
-    const stagedCount = this.model.stagedFiles.length;
+    private async unstageFile(path: string) {
+        await this.runGit(`restore --staged "${path}"`);
+        await this.refresh();
+    }
 
-    return html`
-      <div class="scm-header">
-        <textarea 
-          class="input-box" 
-          placeholder="Message (Ctrl+Enter to commit)"
-          .value="${this.commitMessage}"
-          @input="${(e: any) => this.commitMessage = e.target.value}"
-          @keydown="${(e: KeyboardEvent) => {
-            if (e.ctrlKey && e.key === 'Enter') this.commit();
-          }}"
-        ></textarea>
-        <div class="button-row">
-          <button class="btn" @click="${this.commit}" ?disabled="${!this.commitMessage}">
-            ${unsafeSVG(icon_check)} Commit
-          </button>
-          <button class="btn btn-secondary" @click="${this.sync}" title="Sync Changes">
-            ${unsafeSVG(icon_sync)}
-          </button>
-        </div>
-      </div>
-      
-      <div class="scm-list">
-        ${stagedCount > 0 ? html`
-          <div class="section-header" @click="${() => this.stagedExpanded = !this.stagedExpanded}">
-            <div class="chevron">${unsafeSVG(this.stagedExpanded ? icon_chevron_down : icon_chevron_right)}</div>
-            <span>Staged Changes</span>
-            <span class="badge">${stagedCount}</span>
-          </div>
-          ${this.stagedExpanded ? this.model.stagedFiles.map(f => this.renderFile(f, true)) : ''}
-        ` : ''}
+    private async stageAll() {
+        await this.runGit('add .');
+        await this.refresh();
+    }
 
-        ${changesCount > 0 ? html`
-          <div class="section-header" @click="${() => this.changesExpanded = !this.changesExpanded}">
-            <div class="chevron">${unsafeSVG(this.changesExpanded ? icon_chevron_down : icon_chevron_right)}</div>
-            <span>Changes</span>
-            <span class="badge">${changesCount}</span>
-          </div>
-          ${this.changesExpanded ? [
-            ...this.model.unstagedFiles.map(f => this.renderFile(f, false)),
-            ...this.model.untrackedFiles.map(f => this.renderFile(f, false))
-          ] : ''}
-        ` : ''}
-      </div>
-    `;
-  }
+    private async unstageAll() {
+        await this.runGit('restore --staged .');
+        await this.refresh();
+    }
 
-  private renderFile(file: SCMFile, isStaged: boolean) {
-    const statusLetter = file.status === 'modified' ? 'M' : file.status === 'added' || file.status === 'untracked' ? 'U' : file.status === 'deleted' ? 'D' : 'M';
-    
-    return html`
-      <div class="file-item" title="${file.resource}">
-        <span class="file-name">${file.name}</span>
-        <span class="file-dir">${file.directory}</span>
-        
-        <div class="file-actions">
-          ${isStaged 
-            ? html`<div class="action-icon" @click="${(e: Event) => { e.stopPropagation(); this.unstageFile(file); }}" title="Unstage Changes">${unsafeSVG(icon_remove)}</div>`
-            : html`<div class="action-icon" @click="${(e: Event) => { e.stopPropagation(); this.stageFile(file); }}" title="Stage Changes">${unsafeSVG(icon_add)}</div>`
-          }
-        </div>
-        
-        <span class="file-status status-${file.status}">${statusLetter}</span>
-      </div>
-    `;
-  }
+    private async commit() {
+        if (!this.commitMessage.trim()) return;
+        const safeMsg = this.commitMessage.replace(/"/g, '\\"');
+        const res = await this.runGit(`commit -m "${safeMsg}"`);
+        if (res.exitCode === 0) {
+            this.commitMessage = '';
+            await this.refresh();
+        } else {
+            console.error("Commit failed:", res.stdout);
+        }
+    }
+
+    private async push() {
+        await this.runGit('push');
+        await this.refresh();
+    }
+
+    private async pull() {
+        await this.runGit('pull');
+        await this.refresh();
+    }
+
+    private openFile(path: string) {
+        const fullPath = this.workspacePath + '/' + path;
+        const e = new CustomEvent('open-file', {
+            detail: { filePath: fullPath },
+            bubbles: true,
+            composed: true
+        });
+        this.dispatchEvent(e);
+    }
+
+    private renderStatus(status: string) {
+        let cls = 'status-M';
+        let text = 'M';
+        if (status === 'A') { cls = 'status-A'; text = 'A'; }
+        else if (status === 'D') { cls = 'status-D'; text = 'D'; }
+        else if (status === 'U' || status === '?') { cls = 'status-U'; text = 'U'; }
+        return html`<span class="file-status ${cls}">${text}</span>`;
+    }
+
+    render() {
+        return html`
+            <div class="header">
+                <span>Source Control</span>
+                <div class="actions">
+                    <div class="icon-btn" title="Refresh" @click=${this.refresh} .innerHTML=${icon_sync}></div>
+                    <div class="icon-btn" title="Pull" @click=${this.pull} .innerHTML=${icon_cloud_download}></div>
+                    <div class="icon-btn" title="Push" @click=${this.push} .innerHTML=${icon_cloud_upload}></div>
+                </div>
+            </div>
+
+            <div class="commit-box">
+                <textarea 
+                    placeholder="Message" 
+                    .value=${this.commitMessage}
+                    @input=${(e: any) => this.commitMessage = e.target.value}
+                ></textarea>
+                <button class="primary" ?disabled=${!this.commitMessage.trim() || this.stagedFiles.length === 0} @click=${this.commit}>
+                    <span .innerHTML=${icon_check}></span> Commit
+                </button>
+            </div>
+
+            <div class="list-section">
+                <!-- Staged Changes -->
+                <div class="section-header" @click=${() => this.stagedExpanded = !this.stagedExpanded}>
+                    <div class="chevron" .innerHTML=${this.stagedExpanded ? icon_chevron_down : icon_chevron_right}></div>
+                    Staged Changes
+                    <div class="badge">${this.stagedFiles.length}</div>
+                    <div style="flex-grow: 1;"></div>
+                    <div class="icon-btn" title="Unstage All" @click=${(e: Event) => { e.stopPropagation(); this.unstageAll(); }} .innerHTML=${icon_remove}></div>
+                </div>
+                ${this.stagedExpanded ? this.stagedFiles.map(f => html`
+                    <div class="file-item" @click=${() => this.openFile(f.path)}>
+                        ${this.renderStatus(f.status)}
+                        <span class="file-name" title="${f.path}">${f.path}</span>
+                        <div class="file-actions">
+                            <div class="icon-btn" title="Unstage Changes" @click=${(e: Event) => { e.stopPropagation(); this.unstageFile(f.path); }} .innerHTML=${icon_remove}></div>
+                        </div>
+                    </div>
+                `) : ''}
+
+                <!-- Changes -->
+                <div class="section-header" @click=${() => this.unstagedExpanded = !this.unstagedExpanded}>
+                    <div class="chevron" .innerHTML=${this.unstagedExpanded ? icon_chevron_down : icon_chevron_right}></div>
+                    Changes
+                    <div class="badge">${this.unstagedFiles.length}</div>
+                    <div style="flex-grow: 1;"></div>
+                    <div class="icon-btn" title="Stage All" @click=${(e: Event) => { e.stopPropagation(); this.stageAll(); }} .innerHTML=${icon_add}></div>
+                </div>
+                ${this.unstagedExpanded ? this.unstagedFiles.map(f => html`
+                    <div class="file-item" @click=${() => this.openFile(f.path)}>
+                        ${this.renderStatus(f.status)}
+                        <span class="file-name" title="${f.path}">${f.path}</span>
+                        <div class="file-actions">
+                            <div class="icon-btn" title="Stage Changes" @click=${(e: Event) => { e.stopPropagation(); this.stageFile(f.path); }} .innerHTML=${icon_add}></div>
+                        </div>
+                    </div>
+                `) : ''}
+            </div>
+        `;
+    }
 }
