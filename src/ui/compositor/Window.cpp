@@ -540,6 +540,50 @@ namespace vrutti::ui {
             return result;
         });
 
+        w->bind("vruttiGitCommand", [this](const std::string& req) -> std::string {
+            auto parsedReq = vrutti::core::utils::JsonParser::parse(req);
+            std::string stdoutStr = "";
+            int exitCode = -1;
+
+            if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 2) {
+                auto cwdNode = parsedReq->arrayElements[0];
+                auto cmdNode = parsedReq->arrayElements[1];
+                if (cwdNode && cwdNode->type == vrutti::core::utils::JsonNode::Type::String &&
+                    cmdNode && cmdNode->type == vrutti::core::utils::JsonNode::Type::String) {
+                    
+                    std::string cwd = vrutti::core::utils::JsonParser::unescapeString(cwdNode->stringValue);
+                    std::string cmd = vrutti::core::utils::JsonParser::unescapeString(cmdNode->stringValue);
+                    
+#ifdef _WIN32
+                    std::string fullCmd = "cd /d \"" + cwd + "\" && " + cmd + " 2>&1";
+                    FILE* pipe = _popen(fullCmd.c_str(), "r");
+#else
+                    std::string fullCmd = "cd \"" + cwd + "\" && " + cmd + " 2>&1";
+                    FILE* pipe = popen(fullCmd.c_str(), "r");
+#endif
+                    if (pipe) {
+                        char buffer[1024];
+                        while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
+                            stdoutStr += buffer;
+                        }
+#ifdef _WIN32
+                        exitCode = _pclose(pipe);
+#else
+                        exitCode = pclose(pipe);
+                        if (WIFEXITED(exitCode)) {
+                            exitCode = WEXITSTATUS(exitCode);
+                        }
+#endif
+                    }
+                }
+            }
+            std::string result = "{";
+            result += "\"stdout\":" + vrutti::core::utils::JsonSerializer::escapeString(stdoutStr) + ",";
+            result += "\"exitCode\":" + std::to_string(exitCode);
+            result += "}";
+            return result;
+        });
+
         return true;
     }
 
