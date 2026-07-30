@@ -14,6 +14,7 @@ Reusable Lit Web Components forming the UI building blocks of the IDE.
 - **vrutti-editor.ts**: Wraps the CodeMirror editor and handles file loading/saving via IPC.
 - **vrutti-menubar.ts**: Implements the vrutti-menubar frontend logic and UI components.
 - **vrutti-panel.ts**: Implements the vrutti-panel frontend logic and UI components.
+- **vrutti-search.ts**: Implements the vrutti-search frontend logic and UI components.
 - **vrutti-settings.ts**: Implements the vrutti-settings frontend logic and UI components.
 - **vrutti-sidebar.ts**: Manages the collapsible sidebar layout and panels.
 - **vrutti-statusbar.ts**: Implements the vrutti-statusbar frontend logic and UI components.

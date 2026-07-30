@@ -137,6 +137,13 @@ export class VruttiEditor extends LitElement {
                     return true;
                 },
                 preventDefault: true
+            },
+            {
+                key: "Enter",
+                run: () => {
+                    this.saveFile();
+                    return false; // let the default enter behavior continue (insert newline)
+                }
             }
         ]);
 
