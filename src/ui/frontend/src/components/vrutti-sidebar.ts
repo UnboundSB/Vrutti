@@ -4,6 +4,7 @@ import { unsafeSVG } from 'lit/directives/unsafe-svg.js';
 import { icon_files, icon_search, icon_source_control, icon_debug_alt, icon_extensions, icon_chevron_left, icon_chevron_right, icon_close } from './codicons';
 import './explorer/vrutti-explorer';
 import './vrutti-search';
+import './scm/vrutti-scm';
 import { ExplorerModel, ExplorerItem } from './explorer/explorerModel';
 
 import { globalHoverStyle } from '../shared-styles';
@@ -449,6 +450,8 @@ export class VruttiSidebar extends LitElement {
               `
             : this.activeTab === 'search'
             ? html`<vrutti-search></vrutti-search>`
+            : this.activeTab === 'scm'
+            ? html`<vrutti-scm></vrutti-scm>`
             : html`<div style="padding: 15px; opacity: 0.5;">${this.activeTab} panel not yet implemented.</div>`
           }
         </div>
