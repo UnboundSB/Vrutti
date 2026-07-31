@@ -43,7 +43,7 @@ int main() {
 
     // We will uncomment these as we implement them
     run_memory_tests();
-    // run_concurrency_tests();
+    run_concurrency_tests();
     // run_editor_tests();
     // run_fs_utils_tests();
 
