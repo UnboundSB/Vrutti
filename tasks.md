@@ -6,7 +6,7 @@ The invisible foundation of the IDE is completely bulletproof and heavily optimi
 - `[x]` **Concurrency**: Implemented `ThreadPool` and Thread-safe `Event/Emitter` models.
 - `[x]` **Editor Text Core**: Gutted basic arrays and built an O(log N) **Arena-Backed Red-Black Piece Tree**.
 - `[x]` **Massive File Optimizations**: Implemented **True Lazy Loading** (0MB RAM for 5GB files), 4KB LRU Caching, SIMD `LineScanner`, and `StringPool`.
-- `[x]` **Architecture Bridging**: Built the `IPCClient` to decouple from Electron, allowing VS Code extensions to run invisibly in a background Node.js process while communicating with C++ via JSON-RPC.
+- `[x]` **Architecture Bridging**: Built the `IPCClient` to decouple from Electron, allowing extensions to run invisibly in a background Node.js process while communicating with C++ via JSON-RPC.
 
 ---
 
