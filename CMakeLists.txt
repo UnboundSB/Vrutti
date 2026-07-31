@@ -70,7 +70,7 @@ target_link_libraries(vrutti_search PRIVATE vrutti_core)
 # Rigorous Unit Testing Pipeline
 enable_testing()
 
-add_executable(vrutti_test test/main.cpp)
+add_executable(vrutti_test test/main.cpp test/test_memory.cpp)
 target_link_libraries(vrutti_test PRIVATE vrutti_core)
 add_test(NAME CoreTests COMMAND vrutti_test)
 # Integration Testing (Mocks)
