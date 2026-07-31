@@ -9,5 +9,5 @@
 6. **Titlebar Menus**: Designed and built `<vrutti-menubar>` component for native-feeling OS dropdown menus (File, Edit, Selection, View, Terminal) with hover-switch capability and click-away listeners.
 
 ## Pending Tasks
-1. **VS Code Extension Compatibility**: Build the Node.js Extension Host bridge to support VS Code themes and syntax highlighting. Map VS Code theme CSS variables to our frontend.
+1. **Extension Compatibility**: Build the Node.js Extension Host bridge to support themes and syntax highlighting. Map standard theme CSS variables to our frontend.
 2. **User Configuration**: Implement a setup flow for user-specific configuration (like a username) so it doesn't default to "User".
