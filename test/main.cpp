@@ -45,7 +45,7 @@ int main() {
     run_memory_tests();
     run_concurrency_tests();
     run_editor_tests();
-    // run_fs_utils_tests();
+    run_fs_utils_tests();
 
     std::cout << "========================================" << std::endl;
     std::cout << "Tests Passed: " << g_tests_passed << std::endl;
