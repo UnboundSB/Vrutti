@@ -26,7 +26,7 @@ Index of this file:
 // Navigating this file:
 // - In Visual Studio: Ctrl+Comma ("Edit.GoToAll") can follow symbols inside comments, whereas Ctrl+F12 ("Edit.GoToImplementation") cannot.
 // - In Visual Studio w/ Visual Assist installed: Alt+G ("VAssistX.GoToImplementation") can also follow symbols inside comments.
-// - In VS Code, CLion, etc.: Ctrl+Click can follow symbols inside comments.
+// - In Code Editor, CLion, etc.: Ctrl+Click can follow symbols inside comments.
 
 //-----------------------------------------------------------------------------
 // [SECTION] Commentary
@@ -4902,3 +4902,4 @@ void ImGui::Columns(int columns_count, const char* id, bool borders)
 //-------------------------------------------------------------------------
 
 #endif // #ifndef IMGUI_DISABLE
+
