@@ -12,7 +12,9 @@
         throw std::runtime_error(std::string("Assertion failed: ") + #expected + " == " + #actual + " at " + __FILE__ + ":" + std::to_string(__LINE__)); \
     }
 
-extern void run_test(const std::string& name, void (*test_func)());
+#include <functional>
+
+extern void run_test(const std::string& name, std::function<void()> test_func);
 
 namespace {
     void test_arena_basic_allocation() {
