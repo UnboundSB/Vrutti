@@ -44,6 +44,8 @@ export class VruttiEditorLayout extends LitElement {
             width: 100%;
             height: 100%;
             overflow: hidden;
+            min-height: 0;
+            min-width: 0;
         }
 
         .split-container.horizontal {
@@ -58,6 +60,8 @@ export class VruttiEditorLayout extends LitElement {
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            min-height: 0;
+            min-width: 0;
         }
 
         .sash {
@@ -88,20 +92,19 @@ export class VruttiEditorLayout extends LitElement {
             width: 100%;
             height: 100%;
             background: #1e1e1e;
+            min-height: 0;
+            min-width: 0;
         }
 
         .tabs-header {
             display: flex;
             background: #1a1b26;
             height: 35px;
+            min-height: 35px;
             border-bottom: 1px solid #2a2e42;
             align-items: center;
             overflow-x: auto;
             overflow-y: hidden;
-        }
-
-        .tabs-header::-webkit-scrollbar {
-            display: none;
         }
 
         .tab {
@@ -117,6 +120,7 @@ export class VruttiEditorLayout extends LitElement {
             user-select: none;
             min-width: 80px;
             max-width: 200px;
+            flex-shrink: 0;
         }
 
         .tab:hover {
@@ -185,6 +189,8 @@ export class VruttiEditorLayout extends LitElement {
             position: relative;
             overflow: hidden;
             display: flex;
+            min-width: 0;
+            min-height: 0;
         }
 
         .empty-pane {

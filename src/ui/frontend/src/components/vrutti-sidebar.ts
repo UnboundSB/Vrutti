@@ -282,6 +282,8 @@ export class VruttiSidebar extends LitElement {
       font-size: 13px;
       white-space: nowrap;
       overflow-x: hidden;
+      flex: 1;
+      min-height: 0;
     }
 
     svg {
