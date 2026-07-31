@@ -5,7 +5,7 @@ export const globalHoverStyle = css`
     transition: background-color 0.1s ease, filter 0.1s ease;
   }
   
-  /* VS Code style subtle highlight */
+  /* Code Editor style subtle highlight */
   button:hover:not(.close-btn), 
   .menu-item:hover, 
   .category-item:hover, 
@@ -30,3 +30,4 @@ export const globalHoverStyle = css`
     background-color: rgba(255, 255, 255, 0.15);
   }
 `;
+
