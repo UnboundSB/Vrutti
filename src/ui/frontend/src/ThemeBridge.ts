@@ -2,9 +2,9 @@
  * ThemeBridge
  * 
  * This module is responsible for connecting to the Node.js Extension Host 
- * to stream VS Code theme variables into our custom Lit frontend.
+ * to stream Editor theme variables into our custom Lit frontend.
  * 
- * Vrutti IDE maps standard VS Code token colors into custom glassmorphism
+ * Vrutti IDE maps standard Editor token colors into custom glassmorphism
  * and modern variables.
  */
 
@@ -52,7 +52,7 @@ export class ThemeBridge {
   }
 
   /**
-   * Maps VS Code standard theme colors to Vrutti custom variables.
+   * Maps Editor standard theme colors to Vrutti custom variables.
    * e.g. "editor.background" -> "--vrutti-bg"
    */
   private applyTheme(themeColors: Record<string, string>): void {
