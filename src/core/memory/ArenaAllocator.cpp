@@ -22,8 +22,9 @@ namespace vrutti::core::memory {
         size_t padding = (alignmentOffset == 0) ? 0 : (alignment - alignmentOffset);
         
         if (m_currentBlock->used + padding + size > m_currentBlock->size) {
-            allocateNewBlock(size);
-            padding = 0; // New block is assumed to be aligned for basic types by malloc
+            allocateNewBlock(size + alignment); // Guarantee room for object + alignment padding
+            size_t newAlignmentOffset = reinterpret_cast<uintptr_t>(m_currentBlock->memory) % alignment;
+            padding = (newAlignmentOffset == 0) ? 0 : (alignment - newAlignmentOffset);
         }
 
         void* ptr = m_currentBlock->memory + m_currentBlock->used + padding;

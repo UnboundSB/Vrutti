@@ -47,7 +47,11 @@ namespace vrutti::core::memory {
             // Dispose in reverse order of addition
             for (auto it = toDispose.rbegin(); it != toDispose.rend(); ++it) {
                 if (*it) {
-                    (*it)->dispose();
+                    try {
+                        (*it)->dispose();
+                    } catch (...) {
+                        // Suppress exception to ensure all resources are disposed
+                    }
                 }
             }
         }
