@@ -14,6 +14,7 @@ Core module encapsulating components functionality and logic.
 - **vrutti-editor.ts**: Implements internal vrutti-editor.ts mechanisms.
 - **vrutti-menubar.ts**: Implements internal vrutti-menubar.ts mechanisms.
 - **vrutti-panel.ts**: Implements internal vrutti-panel.ts mechanisms.
+- **vrutti-quick-open.ts**: Implements internal vrutti-quick-open.ts mechanisms.
 - **vrutti-search.ts**: Implements internal vrutti-search.ts mechanisms.
 - **vrutti-settings.ts**: Implements internal vrutti-settings.ts mechanisms.
 - **vrutti-sidebar.ts**: Implements internal vrutti-sidebar.ts mechanisms.
