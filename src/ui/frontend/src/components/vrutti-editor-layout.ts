@@ -57,6 +57,7 @@ export class VruttiEditorLayout extends LitElement {
         .split-container {
             display: flex;
             width: 100%;
+            height: 100%;
             flex: 1 1 0%;
             overflow: hidden;
             min-height: 0;
@@ -105,6 +106,7 @@ export class VruttiEditorLayout extends LitElement {
             display: flex;
             flex-direction: column;
             width: 100%;
+            height: 100%;
             flex: 1 1 0%;
             background: #1e1e1e;
             min-height: 0;
@@ -440,12 +442,27 @@ export class VruttiEditorLayout extends LitElement {
     private onDrop(e: DragEvent, targetLeafId: string) {
         e.preventDefault();
         if (e.dataTransfer) {
+            // Handle OS drag and drop
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                for (let i = 0; i < e.dataTransfer.files.length; i++) {
+                    const file = e.dataTransfer.files[i];
+                    // file.path is available in many webviews like electron
+                    const path = (file as any).path || file.name;
+                    this.activePaneId = targetLeafId;
+                    this.openFile(path);
+                }
+                return;
+            }
+
             const dataStr = e.dataTransfer.getData('application/json');
             if (dataStr) {
                 try {
                     const data = JSON.parse(dataStr);
                     if (data.sourceLeafId && data.filePath) {
                         this.moveTab(data.sourceLeafId, targetLeafId, data.filePath);
+                    } else if (data.source === 'explorer' && data.filePath) {
+                        this.activePaneId = targetLeafId;
+                        this.openFile(data.filePath);
                     }
                 } catch (e) {}
             }
