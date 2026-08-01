@@ -382,6 +382,7 @@ export class VruttiGitGraph extends LitElement {
         if (branchRes.exitCode === 0) {
             this.currentBranch = branchRes.stdout.trim();
         }
+
         const res = await this.runGit('log --all --reflog --date-order --format="%H@@@%P@@@%d@@@%s@@@%cd@@@%an" --date=short');
         if (res.exitCode !== 0) {
             this.errorMsg = `Git Error (Code ${res.exitCode}): ${res.stdout}`;
@@ -462,18 +463,9 @@ export class VruttiGitGraph extends LitElement {
         const svgHeight = (this.maxCols + 1) * nodeSpacingY + padding * 2;
 
         const nodePositions = new Map<string, {x: number, y: number}>();
-        let mainLane = 0;
-        this.graphRows.forEach((row, i) => {
-            if (row.commit.refs.includes('main') || row.commit.refs.includes('master')) {
-                mainLane = row.colIndex;
-            }
-        });
-
         this.graphRows.forEach((row, i) => {
             const x = (this.graphRows.length - 1 - i) * nodeSpacingX + padding;
-            // Center main lane
-            const yOffset = (this.maxCols / 2 - mainLane) * nodeSpacingY;
-            const y = row.colIndex * nodeSpacingY + padding + (this.maxCols > 0 ? yOffset : 0);
+            const y = (this.maxCols - row.colIndex) * nodeSpacingY + padding;
             nodePositions.set(row.commit.hash, {x, y});
         });
 
