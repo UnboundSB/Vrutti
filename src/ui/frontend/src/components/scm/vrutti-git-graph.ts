@@ -87,7 +87,13 @@ export class VruttiGitGraph extends LitElement {
             font-family: inherit;
         }
 
-        .close-btn {
+        .window-controls {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .close-btn, .maximize-btn {
             background: transparent;
             border: none;
             color: #565f89;
@@ -97,6 +103,13 @@ export class VruttiGitGraph extends LitElement {
             align-items: center;
             justify-content: center;
             border-radius: 4px;
+            width: 24px;
+            height: 24px;
+        }
+
+        .close-btn:hover, .maximize-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #c0caf5;
         }
 
         .close-btn:hover {
@@ -284,6 +297,7 @@ export class VruttiGitGraph extends LitElement {
     @state() private searchQuery: string = '';
     @state() private errorMsg: string = '';
     @state() private currentBranch: string = '';
+    @state() private isMaximized: boolean = false;
 
     @state() private pos = { x: 100, y: 100 };
     @state() private zoom = 1.0;
@@ -333,7 +347,8 @@ export class VruttiGitGraph extends LitElement {
     }
 
     private startDrag = (e: MouseEvent) => {
-        if ((e.target as HTMLElement).closest('.search-bar') || (e.target as HTMLElement).closest('.close-btn')) return;
+        if (this.isMaximized) return;
+        if ((e.target as HTMLElement).closest('.search-bar') || (e.target as HTMLElement).closest('.window-controls')) return;
         this.isDragging = true;
         this.dragStart = { x: e.clientX - this.pos.x, y: e.clientY - this.pos.y };
         window.addEventListener('mousemove', this.doDrag);
@@ -506,7 +521,23 @@ export class VruttiGitGraph extends LitElement {
         });
 
         return html`
-            <div class="header" @mousedown=${this.startDrag}>
+            <style>
+                :host {
+                    ${this.isMaximized ? `
+                        position: fixed !important;
+                        top: 0 !important;
+                        left: 0 !important;
+                        width: 100vw !important;
+                        height: 100vh !important;
+                        transform: none !important;
+                        border-radius: 0 !important;
+                        z-index: 100000 !important;
+                    ` : `
+                        transform: translate(${this.pos.x}px, ${this.pos.y}px);
+                    `}
+                }
+            </style>
+            <div class="header" @mousedown=${this.startDrag} @dblclick=${() => this.isMaximized = !this.isMaximized}>
                 <div class="title">Git Topology Map</div>
                 <div class="zoom-controls">
                     <button class="zoom-btn" @click=${() => this.zoom = Math.max(0.5, this.zoom - 0.2)}>-</button>
@@ -515,7 +546,12 @@ export class VruttiGitGraph extends LitElement {
                 <div class="search-bar">
                     <input type="text" placeholder="Search..." .value=${this.searchQuery} @input=${(e: any) => this.searchQuery = e.target.value} />
                 </div>
-                <button class="close-btn" @click=${this.closeWindow}>X</button>
+                <div class="window-controls">
+                    <button class="maximize-btn" @click=${() => this.isMaximized = !this.isMaximized}>
+                        ${this.isMaximized ? '❐' : '□'}
+                    </button>
+                    <button class="close-btn" @click=${this.closeWindow}>X</button>
+                </div>
             </div>
             <div class="content">
                 ${this.errorMsg ? html`
