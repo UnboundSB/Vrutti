@@ -262,8 +262,15 @@ export class VruttiEditorLayout extends LitElement {
                 tabs: newTabs,
                 activeTab: filePath
             });
+            this.dispatchActiveFile(filePath);
             this.requestUpdate();
         }
+    }
+
+    private dispatchActiveFile(path: string | null) {
+        window.dispatchEvent(new CustomEvent('active-file-changed', {
+            detail: { path }
+        }));
     }
 
     private findNode(node: LayoutNode, id: string): LayoutNode | null {
@@ -339,7 +346,10 @@ export class VruttiEditorLayout extends LitElement {
             // if active pane was deleted, activate first available leaf
             if (this.activePaneId === leafId) {
                 const firstLeaf = this.findFirstLeaf(this.rootNode);
-                if (firstLeaf) this.activePaneId = firstLeaf.id;
+                if (firstLeaf) {
+                    this.activePaneId = firstLeaf.id;
+                    this.dispatchActiveFile(firstLeaf.activeTab);
+                }
             }
             this.requestUpdate();
         }
@@ -365,6 +375,9 @@ export class VruttiEditorLayout extends LitElement {
                 tabs: newTabs,
                 activeTab: newActive
             });
+            if (this.activePaneId === leafId) {
+                this.dispatchActiveFile(newActive);
+            }
             this.requestUpdate();
         }
     }
@@ -377,6 +390,7 @@ export class VruttiEditorLayout extends LitElement {
                 activeTab: filePath
             });
             this.activePaneId = leafId;
+            this.dispatchActiveFile(filePath);
             this.requestUpdate();
         }
     }
@@ -497,6 +511,7 @@ export class VruttiEditorLayout extends LitElement {
         });
 
         this.activePaneId = targetLeafId;
+        this.dispatchActiveFile(filePath);
 
         if (newSourceTabs.length === 0 && this.rootNode.id !== sourceLeafId) {
             this.closePane(sourceLeafId);
