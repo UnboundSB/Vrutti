@@ -1,12 +1,9 @@
 # Directory: events
 
 ## Purpose
-Provides event buses and observable patterns for internal messaging.
-
-## Child Directories
-*(No child directories)*
+Core module encapsulating events functionality and logic.
 
 ## Files
-- **Event.h**: Defines the interface and data structures for Event.
-- **Observable.h**: Defines the interface and data structures for Observable.
-- **structure.md**: Documents the purpose of this directory, its child directories, and files.
+- **Event.h**: Implements internal Event.h mechanisms.
+- **Observable.h**: Implements internal Observable.h mechanisms.
+
