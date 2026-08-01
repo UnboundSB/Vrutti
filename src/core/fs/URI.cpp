@@ -1,9 +1,14 @@
 #include "URI.h"
 #include <algorithm>
+#include <stdexcept>
 
 namespace vrutti::core::fs {
 
-    URI::URI(std::string rawUri) : m_rawUri(std::move(rawUri)) {}
+    URI::URI(std::string rawUri) : m_rawUri(std::move(rawUri)) {
+        if (m_rawUri.length() > 65535) {
+            throw std::length_error("URI exceeds maximum supported length of 65535 characters");
+        }
+    }
 
     void URI::parseIfNeeded() const {
         if (m_isParsed) return;
