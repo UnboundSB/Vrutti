@@ -496,12 +496,18 @@ export class VruttiGitGraph extends LitElement {
                 <button class="close-btn" @click=${this.closeWindow}>X</button>
             </div>
             <div class="content">
-                <div class="canvas-scroll-view" @wheel=${this.handleWheel} @mousedown=${this.handleMouseDown} @mousemove=${this.handleMouseMove} @mouseup=${this.handleMouseUp} @mouseleave=${this.handleMouseUp}>
-                    <div class="canvas-container" style="width: ${svgWidth}px; height: ${svgHeight}px; transform: scale(${this.zoom});">
-                        <svg width="${svgWidth}" height="${svgHeight}" style="position: absolute; top: 0; left: 0;">${edgeLines}${nodeElements}</svg>
-                        ${htmlLabels}
+                ${this.errorMsg ? html`
+                    <div style="padding: 16px; color: #f7768e; white-space: pre-wrap; font-family: monospace; overflow-y: auto; flex: 1;">
+                        ${this.errorMsg}
                     </div>
-                </div>
+                ` : html`
+                    <div class="canvas-scroll-view" @wheel=${this.handleWheel} @mousedown=${this.handleMouseDown} @mousemove=${this.handleMouseMove} @mouseup=${this.handleMouseUp} @mouseleave=${this.handleMouseUp}>
+                        <div class="canvas-container" style="width: ${svgWidth}px; height: ${svgHeight}px; transform: scale(${this.zoom});">
+                            <svg width="${svgWidth}" height="${svgHeight}" style="position: absolute; top: 0; left: 0;">${edgeLines}${nodeElements}</svg>
+                            ${htmlLabels}
+                        </div>
+                    </div>
+                `}
                 ${this.selectedCommit ? html`
                     <div class="detail-panel">
                         <div class="detail-header">
