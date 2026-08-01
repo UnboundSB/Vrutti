@@ -216,14 +216,32 @@ export class VruttiGitGraph extends LitElement {
         }
 
         .detail-panel {
-            width: 300px;
-            border-left: 1px solid var(--vrutti-surface-border, #2a2e42);
-            background: rgba(26, 27, 38, 0.5);
+            position: absolute;
+            bottom: 24px;
+            right: 24px;
+            width: 350px;
+            background: rgba(22, 22, 30, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
             padding: 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            z-index: 100;
+            max-height: 400px;
             overflow-y: auto;
+        }
+
+        .detail-close-btn {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: transparent;
+            border: none;
+            color: #565f89;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .detail-close-btn:hover {
+            color: #f7768e;
         }
 
         .action-buttons {
@@ -462,7 +480,7 @@ export class VruttiGitGraph extends LitElement {
                 }
             });
 
-            nodeElements.push(svg`<circle cx="${pos.x}" cy="${pos.y}" r="10" fill="#ffffff" stroke="${color}" stroke-width="5" opacity="${opacity}" class="commit-node" @click=${() => this.selectedCommit = row.commit} />`);
+            nodeElements.push(svg`<circle cx="${pos.x}" cy="${pos.y}" r="10" fill="#ffffff" stroke="${color}" stroke-width="5" opacity="${opacity}" class="commit-node" @click=${() => this.selectedCommit = row.commit} style="transform-origin: ${pos.x}px ${pos.y}px;" />`);
             
             const isSelected = this.selectedCommit === row.commit;
             htmlLabels.push(html`
@@ -510,6 +528,7 @@ export class VruttiGitGraph extends LitElement {
                 `}
                 ${this.selectedCommit ? html`
                     <div class="detail-panel">
+                        <button class="detail-close-btn" @click=${() => this.selectedCommit = null}>✖</button>
                         <div class="detail-header">
                             <span class="hash">${this.selectedCommit.hash.substring(0, 8)}</span>
                             <span class="date">${this.selectedCommit.date}</span>
