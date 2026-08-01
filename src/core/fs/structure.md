@@ -1,19 +1,16 @@
 # Directory: fs
 
 ## Purpose
-Responsible for file system operations, paths, URIs, and workspace management.
-
-## Child Directories
-*(No child directories)*
+Core module encapsulating fs functionality and logic.
 
 ## Files
-- **Glob.cpp**: Implements the Glob core logic and functionality.
-- **Glob.h**: Defines the interface and data structures for Glob.
-- **Path.cpp**: Implements the Path core logic and functionality.
-- **Path.h**: Defines the interface and data structures for Path.
-- **Stream.h**: Defines the interface and data structures for Stream.
-- **URI.cpp**: Implements the URI core logic and functionality.
-- **URI.h**: Defines the interface and data structures for URI.
-- **Workspace.cpp**: Implements the Workspace core logic and functionality.
-- **Workspace.h**: Defines the interface and data structures for Workspace.
-- **structure.md**: Documents the purpose of this directory, its child directories, and files.
+- **Glob.cpp**: Implements internal Glob.cpp mechanisms.
+- **Glob.h**: Implements internal Glob.h mechanisms.
+- **Path.cpp**: Implements internal Path.cpp mechanisms.
+- **Path.h**: Implements internal Path.h mechanisms.
+- **Stream.h**: Implements internal Stream.h mechanisms.
+- **URI.cpp**: Implements internal URI.cpp mechanisms.
+- **URI.h**: Implements internal URI.h mechanisms.
+- **Workspace.cpp**: Implements internal Workspace.cpp mechanisms.
+- **Workspace.h**: Implements internal Workspace.h mechanisms.
+
