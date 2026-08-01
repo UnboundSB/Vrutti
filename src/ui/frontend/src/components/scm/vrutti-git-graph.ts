@@ -1,5 +1,5 @@
 import { LitElement, html, css, svg } from 'lit';
-import { customElement, state } from 'lit/decorators.js';
+import { customElement, state, query } from 'lit/decorators.js';
 import { globalHoverStyle } from '../../shared-styles';
 
 interface Commit {
@@ -110,70 +110,50 @@ export class VruttiGitGraph extends LitElement {
             overflow: hidden;
         }
 
-        .list-container {
+        .canvas-scroll-view {
             flex: 1;
-            overflow-y: auto;
+            overflow: auto;
+            position: relative;
+            background: rgba(22, 22, 30, 0.4);
+        }
+        
+        .canvas-container {
             position: relative;
         }
 
-        .commit-row {
+        .node-label {
+            position: absolute;
+            transform: translateX(-50%);
             display: flex;
-            height: 28px;
+            flex-direction: column;
             align-items: center;
-            cursor: pointer;
-            position: relative;
+            gap: 4px;
+            pointer-events: none;
+            opacity: 0.8;
+            transition: opacity 0.2s;
         }
 
-        .commit-row:hover {
-            background-color: rgba(255, 255, 255, 0.03);
+        .node-label:hover, .node-label.selected {
+            opacity: 1;
+            z-index: 10;
         }
 
-        .commit-row.selected {
-            background-color: rgba(122, 162, 247, 0.1);
-        }
-
-        .graph-col {
-            position: relative;
-            height: 28px;
-            flex-shrink: 0;
-        }
-
-        .commit-info {
-            display: flex;
-            align-items: center;
-            flex: 1;
-            padding-left: 8px;
-            overflow: hidden;
-            white-space: nowrap;
-            gap: 8px;
-        }
-
-        .commit-msg {
+        .node-msg {
+            font-size: 11px;
             color: #c0caf5;
-            font-size: 13px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            flex: 1;
+            white-space: nowrap;
+            background: rgba(26, 27, 38, 0.8);
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid transparent;
+            pointer-events: auto;
+            cursor: pointer;
         }
-
-        .commit-hash {
-            color: #e0af68;
-            font-family: monospace;
-            font-size: 12px;
-        }
-
-        .commit-author {
+        
+        .node-label.selected .node-msg {
+            border-color: #7aa2f7;
             color: #7aa2f7;
-            font-size: 12px;
-            width: 100px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .commit-date {
-            color: #565f89;
-            font-size: 12px;
-            width: 80px;
+            background: rgba(26, 27, 38, 0.95);
         }
 
         .ref-tag {
@@ -182,8 +162,19 @@ export class VruttiGitGraph extends LitElement {
             border: 1px solid rgba(158, 206, 106, 0.4);
             border-radius: 12px;
             padding: 0 6px;
-            font-size: 10px;
+            font-size: 9px;
             font-weight: 600;
+            pointer-events: auto;
+            white-space: nowrap;
+        }
+        
+        .commit-node {
+            transition: stroke-width 0.2s;
+            cursor: pointer;
+        }
+        
+        .commit-node:hover {
+            stroke-width: 6;
         }
 
         .detail-panel {
@@ -243,6 +234,15 @@ export class VruttiGitGraph extends LitElement {
     @state() private errorMsg: string = '';
 
     @state() private pos = { x: 100, y: 100 };
+    @query('.canvas-scroll-view') scrollView!: HTMLElement;
+    private hasScrolled = false;
+
+    updated(changed: Map<string, any>) {
+        if (this.graphRows.length > 0 && !this.hasScrolled && this.scrollView) {
+            this.scrollView.scrollLeft = this.scrollView.scrollWidth;
+            this.hasScrolled = true;
+        }
+    }
     private isDragging = false;
     private dragStart = { x: 0, y: 0 };
 
@@ -375,74 +375,6 @@ export class VruttiGitGraph extends LitElement {
         return colors[idx % colors.length];
     }
 
-    private renderSvgLines(row: GraphRow) {
-        const colWidth = 14;
-        const rowHeight = 28;
-        const radius = 4;
-        
-        const lines = [];
-
-        for (let i = 0; i < row.oldColumns.length; i++) {
-            const hash = row.oldColumns[i];
-            if (!hash) continue;
-
-            if (i === row.colIndex) {
-                for (let j = 0; j < row.commit.parents.length; j++) {
-                    const p = row.commit.parents[j];
-                    const targetIdx = row.newColumns.indexOf(p);
-                    if (targetIdx !== -1) {
-                        const x1 = i * colWidth + colWidth/2;
-                        const y1 = rowHeight / 2;
-                        const x2 = targetIdx * colWidth + colWidth/2;
-                        const y2 = rowHeight;
-                        
-                        const color = this.getColor(i);
-                        
-                        if (x1 === x2) {
-                            lines.push(svg`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="2" />`);
-                        } else {
-                            lines.push(svg`<path d="M ${x1} ${y1} C ${x1} ${y1+10}, ${x2} ${y2-10}, ${x2} ${y2}" fill="none" stroke="${color}" stroke-width="2" />`);
-                        }
-                    }
-                }
-            } else {
-                const targetIdx = row.newColumns.indexOf(hash);
-                if (targetIdx !== -1) {
-                    const x1 = i * colWidth + colWidth/2;
-                    const y1 = 0;
-                    const x2 = targetIdx * colWidth + colWidth/2;
-                    const y2 = rowHeight;
-                    
-                    const color = this.getColor(i);
-                    
-                    if (x1 === x2) {
-                        lines.push(svg`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="2" />`);
-                    } else {
-                        lines.push(svg`<path d="M ${x1} ${y1} C ${x1} ${y1+10}, ${x2} ${y2-10}, ${x2} ${y2}" fill="none" stroke="${color}" stroke-width="2" />`);
-                    }
-                }
-            }
-        }
-
-        // Draw incoming lines for passthrough
-        for (let i = 0; i < row.oldColumns.length; i++) {
-            if (!row.oldColumns[i] || i === row.colIndex) continue;
-            const x = i * colWidth + colWidth/2;
-            lines.push(svg`<line x1="${x}" y1="0" x2="${x}" y2="${rowHeight/2}" stroke="${this.getColor(i)}" stroke-width="2" />`);
-        }
-
-        // Draw node with white center
-        const cx = row.colIndex * colWidth + colWidth/2;
-        const cy = rowHeight / 2;
-        lines.push(svg`<circle cx="${cx}" cy="${cy}" r="${radius}" fill="#ffffff" stroke="${this.getColor(row.colIndex)}" stroke-width="2" />`);
-
-        return svg`
-            <svg width="${this.maxCols * colWidth + 8}" height="${rowHeight}">
-                ${lines}
-            </svg>
-        `;
-    }
-
     private closeWindow() {
         this.dispatchEvent(new CustomEvent('close-git-graph', { bubbles: true, composed: true }));
     }
@@ -451,22 +383,74 @@ export class VruttiGitGraph extends LitElement {
         this.style.left = `${this.pos.x}px`;
         this.style.top = `${this.pos.y}px`;
 
-        const filteredRows = this.searchQuery 
-            ? this.graphRows.filter(r => {
-                const q = this.searchQuery.toLowerCase();
-                return r.commit.hash.toLowerCase().includes(q) ||
-                       r.commit.subject.toLowerCase().includes(q) ||
-                       r.commit.author.toLowerCase().includes(q) ||
-                       r.commit.date.includes(q) ||
-                       r.commit.refs.toLowerCase().includes(q);
-              })
-            : this.graphRows;
+        const q = this.searchQuery.toLowerCase();
+        const isMatch = (c: Commit) => {
+            if (!q) return true;
+            return c.hash.toLowerCase().includes(q) ||
+                   c.subject.toLowerCase().includes(q) ||
+                   c.author.toLowerCase().includes(q) ||
+                   c.date.includes(q) ||
+                   c.refs.toLowerCase().includes(q);
+        };
+
+        const nodeSpacingX = 120;
+        const nodeSpacingY = 80;
+        const radius = 8;
+        const padding = 50;
+
+        const svgWidth = Math.max(800, this.graphRows.length * nodeSpacingX + padding * 2);
+        const svgHeight = Math.max(600, (this.maxCols + 1) * nodeSpacingY + padding * 2);
+
+        const nodePositions = new Map<string, {x: number, y: number}>();
+        
+        this.graphRows.forEach((row, i) => {
+            const x = (this.graphRows.length - 1 - i) * nodeSpacingX + padding;
+            const y = row.colIndex * nodeSpacingY + padding;
+            nodePositions.set(row.commit.hash, {x, y});
+        });
+
+        const edgeLines: any[] = [];
+        const nodeElements: any[] = [];
+        const htmlLabels: any[] = [];
+
+        this.graphRows.forEach((row) => {
+            const pos = nodePositions.get(row.commit.hash)!;
+            const color = this.getColor(row.colIndex);
+            const match = isMatch(row.commit);
+            const opacity = (this.searchQuery && !match) ? 0.2 : 1.0;
+            
+            // Draw edges to parents
+            row.commit.parents.forEach(pHash => {
+                const pPos = nodePositions.get(pHash);
+                if (pPos) {
+                    const dx = pos.x - pPos.x;
+                    const cpOffset = Math.max(Math.abs(dx) / 2, 40);
+                    edgeLines.push(svg`<path d="M ${pos.x} ${pos.y} C ${pos.x - cpOffset} ${pos.y}, ${pPos.x + cpOffset} ${pPos.y}, ${pPos.x} ${pPos.y}" fill="none" stroke="${color}" stroke-width="3" opacity="${opacity}" />`);
+                } else {
+                    edgeLines.push(svg`<line x1="${pos.x}" y1="${pos.y}" x2="${pos.x - nodeSpacingX/2}" y2="${pos.y}" stroke="${color}" stroke-width="3" stroke-dasharray="4" opacity="${opacity}" />`);
+                }
+            });
+
+            // Draw node
+            nodeElements.push(svg`<circle cx="${pos.x}" cy="${pos.y}" r="${radius}" fill="#ffffff" stroke="${color}" stroke-width="3" opacity="${opacity}" class="commit-node" @click=${() => this.selectedCommit = row.commit} />`);
+            
+            // Draw label
+            const isSelected = this.selectedCommit === row.commit;
+            htmlLabels.push(html`
+                <div class="node-label ${isSelected ? 'selected' : ''}" style="left: ${pos.x}px; top: ${pos.y + 15}px; opacity: ${opacity};">
+                    <div class="node-msg" @click=${() => this.selectedCommit = row.commit}>
+                        ${row.commit.subject.substring(0, 25)}${row.commit.subject.length > 25 ? '...' : ''}
+                    </div>
+                    ${row.commit.refs ? row.commit.refs.split(',').map(r => html`<span class="ref-tag">${r.trim()}</span>`) : ''}
+                </div>
+            `);
+        });
 
         return html`
             <div class="header" @mousedown=${this.startDrag}>
                 <div class="title">
                     <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M4 2a2 2 0 1 1-1.85 2.75l-1.01.505a.75.75 0 0 1-.673-1.343l1.01-.505A2 2 0 0 1 4 2Zm10 12a2 2 0 1 1-1.85-2.75l-1.01-.505a.75.75 0 0 1 .673-1.343l1.01.505A2 2 0 0 1 14 14ZM4 10a2 2 0 1 1-1.85 2.75l-1.01.505a.75.75 0 0 1-.673-1.343l1.01-.505A2 2 0 0 1 4 10Zm5-5a2 2 0 1 1-1.85 2.75l-3.02 1.51a.75.75 0 0 1-.673-1.343l3.02-1.51A2 2 0 0 1 9 5Z"/></svg>
-                    Git History
+                    Git Topology Map
                 </div>
                 <div class="search-bar">
                     <input 
@@ -486,24 +470,16 @@ export class VruttiGitGraph extends LitElement {
                         ${this.errorMsg}
                     </div>
                 ` : html`
-                    <div class="list-container">
-                        ${filteredRows.map(row => html`
-                            <div class="commit-row ${this.selectedCommit === row.commit ? 'selected' : ''}" @click=${() => this.selectedCommit = row.commit}>
-                                <div class="graph-col" style="width: ${this.maxCols * 14 + 16}px;">
-                                    ${this.searchQuery ? '' : this.renderSvgLines(row)}
-                                </div>
-                            <div class="commit-info">
-                                <span class="commit-hash">${row.commit.hash.substring(0, 7)}</span>
-                                <span class="commit-msg">
-                                    ${row.commit.refs ? row.commit.refs.split(',').map(r => html`<span class="ref-tag">${r.trim()}</span>`) : ''}
-                                    ${row.commit.subject}
-                                </span>
-                                <span class="commit-author" title="${row.commit.author}">${row.commit.author}</span>
-                                <span class="commit-date">${row.commit.date}</span>
-                            </div>
+                    <div class="canvas-scroll-view">
+                        <div class="canvas-container" style="width: ${svgWidth}px; height: ${svgHeight}px;">
+                            <svg width="${svgWidth}" height="${svgHeight}" style="position: absolute; top: 0; left: 0;">
+                                ${edgeLines}
+                                ${nodeElements}
+                            </svg>
+                            ${htmlLabels}
                         </div>
-                    `)}
-                </div>
+                    </div>
+                `}
                 ${this.selectedCommit ? html`
                     <div class="detail-panel">
                         <div class="detail-row">
@@ -530,7 +506,6 @@ export class VruttiGitGraph extends LitElement {
                         </div>
                     </div>
                 ` : ''}
-                `}
             </div>
         `;
     }
