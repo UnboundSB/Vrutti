@@ -59,8 +59,6 @@ export class VruttiApp extends LitElement {
   @state()
   private userName = 'User';
 
-  @state()
-  private showSettings = false;
 
 
 
