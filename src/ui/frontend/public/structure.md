@@ -1,10 +1,8 @@
 # Directory: public
 
 ## Purpose
-Responsible for organizing public related components.
-
-## Child Directories
-*(No child directories)*
+Core module encapsulating public functionality and logic.
 
 ## Files
-- **vrutti-logo.png**: Responsible for storing data related to vrutti-logo.png.
+- **vrutti-logo.png**: Implements internal vrutti-logo.png mechanisms.
+
