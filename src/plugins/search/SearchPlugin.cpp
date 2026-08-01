@@ -151,14 +151,22 @@ namespace vrutti::plugins::search {
         }
         
         try {
-            for (const auto& entry : std::filesystem::recursive_directory_iterator(directory)) {
+            auto it = std::filesystem::recursive_directory_iterator(directory, std::filesystem::directory_options::skip_permission_denied);
+            auto end = std::filesystem::recursive_directory_iterator();
+            for (; it != end; ++it) {
+                const auto& entry = *it;
+                
+                if (entry.is_directory()) {
+                    std::string name = entry.path().filename().string();
+                    if (name == ".git" || name == "build" || name == "build-linux" || name == "node_modules") {
+                        it.disable_recursion_pending();
+                    }
+                    continue;
+                }
+                
                 if (!entry.is_regular_file()) continue;
                 
                 std::string path = entry.path().string();
-                // Skip hidden files/dirs (like .git) or build directories to avoid huge searches
-                if (path.find(".git") != std::string::npos || path.find("build") != std::string::npos || path.find("node_modules") != std::string::npos) {
-                    continue;
-                }
                 
                 std::ifstream file(path);
                 if (!file.is_open()) continue;
@@ -210,7 +218,7 @@ namespace vrutti::plugins::search {
                     std::ofstream out(path);
                     for (size_t i = 0; i < newLines.size(); ++i) {
                         out << newLines[i];
-                        if (i < newLines.size() - 1 || newLines.size() > 0) out << "\n";
+                        if (i < newLines.size() - 1) out << "\n";
                     }
                 }
             }
@@ -225,14 +233,22 @@ namespace vrutti::plugins::search {
         std::vector<std::string> files;
         std::cout << "[SearchPlugin] Finding files in " << directory << "...\n";
         try {
-            for (const auto& entry : std::filesystem::recursive_directory_iterator(directory)) {
+            auto it = std::filesystem::recursive_directory_iterator(directory, std::filesystem::directory_options::skip_permission_denied);
+            auto end = std::filesystem::recursive_directory_iterator();
+            for (; it != end; ++it) {
+                const auto& entry = *it;
+                
+                if (entry.is_directory()) {
+                    std::string name = entry.path().filename().string();
+                    if (name == ".git" || name == "build" || name == "build-linux" || name == "node_modules") {
+                        it.disable_recursion_pending();
+                    }
+                    continue;
+                }
+                
                 if (!entry.is_regular_file()) continue;
                 
                 std::string path = entry.path().string();
-                // Skip hidden files/dirs (like .git) or build directories to avoid huge searches
-                if (path.find(".git") != std::string::npos || path.find("build") != std::string::npos || path.find("node_modules") != std::string::npos) {
-                    continue;
-                }
                 files.push_back(path);
             }
         } catch (const std::exception& e) {
