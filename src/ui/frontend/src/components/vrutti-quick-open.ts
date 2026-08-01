@@ -150,7 +150,21 @@ export class VruttiQuickOpen extends LitElement {
         if (!q) {
             this.filteredFiles = this.files.slice(0, 50);
         } else {
-            this.filteredFiles = this.files.filter(f => f.toLowerCase().includes(q)).slice(0, 50);
+            this.filteredFiles = this.files.filter(f => {
+                const lowerF = f.toLowerCase();
+                // Check exact substring match (equality/similarity)
+                if (lowerF.includes(q)) return true;
+                
+                // Fuzzy match
+                let qIndex = 0;
+                for (let i = 0; i < lowerF.length; i++) {
+                    if (lowerF[i] === q[qIndex]) {
+                        qIndex++;
+                        if (qIndex === q.length) return true;
+                    }
+                }
+                return false;
+            }).slice(0, 50);
         }
         this.selectedIndex = 0;
     }
