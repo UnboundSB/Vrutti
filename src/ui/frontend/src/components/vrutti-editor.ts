@@ -74,6 +74,8 @@ export class VruttiEditor extends LitElement {
             height: 100%;
             background-color: var(--vrutti-bg-dark, #1e1e1e);
             overflow: hidden;
+            min-width: 0;
+            min-height: 0;
         }
 
         #editor-container {
@@ -81,6 +83,8 @@ export class VruttiEditor extends LitElement {
             height: 100%;
             overflow: auto;
             position: relative;
+            min-width: 0;
+            min-height: 0;
         }
 
         .cm-editor {
@@ -105,6 +109,21 @@ export class VruttiEditor extends LitElement {
             border-radius: 50%;
             margin-top: 5px;
             margin-left: 2px;
+        }
+
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: transparent;
+            border-radius: 5px;
+        }
+
+        :hover::-webkit-scrollbar-thumb {
+            background-color: rgba(122, 162, 247, 0.4);
         }
     `;
 
@@ -229,7 +248,14 @@ export class VruttiEditor extends LitElement {
             doc: this._fileContent,
             extensions: [
                 breakpointGutter,
-                lineNumbers(),
+                lineNumbers({
+                    domEventHandlers: {
+                        mousedown(view, line) {
+                            toggleBreakpoint(view, line.from);
+                            return true;
+                        }
+                    }
+                }),
                 highlightActiveLineGutter(),
                 highlightSpecialChars(),
                 history(),
