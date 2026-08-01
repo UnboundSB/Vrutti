@@ -445,7 +445,7 @@ export class VruttiGitGraph extends LitElement {
         const nodePositions = new Map<string, {x: number, y: number}>();
         
         let mainLane = 0;
-        this.graphRows.forEach((row, i) => {
+        this.graphRows.forEach((row) => {
             if (row.commit.refs.includes('main') || row.commit.refs.includes('master')) {
                 mainLane = row.colIndex;
             }
