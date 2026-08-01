@@ -98,6 +98,25 @@ namespace vrutti::plugins::search {
             }
             json += "]";
             return json;
+        } else if (command == "find_files") {
+            auto req = vrutti::core::utils::JsonParser::parse(payload);
+            std::string dir = "";
+            if (req && req->type == vrutti::core::utils::JsonNode::Type::Object) {
+                auto dirNode = req->get("directory");
+                if (dirNode && dirNode->type == vrutti::core::utils::JsonNode::Type::String) {
+                    dir = vrutti::core::utils::JsonParser::unescapeString(dirNode->stringValue);
+                }
+            }
+            if (dir.empty()) return "[]";
+            
+            auto files = findFiles(dir);
+            std::string json = "[";
+            for (size_t i = 0; i < files.size(); ++i) {
+                if (i > 0) json += ",";
+                json += "\"" + vrutti::core::utils::JsonSerializer::escapeString(files[i]) + "\"";
+            }
+            json += "]";
+            return json;
         }
         return "{}";
     }
@@ -196,6 +215,26 @@ namespace vrutti::plugins::search {
         }
         
         return results;
+    }
+
+    std::vector<std::string> SearchPlugin::findFiles(const std::string& directory) {
+        std::vector<std::string> files;
+        std::cout << "[SearchPlugin] Finding files in " << directory << "...\n";
+        try {
+            for (const auto& entry : std::filesystem::recursive_directory_iterator(directory)) {
+                if (!entry.is_regular_file()) continue;
+                
+                std::string path = entry.path().string();
+                // Skip hidden files/dirs (like .git) or build directories to avoid huge searches
+                if (path.find(".git") != std::string::npos || path.find("build") != std::string::npos || path.find("node_modules") != std::string::npos) {
+                    continue;
+                }
+                files.push_back(path);
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "[SearchPlugin] Exception in findFiles: " << e.what() << "\n";
+        }
+        return files;
     }
 
 } // namespace vrutti::plugins::search
