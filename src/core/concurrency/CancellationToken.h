@@ -32,11 +32,12 @@ namespace vrutti::core::concurrency {
     class CancellationTokenSource {
     public:
         CancellationTokenSource() 
-            : m_isCancelled(false), m_token(std::make_shared<MutableToken>(m_isCancelled)) {}
+            : m_isCancelled(std::make_shared<std::atomic<bool>>(false)), 
+              m_token(std::make_shared<MutableToken>(m_isCancelled)) {}
 
         // Trigger the cancellation
         void cancel() {
-            if (m_isCancelled.exchange(true)) {
+            if (m_isCancelled->exchange(true)) {
                 return; // Already cancelled
             }
             m_token->fire();
@@ -50,10 +51,10 @@ namespace vrutti::core::concurrency {
     private:
         class MutableToken : public CancellationToken {
         public:
-            explicit MutableToken(std::atomic<bool>& isCancelledRef) : m_isCancelledRef(isCancelledRef) {}
+            explicit MutableToken(std::shared_ptr<std::atomic<bool>> isCancelled) : m_isCancelledPtr(isCancelled) {}
             
             bool isCancellationRequested() const override {
-                return m_isCancelledRef.load();
+                return m_isCancelledPtr->load();
             }
 
             vrutti::core::events::Event<void>& onCancellationRequested() override {
@@ -65,12 +66,12 @@ namespace vrutti::core::concurrency {
             }
 
         private:
-            std::atomic<bool>& m_isCancelledRef;
+            std::shared_ptr<std::atomic<bool>> m_isCancelledPtr;
             vrutti::core::events::Emitter<void> m_emitter;
             vrutti::core::events::Event<void> m_event{m_emitter.event()};
         };
 
-        std::atomic<bool> m_isCancelled;
+        std::shared_ptr<std::atomic<bool>> m_isCancelled;
         std::shared_ptr<MutableToken> m_token;
     };
 

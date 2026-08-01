@@ -36,7 +36,11 @@ namespace vrutti::core::concurrency {
             std::thread([task, waitTime, currentCancelFlag]() {
                 std::this_thread::sleep_for(std::chrono::milliseconds(waitTime));
                 if (!currentCancelFlag->load()) {
-                    task();
+                    try {
+                        task();
+                    } catch (...) {
+                        // Suppress exception to avoid terminating the process
+                    }
                 }
             }).detach();
         }
@@ -81,7 +85,11 @@ namespace vrutti::core::concurrency {
 
             // Execute in a background thread to unblock the caller
             std::thread([this, taskToRun]() {
-                taskToRun();
+                try {
+                    taskToRun();
+                } catch (...) {
+                    // Suppress exception to avoid breaking the Throttler state
+                }
                 this->runNext();
             }).detach();
         }
