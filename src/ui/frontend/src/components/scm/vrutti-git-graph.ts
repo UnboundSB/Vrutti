@@ -240,6 +240,7 @@ export class VruttiGitGraph extends LitElement {
     @state() private searchQuery: string = '';
     @state() private selectedCommit: Commit | null = null;
     @state() private maxCols: number = 0;
+    @state() private errorMsg: string = '';
 
     @state() private pos = { x: 100, y: 100 };
     private isDragging = false;
@@ -281,8 +282,12 @@ export class VruttiGitGraph extends LitElement {
     }
 
     private async loadHistory() {
+        this.errorMsg = 'Loading...';
         const res = await this.runGit('log --all --date-order --format="%H@@@%P@@@%d@@@%s@@@%cd@@@%an" --date=short');
-        if (res.exitCode !== 0) return;
+        if (res.exitCode !== 0) {
+            this.errorMsg = `Git Error (Code ${res.exitCode}): ${res.stdout}`;
+            return;
+        }
 
         const lines = res.stdout.split('\n');
         const parsed: Commit[] = [];
@@ -303,6 +308,12 @@ export class VruttiGitGraph extends LitElement {
             }
         }
 
+        if (parsed.length === 0) {
+            this.errorMsg = `No commits found or parse failed. Raw Output:\n${res.stdout}`;
+            return;
+        }
+
+        this.errorMsg = '';
         this.commits = parsed;
         this.computeGraph();
     }
@@ -420,13 +431,13 @@ export class VruttiGitGraph extends LitElement {
             lines.push(svg`<line x1="${x}" y1="0" x2="${x}" y2="${rowHeight/2}" stroke="${this.getColor(i)}" stroke-width="2" />`);
         }
 
-        // Draw node
+        // Draw node with white center
         const cx = row.colIndex * colWidth + colWidth/2;
         const cy = rowHeight / 2;
-        lines.push(svg`<circle cx="${cx}" cy="${cy}" r="${radius}" fill="${this.getColor(row.colIndex)}" />`);
+        lines.push(svg`<circle cx="${cx}" cy="${cy}" r="${radius}" fill="#ffffff" stroke="${this.getColor(row.colIndex)}" stroke-width="2" />`);
 
         return svg`
-            <svg width="${this.maxCols * colWidth}" height="${rowHeight}">
+            <svg width="${this.maxCols * colWidth + 8}" height="${rowHeight}">
                 ${lines}
             </svg>
         `;
@@ -470,12 +481,17 @@ export class VruttiGitGraph extends LitElement {
                 </button>
             </div>
             <div class="content">
-                <div class="list-container">
-                    ${filteredRows.map(row => html`
-                        <div class="commit-row ${this.selectedCommit === row.commit ? 'selected' : ''}" @click=${() => this.selectedCommit = row.commit}>
-                            <div class="graph-col" style="width: ${this.maxCols * 14 + 8}px;">
-                                ${this.searchQuery ? '' : this.renderSvgLines(row)}
-                            </div>
+                ${this.errorMsg ? html`
+                    <div style="padding: 16px; color: #f7768e; white-space: pre-wrap; font-family: monospace; overflow-y: auto; flex: 1;">
+                        ${this.errorMsg}
+                    </div>
+                ` : html`
+                    <div class="list-container">
+                        ${filteredRows.map(row => html`
+                            <div class="commit-row ${this.selectedCommit === row.commit ? 'selected' : ''}" @click=${() => this.selectedCommit = row.commit}>
+                                <div class="graph-col" style="width: ${this.maxCols * 14 + 16}px;">
+                                    ${this.searchQuery ? '' : this.renderSvgLines(row)}
+                                </div>
                             <div class="commit-info">
                                 <span class="commit-hash">${row.commit.hash.substring(0, 7)}</span>
                                 <span class="commit-msg">
@@ -512,8 +528,8 @@ export class VruttiGitGraph extends LitElement {
                             <span class="detail-label">Message</span>
                             <span class="detail-value" style="white-space: pre-wrap;">${this.selectedCommit.subject}</span>
                         </div>
-                    </div>
-                ` : ''}
+                    `}
+                `}
             </div>
         `;
     }
