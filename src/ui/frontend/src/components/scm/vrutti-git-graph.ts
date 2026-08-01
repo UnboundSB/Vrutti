@@ -237,7 +237,7 @@ export class VruttiGitGraph extends LitElement {
     @query('.canvas-scroll-view') scrollView!: HTMLElement;
     private hasScrolled = false;
 
-    updated(changed: Map<string, any>) {
+    updated(_changed: Map<string, any>) {
         if (this.graphRows.length > 0 && !this.hasScrolled && this.scrollView) {
             this.scrollView.scrollLeft = this.scrollView.scrollWidth;
             this.hasScrolled = true;
