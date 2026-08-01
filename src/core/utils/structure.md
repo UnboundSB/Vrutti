@@ -1,17 +1,14 @@
 # Directory: utils
 
 ## Purpose
-Contains general purpose utility classes for JSON parsing, string manipulation, and base64 encoding.
-
-## Child Directories
-*(No child directories)*
+Core module encapsulating utils functionality and logic.
 
 ## Files
-- **Base64.h**: Defines the interface and data structures for Base64.
-- **Json.cpp**: Implements the Json core logic and functionality.
-- **Json.h**: Defines the interface and data structures for Json.
-- **LineScanner.cpp**: Implements the LineScanner core logic and functionality.
-- **LineScanner.h**: Defines the interface and data structures for LineScanner.
-- **StringPool.cpp**: Implements the StringPool core logic and functionality.
-- **StringPool.h**: Defines the interface and data structures for StringPool.
-- **structure.md**: Documents the purpose of this directory, its child directories, and files.
+- **Base64.h**: Implements internal Base64.h mechanisms.
+- **Json.cpp**: Implements internal Json.cpp mechanisms.
+- **Json.h**: Implements internal Json.h mechanisms.
+- **LineScanner.cpp**: Implements internal LineScanner.cpp mechanisms.
+- **LineScanner.h**: Implements internal LineScanner.h mechanisms.
+- **StringPool.cpp**: Implements internal StringPool.cpp mechanisms.
+- **StringPool.h**: Implements internal StringPool.h mechanisms.
+
