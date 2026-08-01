@@ -71,7 +71,11 @@ namespace vrutti::core::events {
 
             for (const auto& entry : listenersCopy) {
                 if (entry.callback) {
-                    entry.callback(eventData);
+                    try {
+                        entry.callback(eventData);
+                    } catch (...) {
+                        // Suppress exceptions from faulty listeners to ensure all receive the event
+                    }
                 }
             }
         }

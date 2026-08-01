@@ -27,12 +27,25 @@ namespace vrutti::core::events {
         }
 
         void set(T newValue) {
-            std::lock_guard<std::mutex> lock(m_mutex);
-            if (m_value == newValue) {
-                return; // Unchanged
+            std::vector<IObserver*> observersCopy;
+            {
+                std::lock_guard<std::mutex> lock(m_mutex);
+                if (m_value == newValue) {
+                    return; // Unchanged
+                }
+                m_value = std::move(newValue);
+                observersCopy = m_observers;
             }
-            m_value = std::move(newValue);
-            notifyObservers();
+            
+            for (auto* obs : observersCopy) {
+                try {
+                    obs->beginUpdate();
+                    obs->handleChange();
+                    obs->endUpdate();
+                } catch (...) {
+                    // Suppress exceptions to avoid crashing the event pipeline
+                }
+            }
         }
 
         // Register an observer to be notified on changes
@@ -47,13 +60,7 @@ namespace vrutti::core::events {
         }
 
     private:
-        void notifyObservers() {
-            for (auto* obs : m_observers) {
-                obs->beginUpdate();
-                obs->handleChange();
-                obs->endUpdate();
-            }
-        }
+        // notifyObservers removed, logic moved to set() to avoid deadlock
 
         T m_value;
         mutable std::mutex m_mutex;
