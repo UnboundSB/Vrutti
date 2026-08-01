@@ -119,6 +119,8 @@ export class VruttiGitGraph extends LitElement {
         
         .canvas-container {
             position: relative;
+            transform-origin: top left;
+            transition: transform 0.1s ease-out;
         }
 
         .node-label {
@@ -280,6 +282,7 @@ export class VruttiGitGraph extends LitElement {
     updated(_changed: Map<string, any>) {
         if (this.graphRows.length > 0 && !this.hasScrolled && this.scrollView) {
             this.scrollView.scrollLeft = this.scrollView.scrollWidth;
+            this.scrollView.scrollTop = this.scrollView.scrollHeight;
             this.hasScrolled = true;
         }
     }
@@ -433,29 +436,21 @@ export class VruttiGitGraph extends LitElement {
                    c.refs.toLowerCase().includes(q);
         };
 
-        const nodeSpacingX = 140 * this.zoom;
-        const nodeSpacingY = 100 * this.zoom;
-        const radius = 10 * this.zoom;
-        const padding = 50 * this.zoom;
-        const strokeW = 5 * this.zoom;
+        const nodeSpacingX = 140;
+        const nodeSpacingY = 100;
+        const radius = 10;
+        const padding = 50;
+        const strokeW = 5;
 
         const svgWidth = Math.max(800, this.graphRows.length * nodeSpacingX + padding * 2);
         const svgHeight = Math.max(600, (this.maxCols + 1) * nodeSpacingY + padding * 2);
 
         const nodePositions = new Map<string, {x: number, y: number}>();
         
-        let mainLane = 0;
-        this.graphRows.forEach((row) => {
-            if (row.commit.refs.includes('main') || row.commit.refs.includes('master')) {
-                mainLane = row.colIndex;
-            }
-        });
-
         this.graphRows.forEach((row, i) => {
             const x = (this.graphRows.length - 1 - i) * nodeSpacingX + padding;
-            // Center main lane
-            const yOffset = (this.maxCols / 2 - mainLane) * nodeSpacingY;
-            const y = row.colIndex * nodeSpacingY + padding + (this.maxCols > 0 ? yOffset : 0);
+            // Place main at bottom: y = (maxCols - colIndex)
+            const y = (this.maxCols - row.colIndex) * nodeSpacingY + padding;
             nodePositions.set(row.commit.hash, {x, y});
         });
 
@@ -474,7 +469,7 @@ export class VruttiGitGraph extends LitElement {
                 const pPos = nodePositions.get(pHash);
                 if (pPos) {
                     const dx = pos.x - pPos.x;
-                    const cpOffset = Math.max(Math.abs(dx) / 2, 40 * this.zoom);
+                    const cpOffset = Math.max(Math.abs(dx) / 2, 40);
                     edgeLines.push(svg`<path d="M ${pos.x} ${pos.y} C ${pos.x - cpOffset} ${pos.y}, ${pPos.x + cpOffset} ${pPos.y}, ${pPos.x} ${pPos.y}" fill="none" stroke="${color}" stroke-width="${strokeW}" opacity="${opacity}" />`);
                 } else {
                     edgeLines.push(svg`<line x1="${pos.x}" y1="${pos.y}" x2="${pos.x - nodeSpacingX/2}" y2="${pos.y}" stroke="${color}" stroke-width="${strokeW}" stroke-dasharray="6" opacity="${opacity}" />`);
@@ -487,7 +482,7 @@ export class VruttiGitGraph extends LitElement {
             // Draw label
             const isSelected = this.selectedCommit === row.commit;
             htmlLabels.push(html`
-                <div class="node-label ${isSelected ? 'selected' : ''}" style="left: ${pos.x}px; top: ${pos.y + 15 * this.zoom}px; opacity: ${opacity}; transform: translateX(-50%) scale(${Math.max(0.7, this.zoom)}); transform-origin: top center;">
+                <div class="node-label ${isSelected ? 'selected' : ''}" style="left: ${pos.x}px; top: ${pos.y + 15}px; opacity: ${opacity}; transform: translateX(-50%); transform-origin: top center;">
                     <div class="node-msg" @click=${() => this.selectedCommit = row.commit}>
                         ${row.commit.subject.substring(0, 25)}${row.commit.subject.length > 25 ? '...' : ''}
                     </div>
@@ -525,7 +520,7 @@ export class VruttiGitGraph extends LitElement {
                     </div>
                 ` : html`
                     <div class="canvas-scroll-view" @wheel=${this.handleWheel}>
-                        <div class="canvas-container" style="width: ${svgWidth}px; height: ${svgHeight}px;">
+                        <div class="canvas-container" style="width: ${svgWidth}px; height: ${svgHeight}px; transform: scale(${this.zoom});">
                             <svg width="${svgWidth}" height="${svgHeight}" style="position: absolute; top: 0; left: 0;">
                                 ${edgeLines}
                                 ${nodeElements}
