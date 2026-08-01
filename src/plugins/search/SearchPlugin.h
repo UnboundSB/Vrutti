@@ -32,6 +32,7 @@ namespace vrutti::plugins::search {
         std::string executeCommand(const std::string& command, const std::string& payload) override;
 
         std::vector<SearchResult> performSearch(const std::string& query, const std::string& directory, const SearchOptions& options);
+        std::vector<std::string> findFiles(const std::string& directory);
     };
 
 }
