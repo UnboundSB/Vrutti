@@ -618,9 +618,7 @@ export class VruttiApp extends LitElement {
             ` : ''}
           `}
           ${this.showGitGraph ? html`
-            <div style="position: absolute; top: 20px; left: 20px; right: 20px; bottom: 20px; z-index: 9999;">
-                <vrutti-git-graph></vrutti-git-graph>
-            </div>
+            <vrutti-git-graph></vrutti-git-graph>
           ` : ''}
         </div>
       </div>

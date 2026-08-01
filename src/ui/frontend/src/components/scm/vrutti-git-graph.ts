@@ -29,8 +29,9 @@ export class VruttiGitGraph extends LitElement {
         :host {
             display: flex;
             flex-direction: column;
-            width: 100%;
-            height: 100%;
+            position: absolute;
+            width: 800px;
+            height: 600px;
             background-color: rgba(26, 27, 38, 0.95);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
@@ -50,6 +51,12 @@ export class VruttiGitGraph extends LitElement {
             padding: 12px 16px;
             background: rgba(30, 30, 46, 0.8);
             border-bottom: 1px solid var(--vrutti-surface-border, #2a2e42);
+            cursor: grab;
+            user-select: none;
+        }
+
+        .header:active {
+            cursor: grabbing;
         }
 
         .title {
@@ -234,9 +241,32 @@ export class VruttiGitGraph extends LitElement {
     @state() private selectedCommit: Commit | null = null;
     @state() private maxCols: number = 0;
 
+    @state() private pos = { x: 100, y: 100 };
+    private isDragging = false;
+    private dragStart = { x: 0, y: 0 };
+
     async firstUpdated() {
         await this.loadHistory();
     }
+
+    private startDrag = (e: MouseEvent) => {
+        if ((e.target as HTMLElement).closest('.search-bar') || (e.target as HTMLElement).closest('.close-btn')) return;
+        this.isDragging = true;
+        this.dragStart = { x: e.clientX - this.pos.x, y: e.clientY - this.pos.y };
+        window.addEventListener('mousemove', this.doDrag);
+        window.addEventListener('mouseup', this.stopDrag);
+    };
+
+    private doDrag = (e: MouseEvent) => {
+        if (!this.isDragging) return;
+        this.pos = { x: e.clientX - this.dragStart.x, y: e.clientY - this.dragStart.y };
+    };
+
+    private stopDrag = () => {
+        this.isDragging = false;
+        window.removeEventListener('mousemove', this.doDrag);
+        window.removeEventListener('mouseup', this.stopDrag);
+    };
 
     private async runGit(args: string): Promise<{stdout: string, exitCode: number}> {
         const wp = (window as any).currentWorkspace || '';
@@ -251,7 +281,7 @@ export class VruttiGitGraph extends LitElement {
     }
 
     private async loadHistory() {
-        const res = await this.runGit('log --all --date-order --format="%H|%P|%d|%s|%cd|%an" --date=short');
+        const res = await this.runGit('log --all --date-order --format="%H@@@%P@@@%d@@@%s@@@%cd@@@%an" --date=short');
         if (res.exitCode !== 0) return;
 
         const lines = res.stdout.split('\n');
@@ -259,14 +289,14 @@ export class VruttiGitGraph extends LitElement {
 
         for (const line of lines) {
             if (!line.trim()) continue;
-            const parts = line.split('|');
+            const parts = line.split('@@@');
             if (parts.length >= 6) {
                 const parents = parts[1].trim() ? parts[1].trim().split(' ') : [];
                 parsed.push({
                     hash: parts[0].trim(),
                     parents: parents,
                     refs: parts[2].trim().replace(/^\s*\(|\)\s*$/g, ''),
-                    subject: parts.slice(3, -2).join('|').trim(), // Subject could contain '|'
+                    subject: parts.slice(3, -2).join('@@@').trim(), 
                     date: parts[parts.length - 2].trim(),
                     author: parts[parts.length - 1].trim()
                 });
@@ -407,6 +437,9 @@ export class VruttiGitGraph extends LitElement {
     }
 
     render() {
+        this.style.left = `${this.pos.x}px`;
+        this.style.top = `${this.pos.y}px`;
+
         const filteredRows = this.searchQuery 
             ? this.graphRows.filter(r => {
                 const q = this.searchQuery.toLowerCase();
@@ -419,7 +452,7 @@ export class VruttiGitGraph extends LitElement {
             : this.graphRows;
 
         return html`
-            <div class="header">
+            <div class="header" @mousedown=${this.startDrag}>
                 <div class="title">
                     <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M4 2a2 2 0 1 1-1.85 2.75l-1.01.505a.75.75 0 0 1-.673-1.343l1.01-.505A2 2 0 0 1 4 2Zm10 12a2 2 0 1 1-1.85-2.75l-1.01-.505a.75.75 0 0 1 .673-1.343l1.01.505A2 2 0 0 1 14 14ZM4 10a2 2 0 1 1-1.85 2.75l-1.01.505a.75.75 0 0 1-.673-1.343l1.01-.505A2 2 0 0 1 4 10Zm5-5a2 2 0 1 1-1.85 2.75l-3.02 1.51a.75.75 0 0 1-.673-1.343l3.02-1.51A2 2 0 0 1 9 5Z"/></svg>
                     Git History
