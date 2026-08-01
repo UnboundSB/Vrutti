@@ -16,6 +16,9 @@ namespace vrutti::core::editor {
 
         m_nil = allocateNode({ BufferType::Original, 0, 0 });
         m_nil->color = NodeColor::Black;
+        m_nil->left = m_nil;
+        m_nil->right = m_nil;
+        m_nil->parent = m_nil;
         m_root = m_nil;
 
         if (m_totalLength > 0) {
