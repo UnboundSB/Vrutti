@@ -1,13 +1,10 @@
 # Directory: memory
 
 ## Purpose
-Implements custom memory allocators like Arena Allocators for high-performance memory management.
-
-## Child Directories
-*(No child directories)*
+Core module encapsulating memory functionality and logic.
 
 ## Files
-- **ArenaAllocator.cpp**: Implements high-performance memory allocation strategies.
-- **ArenaAllocator.h**: Defines the interface and data structures for ArenaAllocator.
-- **Disposable.h**: Defines the interface and data structures for Disposable.
-- **structure.md**: Documents the purpose of this directory, its child directories, and files.
+- **ArenaAllocator.cpp**: Implements internal ArenaAllocator.cpp mechanisms.
+- **ArenaAllocator.h**: Implements internal ArenaAllocator.h mechanisms.
+- **Disposable.h**: Implements internal Disposable.h mechanisms.
+
