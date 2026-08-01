@@ -200,7 +200,7 @@ export class VruttiEditorLayout extends LitElement {
         }
 
         .editor-area {
-            flex: 1;
+            flex: 1 1 0%;
             position: relative;
             overflow: hidden;
             display: flex;
