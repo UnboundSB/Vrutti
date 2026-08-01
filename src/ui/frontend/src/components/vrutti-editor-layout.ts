@@ -39,6 +39,21 @@ export class VruttiEditorLayout extends LitElement {
             color: var(--vrutti-text);
         }
 
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: transparent;
+            border-radius: 5px;
+        }
+
+        :hover::-webkit-scrollbar-thumb {
+            background-color: rgba(122, 162, 247, 0.4);
+        }
+
         .split-container {
             display: flex;
             width: 100%;
@@ -520,11 +535,11 @@ export class VruttiEditorLayout extends LitElement {
         } else {
             return html`
                 <div class="split-container ${node.direction}">
-                    <div class="split-pane" style="flex: ${node.ratio};">
+                    <div class="split-pane" style="flex: ${node.ratio} 1 0%;">
                         ${this.renderNode(node.first)}
                     </div>
                     <div class="sash ${this.resizingNodeId === node.id ? 'active' : ''}" @mousedown=${(e: MouseEvent) => this.startResize(e, node.id, node.direction)}></div>
-                    <div class="split-pane" style="flex: ${1 - node.ratio};">
+                    <div class="split-pane" style="flex: ${1 - node.ratio} 1 0%;">
                         ${this.renderNode(node.second)}
                     </div>
                 </div>
