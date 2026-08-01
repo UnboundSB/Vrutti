@@ -274,7 +274,7 @@ export class VruttiGitGraph extends LitElement {
         if (!wp) return {stdout: 'No workspace folder is currently open! Please drag and drop a folder (like vrutti_ide) into the editor to set the workspace.', exitCode: -1};
         try {
             const res = await (window as any).vruttiGitCommand(wp, `git ${args}`);
-            return JSON.parse(res);
+            return typeof res === 'string' ? JSON.parse(res) : res;
         } catch (e: any) {
             console.error("Git error:", e);
             return {stdout: `Failed to execute git command. Exception: ${e.message}`, exitCode: -1};
