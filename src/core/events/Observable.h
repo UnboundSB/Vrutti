@@ -56,7 +56,7 @@ namespace vrutti::core::events {
 
         void removeObserver(IObserver* observer) {
             std::lock_guard<std::mutex> lock(m_mutex);
-            std::erase(m_observers, observer);
+            m_observers.erase(std::remove(m_observers.begin(), m_observers.end(), observer), m_observers.end());
         }
 
     private:
