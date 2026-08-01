@@ -32,14 +32,26 @@ namespace vrutti::core::ipc {
         m_running = true;
         
         // Spin up a std::thread running listenLoop()
-        std::thread([this]() { this->listenLoop(); }).detach();
+        std::thread([this]() {
+            try {
+                this->listenLoop();
+            } catch (...) {
+                std::cerr << "[IPC] Fatal error in listen loop!" << std::endl;
+            }
+        }).detach();
         std::cout << "[IPC] Bound to pipe/socket: " << m_pipeName << std::endl;
         std::cout << "[IPC] Awaiting connection from Node.js Extension Host..." << std::endl;
     }
 
     void IPCClient::stop() {
         m_running = false;
-        // Close handles...
+#ifndef _WIN32
+        if (m_connectionHandle) {
+            int fd = static_cast<int>(reinterpret_cast<intptr_t>(m_connectionHandle));
+            close(fd);
+            m_connectionHandle = nullptr;
+        }
+#endif
     }
 
     void IPCClient::sendMessage(const std::string& method, const std::string& payload) {
@@ -76,6 +88,7 @@ namespace vrutti::core::ipc {
 #ifndef _WIN32
             int server_fd = socket(AF_UNIX, SOCK_STREAM, 0);
             if (server_fd < 0) return;
+            m_connectionHandle = reinterpret_cast<void*>(static_cast<intptr_t>(server_fd));
 
             struct sockaddr_un addr;
             memset(&addr, 0, sizeof(addr));
@@ -83,8 +96,16 @@ namespace vrutti::core::ipc {
             strncpy(addr.sun_path, m_pipeName.c_str(), sizeof(addr.sun_path) - 1);
 
             unlink(m_pipeName.c_str());
-            if (bind(server_fd, (struct sockaddr*)&addr, sizeof(addr)) < 0) return;
-            if (listen(server_fd, 5) < 0) return;
+            if (bind(server_fd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+                close(server_fd);
+                m_connectionHandle = nullptr;
+                return;
+            }
+            if (listen(server_fd, 5) < 0) {
+                close(server_fd);
+                m_connectionHandle = nullptr;
+                return;
+            }
 
             while (m_running) {
                 int client_fd = accept(server_fd, NULL, NULL);
