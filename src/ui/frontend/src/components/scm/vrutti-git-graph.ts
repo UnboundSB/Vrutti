@@ -504,22 +504,19 @@ export class VruttiGitGraph extends LitElement {
                 </div>
                 ${this.selectedCommit ? html`
                     <div class="detail-panel">
-                        <div class="detail-row">
-                            <span class="detail-label">Hash:</span>
-                            <span class="detail-value monospace">${this.selectedCommit.hash.substring(0,8)}</span>
+                        <div class="detail-header">
+                            <span class="hash">${this.selectedCommit.hash.substring(0, 8)}</span>
+                            <span class="date">${this.selectedCommit.date}</span>
                         </div>
-                        <div class="detail-row">
-                            <span class="detail-label">Author:</span>
-                            <span class="detail-value">${this.selectedCommit.author}</span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="detail-label">Date:</span>
-                            <span class="detail-value">${this.selectedCommit.date}</span>
-                        </div>
-                        ` : ''}
-                        <div class="detail-row" style="margin-top: 12px;">
-                            <span class="detail-label">Message</span>
-                            <span class="detail-value" style="white-space: pre-wrap;">${this.selectedCommit.subject}</span>
+                        <div class="author">${this.selectedCommit.author}</div>
+                        <div class="subject" style="white-space: pre-wrap; margin-bottom: 12px;">${this.selectedCommit.subject}</div>
+                        
+                        <div class="action-buttons">
+                            <button class="action-btn" @click=${() => this.executeGitAction(`revert --no-commit ${this.selectedCommit?.hash}`)}>Revert to Here</button>
+                            ${this.selectedCommit.refs ? this.selectedCommit.refs.split(',').map(r => r.trim().replace(/[()]/g, '')).filter(r => r && r !== 'HEAD' && !r.includes('HEAD ->')).map(ref => html`
+                                <button class="action-btn" @click=${() => this.executeGitAction(`branch -D ${ref}`)}>Delete ${ref}</button>
+                                <button class="action-btn" @click=${() => this.executeGitAction(`branch -m ${ref} ${ref}-renamed`)}>Rename ${ref}</button>
+                            `) : ''}
                         </div>
                     </div>
                 ` : ''}
