@@ -357,7 +357,14 @@ export class VruttiGitGraph extends LitElement {
 
     private doDrag = (e: MouseEvent) => {
         if (!this.isDragging) return;
-        this.pos = { x: e.clientX - this.dragStart.x, y: e.clientY - this.dragStart.y };
+        let newX = e.clientX - this.dragStart.x;
+        let newY = e.clientY - this.dragStart.y;
+        
+        // Prevent going under the top menu bar or left sidebar
+        if (newY < 0) newY = 0;
+        if (newX < 0) newX = 0;
+        
+        this.pos = { x: newX, y: newY };
     };
 
     private stopDrag = () => {
@@ -524,14 +531,14 @@ export class VruttiGitGraph extends LitElement {
             <style>
                 :host {
                     ${this.isMaximized ? `
-                        position: fixed !important;
+                        position: absolute !important;
                         top: 0 !important;
                         left: 0 !important;
-                        width: 100vw !important;
-                        height: 100vh !important;
+                        width: 100% !important;
+                        height: 100% !important;
                         transform: none !important;
                         border-radius: 0 !important;
-                        z-index: 100000 !important;
+                        z-index: 1000 !important;
                     ` : `
                         transform: translate(${this.pos.x}px, ${this.pos.y}px);
                     `}
