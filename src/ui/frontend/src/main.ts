@@ -16,13 +16,10 @@ export class VruttiApp extends LitElement {
   @state()
   private contextMenu: { x: number, y: number, path: string, name: string, isDirectory: boolean } | null = null;
 
-
-
-  @state()
-  private showTerminal = true;
-
-  @state()
-  private terminalHeight = 250;
+  @state() private showSettings = false;
+  @state() private showGitGraph = false;
+  @state() private showTerminal = false;
+  @state() private terminalHeight = 300;
 
   private isResizingTerminal = false;
 
@@ -109,6 +106,8 @@ export class VruttiApp extends LitElement {
     this.addEventListener('setting-changed', this.handleSettingChanged);
     this.addEventListener('open-file', this.handleOpenFile as EventListener);
     this.addEventListener('open-context-menu', this.handleContextMenu as EventListener);
+    this.addEventListener('open-git-graph', this.handleOpenGitGraph);
+    this.addEventListener('close-git-graph', this.handleCloseGitGraph);
     window.addEventListener('click', this.closeContextMenu);
   }
 
@@ -119,6 +118,8 @@ export class VruttiApp extends LitElement {
     this.removeEventListener('setting-changed', this.handleSettingChanged);
     this.removeEventListener('open-file', this.handleOpenFile as EventListener);
     this.removeEventListener('open-context-menu', this.handleContextMenu as EventListener);
+    this.removeEventListener('open-git-graph', this.handleOpenGitGraph);
+    this.removeEventListener('close-git-graph', this.handleCloseGitGraph);
     window.removeEventListener('click', this.closeContextMenu);
   }
 
@@ -176,6 +177,17 @@ export class VruttiApp extends LitElement {
     if (layout && layout.openFile) {
         layout.openFile(e.detail.path);
     }
+  };
+
+  private handleOpenGitGraph = async () => {
+    if (!customElements.get('vrutti-git-graph')) {
+        await import('./components/scm/vrutti-git-graph');
+    }
+    this.showGitGraph = true;
+  };
+
+  private handleCloseGitGraph = () => {
+    this.showGitGraph = false;
   };
 
   private handleCloseSettings = () => {
@@ -595,7 +607,7 @@ export class VruttiApp extends LitElement {
         <vrutti-sidebar></vrutti-sidebar>
         <div class="editor-container">
           ${this.showSettings ? html`
-            <vrutti-settings style="position: absolute; top: 0; left: 0; right: 0; bottom: 0;"></vrutti-settings>
+            <vrutti-settings style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 500;"></vrutti-settings>
           ` : html`
             <div style="flex: 1; display: flex; flex-direction: column; position: relative;">
               <vrutti-editor-layout id="main-layout"></vrutti-editor-layout>
@@ -607,6 +619,11 @@ export class VruttiApp extends LitElement {
               </div>
             ` : ''}
           `}
+          ${this.showGitGraph ? html`
+            <div style="position: absolute; top: 20px; left: 20px; right: 20px; bottom: 20px; z-index: 9999;">
+                <vrutti-git-graph></vrutti-git-graph>
+            </div>
+          ` : ''}
         </div>
       </div>
       ${this.contextMenu ? html`
