@@ -323,7 +323,13 @@ export class VruttiGitGraph extends LitElement {
 
     updated(_changed: Map<string, any>) {
         if (this.graphRows.length > 0 && !this.hasScrolled && this.scrollView) {
-            this.scrollView.scrollLeft = this.scrollView.scrollWidth;
+            // Need to wait a tick for the DOM to fully render the SVG dimensions
+            setTimeout(() => {
+                if (this.scrollView) {
+                    this.scrollView.scrollLeft = this.scrollView.scrollWidth;
+                    this.scrollView.scrollTop = this.scrollView.scrollHeight;
+                }
+            }, 10);
             this.hasScrolled = true;
         }
     }
