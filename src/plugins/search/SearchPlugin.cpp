@@ -130,6 +130,17 @@ namespace vrutti::plugins::search {
         std::cout << "[SearchPlugin] Searching for '" << query << "' in " << directory << "...\n";
         
         std::string searchPattern = query;
+        if (!options.useRegex && (options.wholeWord || !options.matchCase)) {
+            std::string escaped;
+            for (char c : searchPattern) {
+                if (c == '^' || c == '$' || c == '\\' || c == '.' || c == '*' || c == '+' || c == '?' || c == '(' || c == ')' || c == '[' || c == ']' || c == '{' || c == '}' || c == '|') {
+                    escaped += '\\';
+                }
+                escaped += c;
+            }
+            searchPattern = escaped;
+        }
+
         if (options.wholeWord && !options.useRegex) {
             searchPattern = "\\b" + searchPattern + "\\b";
         }
