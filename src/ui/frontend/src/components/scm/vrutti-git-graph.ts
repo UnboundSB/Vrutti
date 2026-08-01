@@ -530,6 +530,7 @@ export class VruttiGitGraph extends LitElement {
                         </div>
                     </div>
                 ` : ''}
+                `}
             </div>
         `;
     }
