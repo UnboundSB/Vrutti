@@ -5,6 +5,7 @@ import './components/vrutti-statusbar';
 import './components/vrutti-menubar';
 import './components/vrutti-panel';
 import './components/vrutti-editor-layout';
+import './components/vrutti-quick-open';
 
 import { globalHoverStyle } from './shared-styles';
 
@@ -19,6 +20,7 @@ export class VruttiApp extends LitElement {
   @state() private showSettings = false;
   @state() private showGitGraph = false;
   @state() private showTerminal = false;
+  @state() private showQuickOpen = false;
   @state() private terminalHeight = 300;
 
   private isResizingTerminal = false;
@@ -107,6 +109,7 @@ export class VruttiApp extends LitElement {
     this.addEventListener('open-git-graph', this.handleOpenGitGraph);
     this.addEventListener('close-git-graph', this.handleCloseGitGraph);
     window.addEventListener('click', this.closeContextMenu);
+    window.addEventListener('keydown', this.handleGlobalKeydown);
   }
 
   disconnectedCallback() {
@@ -119,6 +122,7 @@ export class VruttiApp extends LitElement {
     this.removeEventListener('open-git-graph', this.handleOpenGitGraph);
     this.removeEventListener('close-git-graph', this.handleCloseGitGraph);
     window.removeEventListener('click', this.closeContextMenu);
+    window.removeEventListener('keydown', this.handleGlobalKeydown);
   }
 
   private handleMenuAction = async (e: Event) => {
@@ -194,6 +198,13 @@ export class VruttiApp extends LitElement {
 
   private toggleTerminal = () => {
     this.showTerminal = !this.showTerminal;
+  };
+
+  private handleGlobalKeydown = (e: KeyboardEvent) => {
+    if (e.key.toLowerCase() === 'p' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        this.showQuickOpen = true;
+    }
   };
 
   private handleSettingChanged = async (e: Event) => {
@@ -619,6 +630,9 @@ export class VruttiApp extends LitElement {
           `}
           ${this.showGitGraph ? html`
             <vrutti-git-graph></vrutti-git-graph>
+          ` : ''}
+          ${this.showQuickOpen ? html`
+            <vrutti-quick-open @close-quick-open=${() => this.showQuickOpen = false}></vrutti-quick-open>
           ` : ''}
         </div>
       </div>
