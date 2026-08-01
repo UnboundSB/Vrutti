@@ -125,8 +125,6 @@ export class VruttiGitGraph extends LitElement {
 
         .canvas-container {
             position: relative;
-            transform-origin: top left;
-            transition: transform 0.1s ease-out;
             min-width: 100%;
             min-height: 100%;
         }
@@ -526,9 +524,11 @@ export class VruttiGitGraph extends LitElement {
                     </div>
                 ` : html`
                     <div class="canvas-scroll-view" @wheel=${this.handleWheel} @mousedown=${this.handleMouseDown} @mousemove=${this.handleMouseMove} @mouseup=${this.handleMouseUp} @mouseleave=${this.handleMouseUp}>
-                        <div class="canvas-container" style="width: ${svgWidth}px; height: ${svgHeight}px; transform: scale(${this.zoom});">
-                            <svg width="${svgWidth}" height="${svgHeight}" style="position: absolute; top: 0; left: 0;">${edgeLines}${nodeElements}</svg>
-                            ${htmlLabels}
+                        <div class="canvas-container" style="width: ${svgWidth * this.zoom}px; height: ${svgHeight * this.zoom}px; position: relative; overflow: hidden;">
+                            <div style="transform: scale(${this.zoom}); transform-origin: top left; position: absolute; top: 0; left: 0; width: ${svgWidth}px; height: ${svgHeight}px;">
+                                <svg width="${svgWidth}" height="${svgHeight}" style="position: absolute; top: 0; left: 0;">${edgeLines}${nodeElements}</svg>
+                                ${htmlLabels}
+                            </div>
                         </div>
                     </div>
                 `}
