@@ -47,6 +47,29 @@ namespace vrutti::plugins::search {
     std::string SearchPlugin::executeCommand(const std::string& command, const std::string& payload) {
         if (command == "search") {
             auto req = vrutti::core::utils::JsonParser::parse(payload);
+            
+            // IPC routing fix: Window.cpp hardcodes executeCommand("search"), so we check the payload for "command"
+            if (req && req->type == vrutti::core::utils::JsonNode::Type::Object) {
+                auto cmdNode = req->get("command");
+                if (cmdNode && cmdNode->type == vrutti::core::utils::JsonNode::Type::String && cmdNode->stringValue == "find_files") {
+                    std::string dir = "";
+                    auto dirNode = req->get("directory");
+                    if (dirNode && dirNode->type == vrutti::core::utils::JsonNode::Type::String) {
+                        dir = vrutti::core::utils::JsonParser::unescapeString(dirNode->stringValue);
+                    }
+                    if (dir.empty()) return "[]";
+                    
+                    auto files = findFiles(dir);
+                    std::string json = "[";
+                    for (size_t i = 0; i < files.size(); ++i) {
+                        if (i > 0) json += ",";
+                        json += "\"" + vrutti::core::utils::JsonSerializer::escapeString(files[i]) + "\"";
+                    }
+                    json += "]";
+                    return json;
+                }
+            }
+
             std::string query = "";
             std::string dir = "";
             SearchOptions options;
@@ -95,25 +118,6 @@ namespace vrutti::plugins::search {
                 json += "\"line\":" + std::to_string(results[i].line) + ",";
                 json += "\"text\":\"" + vrutti::core::utils::JsonSerializer::escapeString(results[i].text) + "\"";
                 json += "}";
-            }
-            json += "]";
-            return json;
-        } else if (command == "find_files") {
-            auto req = vrutti::core::utils::JsonParser::parse(payload);
-            std::string dir = "";
-            if (req && req->type == vrutti::core::utils::JsonNode::Type::Object) {
-                auto dirNode = req->get("directory");
-                if (dirNode && dirNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    dir = vrutti::core::utils::JsonParser::unescapeString(dirNode->stringValue);
-                }
-            }
-            if (dir.empty()) return "[]";
-            
-            auto files = findFiles(dir);
-            std::string json = "[";
-            for (size_t i = 0; i < files.size(); ++i) {
-                if (i > 0) json += ",";
-                json += "\"" + vrutti::core::utils::JsonSerializer::escapeString(files[i]) + "\"";
             }
             json += "]";
             return json;
