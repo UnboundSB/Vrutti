@@ -528,8 +528,8 @@ export class VruttiGitGraph extends LitElement {
                             <span class="detail-label">Message</span>
                             <span class="detail-value" style="white-space: pre-wrap;">${this.selectedCommit.subject}</span>
                         </div>
-                    `}
-                `}
+                    </div>
+                ` : ''}
             </div>
         `;
     }
