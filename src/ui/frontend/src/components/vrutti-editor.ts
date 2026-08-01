@@ -233,6 +233,13 @@ export class VruttiEditor extends LitElement {
         ]);
 
         const updateListener = EditorView.updateListener.of((update) => {
+            if (update.selectionSet || update.docChanged) {
+                const head = update.state.selection.main.head;
+                const line = update.state.doc.lineAt(head);
+                window.dispatchEvent(new CustomEvent('editor-cursor-changed', {
+                    detail: { line: line.number, col: head - line.from + 1 }
+                }));
+            }
             if (update.docChanged) {
                 if (this._saveTimeout) {
                     clearTimeout(this._saveTimeout);
