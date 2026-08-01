@@ -79,9 +79,8 @@ export class VruttiEditor extends LitElement {
         }
 
         #editor-container {
-            flex-grow: 1;
-            height: 100%;
-            overflow: auto;
+            flex: 1 1 0%;
+            overflow: hidden;
             position: relative;
             min-width: 0;
             min-height: 0;
@@ -108,7 +107,7 @@ export class VruttiEditor extends LitElement {
             background-color: #f7768e;
             border-radius: 50%;
             margin-top: 5px;
-            margin-left: 2px;
+            margin-left: 6px;
         }
 
         ::-webkit-scrollbar {
