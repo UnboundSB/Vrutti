@@ -19,8 +19,8 @@ interface GraphRow {
 }
 
 const colors = [
-    '#7aa2f7', '#9ece6a', '#e0af68', '#f7768e', '#bb9af7',
-    '#7dcfff', '#ff9e64', '#1abc9c', '#e74c3c', '#9b59b6'
+    '#ff4757', '#a29bfe', '#74b9ff', '#55efc4', '#ffeaa7',
+    '#fab1a0', '#fd79a8', '#81ecec', '#00b894', '#6c5ce7'
 ];
 
 @customElement('vrutti-git-graph')
@@ -323,7 +323,7 @@ export class VruttiGitGraph extends LitElement {
 
     private async loadHistory() {
         this.errorMsg = 'Loading...';
-        const res = await this.runGit('log --all --date-order --format="%H@@@%P@@@%d@@@%s@@@%cd@@@%an" --date=short');
+        const res = await this.runGit('log --all --reflog --date-order --format="%H@@@%P@@@%d@@@%s@@@%cd@@@%an" --date=short');
         if (res.exitCode !== 0) {
             this.errorMsg = `Git Error (Code ${res.exitCode}): ${res.stdout}`;
             return;
@@ -444,9 +444,18 @@ export class VruttiGitGraph extends LitElement {
 
         const nodePositions = new Map<string, {x: number, y: number}>();
         
+        let mainLane = 0;
+        this.graphRows.forEach((row, i) => {
+            if (row.commit.refs.includes('main') || row.commit.refs.includes('master')) {
+                mainLane = row.colIndex;
+            }
+        });
+
         this.graphRows.forEach((row, i) => {
             const x = (this.graphRows.length - 1 - i) * nodeSpacingX + padding;
-            const y = row.colIndex * nodeSpacingY + padding;
+            // Center main lane
+            const yOffset = (this.maxCols / 2 - mainLane) * nodeSpacingY;
+            const y = row.colIndex * nodeSpacingY + padding + (this.maxCols > 0 ? yOffset : 0);
             nodePositions.set(row.commit.hash, {x, y});
         });
 
