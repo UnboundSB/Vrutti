@@ -194,7 +194,6 @@ export class VruttiScm extends LitElement {
         .status-U { color: #7aa2f7; } /* Untracked */
     `];
 
-    @state() private workspacePath: string = '';
     @state() private stagedFiles: GitStatusItem[] = [];
     @state() private unstagedFiles: GitStatusItem[] = [];
     @state() private commitMessage: string = '';
@@ -202,24 +201,14 @@ export class VruttiScm extends LitElement {
     @state() private unstagedExpanded: boolean = true;
 
     async firstUpdated() {
-        this.workspacePath = await this.getWorkspacePath();
         await this.refresh();
     }
 
-    private async getWorkspacePath(): Promise<string> {
-        try {
-            const res = await (window as any).vruttiGetInitialWorkspace();
-            const parsed = JSON.parse(res);
-            return parsed.path || '';
-        } catch (e) {
-            return '';
-        }
-    }
-
     private async runGit(args: string): Promise<{stdout: string, exitCode: number}> {
-        if (!this.workspacePath) return {stdout: '', exitCode: -1};
+        const wp = (window as any).currentWorkspace || '';
+        if (!wp) return {stdout: '', exitCode: -1};
         try {
-            const res = await (window as any).vruttiGitCommand(this.workspacePath, `git ${args}`);
+            const res = await (window as any).vruttiGitCommand(wp, `git ${args}`);
             return JSON.parse(res);
         } catch (e) {
             console.error("Git error:", e);
@@ -299,9 +288,10 @@ export class VruttiScm extends LitElement {
     }
 
     private openFile(path: string) {
-        const fullPath = this.workspacePath + '/' + path;
+        const wp = (window as any).currentWorkspace || '';
+        const fullPath = wp + '/' + path;
         const e = new CustomEvent('open-file', {
-            detail: { filePath: fullPath },
+            detail: { path: fullPath },
             bubbles: true,
             composed: true
         });
