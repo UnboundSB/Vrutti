@@ -169,12 +169,38 @@ export class VruttiGitGraph extends LitElement {
         }
         
         .commit-node {
-            transition: stroke-width 0.2s;
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             cursor: pointer;
+            transform-origin: center;
         }
         
         .commit-node:hover {
-            stroke-width: 6;
+            stroke-width: 8;
+            transform: scale(1.5);
+        }
+
+        .zoom-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-right: 16px;
+        }
+        
+        .zoom-btn {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            border-radius: 4px;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .zoom-btn:hover {
+            background: rgba(255,255,255,0.2);
         }
 
         .detail-panel {
@@ -234,8 +260,22 @@ export class VruttiGitGraph extends LitElement {
     @state() private errorMsg: string = '';
 
     @state() private pos = { x: 100, y: 100 };
+    @state() private zoom = 1.0;
     @query('.canvas-scroll-view') scrollView!: HTMLElement;
     private hasScrolled = false;
+
+    private handleWheel = (e: WheelEvent) => {
+        if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            this.zoom = Math.max(0.5, Math.min(3.0, this.zoom - e.deltaY * 0.005));
+        } else {
+            // Translate vertical scroll to horizontal scroll
+            if (this.scrollView) {
+                e.preventDefault();
+                this.scrollView.scrollLeft += e.deltaY;
+            }
+        }
+    };
 
     updated(_changed: Map<string, any>) {
         if (this.graphRows.length > 0 && !this.hasScrolled && this.scrollView) {
@@ -393,10 +433,11 @@ export class VruttiGitGraph extends LitElement {
                    c.refs.toLowerCase().includes(q);
         };
 
-        const nodeSpacingX = 120;
-        const nodeSpacingY = 80;
-        const radius = 8;
-        const padding = 50;
+        const nodeSpacingX = 140 * this.zoom;
+        const nodeSpacingY = 100 * this.zoom;
+        const radius = 10 * this.zoom;
+        const padding = 50 * this.zoom;
+        const strokeW = 5 * this.zoom;
 
         const svgWidth = Math.max(800, this.graphRows.length * nodeSpacingX + padding * 2);
         const svgHeight = Math.max(600, (this.maxCols + 1) * nodeSpacingY + padding * 2);
@@ -424,20 +465,20 @@ export class VruttiGitGraph extends LitElement {
                 const pPos = nodePositions.get(pHash);
                 if (pPos) {
                     const dx = pos.x - pPos.x;
-                    const cpOffset = Math.max(Math.abs(dx) / 2, 40);
-                    edgeLines.push(svg`<path d="M ${pos.x} ${pos.y} C ${pos.x - cpOffset} ${pos.y}, ${pPos.x + cpOffset} ${pPos.y}, ${pPos.x} ${pPos.y}" fill="none" stroke="${color}" stroke-width="3" opacity="${opacity}" />`);
+                    const cpOffset = Math.max(Math.abs(dx) / 2, 40 * this.zoom);
+                    edgeLines.push(svg`<path d="M ${pos.x} ${pos.y} C ${pos.x - cpOffset} ${pos.y}, ${pPos.x + cpOffset} ${pPos.y}, ${pPos.x} ${pPos.y}" fill="none" stroke="${color}" stroke-width="${strokeW}" opacity="${opacity}" />`);
                 } else {
-                    edgeLines.push(svg`<line x1="${pos.x}" y1="${pos.y}" x2="${pos.x - nodeSpacingX/2}" y2="${pos.y}" stroke="${color}" stroke-width="3" stroke-dasharray="4" opacity="${opacity}" />`);
+                    edgeLines.push(svg`<line x1="${pos.x}" y1="${pos.y}" x2="${pos.x - nodeSpacingX/2}" y2="${pos.y}" stroke="${color}" stroke-width="${strokeW}" stroke-dasharray="6" opacity="${opacity}" />`);
                 }
             });
 
             // Draw node
-            nodeElements.push(svg`<circle cx="${pos.x}" cy="${pos.y}" r="${radius}" fill="#ffffff" stroke="${color}" stroke-width="3" opacity="${opacity}" class="commit-node" @click=${() => this.selectedCommit = row.commit} />`);
+            nodeElements.push(svg`<circle cx="${pos.x}" cy="${pos.y}" r="${radius}" fill="#ffffff" stroke="${color}" stroke-width="${strokeW}" opacity="${opacity}" class="commit-node" @click=${() => this.selectedCommit = row.commit} style="transform-origin: ${pos.x}px ${pos.y}px;" />`);
             
             // Draw label
             const isSelected = this.selectedCommit === row.commit;
             htmlLabels.push(html`
-                <div class="node-label ${isSelected ? 'selected' : ''}" style="left: ${pos.x}px; top: ${pos.y + 15}px; opacity: ${opacity};">
+                <div class="node-label ${isSelected ? 'selected' : ''}" style="left: ${pos.x}px; top: ${pos.y + 15 * this.zoom}px; opacity: ${opacity}; transform: translateX(-50%) scale(${Math.max(0.7, this.zoom)}); transform-origin: top center;">
                     <div class="node-msg" @click=${() => this.selectedCommit = row.commit}>
                         ${row.commit.subject.substring(0, 25)}${row.commit.subject.length > 25 ? '...' : ''}
                     </div>
@@ -451,6 +492,10 @@ export class VruttiGitGraph extends LitElement {
                 <div class="title">
                     <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M4 2a2 2 0 1 1-1.85 2.75l-1.01.505a.75.75 0 0 1-.673-1.343l1.01-.505A2 2 0 0 1 4 2Zm10 12a2 2 0 1 1-1.85-2.75l-1.01-.505a.75.75 0 0 1 .673-1.343l1.01.505A2 2 0 0 1 14 14ZM4 10a2 2 0 1 1-1.85 2.75l-1.01.505a.75.75 0 0 1-.673-1.343l1.01-.505A2 2 0 0 1 4 10Zm5-5a2 2 0 1 1-1.85 2.75l-3.02 1.51a.75.75 0 0 1-.673-1.343l3.02-1.51A2 2 0 0 1 9 5Z"/></svg>
                     Git Topology Map
+                </div>
+                <div class="zoom-controls">
+                    <button class="zoom-btn" @click=${() => this.zoom = Math.max(0.5, this.zoom - 0.2)}>-</button>
+                    <button class="zoom-btn" @click=${() => this.zoom = Math.min(3.0, this.zoom + 0.2)}>+</button>
                 </div>
                 <div class="search-bar">
                     <input 
@@ -470,7 +515,7 @@ export class VruttiGitGraph extends LitElement {
                         ${this.errorMsg}
                     </div>
                 ` : html`
-                    <div class="canvas-scroll-view">
+                    <div class="canvas-scroll-view" @wheel=${this.handleWheel}>
                         <div class="canvas-container" style="width: ${svgWidth}px; height: ${svgHeight}px;">
                             <svg width="${svgWidth}" height="${svgHeight}" style="position: absolute; top: 0; left: 0;">
                                 ${edgeLines}
