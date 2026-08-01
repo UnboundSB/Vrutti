@@ -1,12 +1,9 @@
 # Directory: search
 
 ## Purpose
-Implements the high-performance search plugin for finding text across the workspace.
-
-## Child Directories
-*(No child directories)*
+Core module encapsulating search functionality and logic.
 
 ## Files
-- **SearchPlugin.cpp**: Implements the SearchPlugin core logic and functionality.
-- **SearchPlugin.h**: Defines the interface and data structures for SearchPlugin.
-- **structure.md**: Documents the purpose of this directory, its child directories, and files.
+- **SearchPlugin.cpp**: Implements internal SearchPlugin.cpp mechanisms.
+- **SearchPlugin.h**: Implements internal SearchPlugin.h mechanisms.
+
