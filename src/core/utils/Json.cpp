@@ -24,7 +24,10 @@ namespace vrutti::core::utils {
         pos++; 
         size_t start = pos;
         while (pos < source.length() && source[pos] != '"') {
-            if (source[pos] == '\\') pos++; // skip escaped char
+            if (source[pos] == '\\') {
+                pos++; // skip escaped char
+                if (pos >= source.length()) break;
+            }
             pos++;
         }
         size_t len = pos - start;

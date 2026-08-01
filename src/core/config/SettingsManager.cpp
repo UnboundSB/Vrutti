@@ -86,11 +86,7 @@ namespace vrutti::core::config {
         }
 
         if (!updated) {
-            // Memory leak hazard: The string_view needs a backing string, so we append the key to our cached source.
-            // But doing this properly requires a more robust JSON builder. For our minimal JSON, we'll append.
-            cachedSource_ += "\n\"" + key + "\""; 
-            std::string_view keyView(cachedSource_.data() + cachedSource_.size() - key.size() - 1, key.size());
-            root_->objectProperties.push_back({keyView, newValueNode});
+            root_->objectProperties.push_back({key, newValueNode});
         }
 
         // We stringify the updated DOM to refresh the backing cachedSource_ so string_views stay valid.
