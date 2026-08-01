@@ -1,25 +1,25 @@
 # Directory: components
 
 ## Purpose
-Reusable Lit Web Components forming the UI building blocks of the IDE.
+Core module encapsulating components functionality and logic.
 
 ## Child Directories
-- **explorer/**: Components responsible for the file explorer tree and file navigation.
-- **scm/**: Source control management components, including git status models and UI.
+- **explorer/**: Manages explorer related abstractions and sub-modules.
+- **scm/**: Manages scm related abstractions and sub-modules.
 
 ## Files
-- **codicons.ts**: Implements the codicons frontend logic and UI components.
-- **structure.md**: Documents the purpose of this directory, its child directories, and files.
-- **vrutti-debug-console.ts**: Implements the vrutti-debug-console frontend logic and UI components.
-- **vrutti-editor-layout.ts**: Manages the split-pane layout and tab system for code editors.
-- **vrutti-editor.ts**: Wraps the CodeMirror editor and handles file loading/saving via IPC.
-- **vrutti-menubar.ts**: Implements the vrutti-menubar frontend logic and UI components.
-- **vrutti-panel.ts**: Implements the vrutti-panel frontend logic and UI components.
-- **vrutti-search.ts**: Implements the vrutti-search frontend logic and UI components.
-- **vrutti-settings.ts**: Implements the vrutti-settings frontend logic and UI components.
-- **vrutti-sidebar.ts**: Manages the collapsible sidebar layout and panels.
-- **vrutti-statusbar.ts**: Implements the vrutti-statusbar frontend logic and UI components.
-- **vrutti-terminal.ts**: Implements the vrutti-terminal frontend logic and UI components.
-- **xterm-css.ts**: Implements the xterm-css frontend logic and UI components.
-- **xterm-styles.ts**: Implements the xterm-styles frontend logic and UI components.
-- **xterm.css**: Defines styling rules for the frontend.
+- **codicons.ts**: Implements internal codicons.ts mechanisms.
+- **vrutti-debug-console.ts**: Implements internal vrutti-debug-console.ts mechanisms.
+- **vrutti-editor-layout.ts**: Implements internal vrutti-editor-layout.ts mechanisms.
+- **vrutti-editor.ts**: Implements internal vrutti-editor.ts mechanisms.
+- **vrutti-menubar.ts**: Implements internal vrutti-menubar.ts mechanisms.
+- **vrutti-panel.ts**: Implements internal vrutti-panel.ts mechanisms.
+- **vrutti-search.ts**: Implements internal vrutti-search.ts mechanisms.
+- **vrutti-settings.ts**: Implements internal vrutti-settings.ts mechanisms.
+- **vrutti-sidebar.ts**: Implements internal vrutti-sidebar.ts mechanisms.
+- **vrutti-statusbar.ts**: Implements internal vrutti-statusbar.ts mechanisms.
+- **vrutti-terminal.ts**: Implements internal vrutti-terminal.ts mechanisms.
+- **xterm-css.ts**: Implements internal xterm-css.ts mechanisms.
+- **xterm-styles.ts**: Implements internal xterm-styles.ts mechanisms.
+- **xterm.css**: Implements internal xterm.css mechanisms.
+
