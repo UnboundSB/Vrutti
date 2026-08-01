@@ -298,6 +298,10 @@ export class VruttiScm extends LitElement {
         this.dispatchEvent(e);
     }
 
+    private openGraph() {
+        this.dispatchEvent(new CustomEvent('open-git-graph', { bubbles: true, composed: true }));
+    }
+
     private renderStatus(status: string) {
         let cls = 'status-M';
         let text = 'M';
@@ -312,6 +316,9 @@ export class VruttiScm extends LitElement {
             <div class="header">
                 <span>Source Control</span>
                 <div class="actions">
+                    <div class="icon-btn" title="View Git Graph" @click=${this.openGraph}>
+                        <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M4 2a2 2 0 1 1-1.85 2.75l-1.01.505a.75.75 0 0 1-.673-1.343l1.01-.505A2 2 0 0 1 4 2Zm10 12a2 2 0 1 1-1.85-2.75l-1.01-.505a.75.75 0 0 1 .673-1.343l1.01.505A2 2 0 0 1 14 14ZM4 10a2 2 0 1 1-1.85 2.75l-1.01.505a.75.75 0 0 1-.673-1.343l1.01-.505A2 2 0 0 1 4 10Zm5-5a2 2 0 1 1-1.85 2.75l-3.02 1.51a.75.75 0 0 1-.673-1.343l3.02-1.51A2 2 0 0 1 9 5Z"/></svg>
+                    </div>
                     <div class="icon-btn" title="Refresh" @click=${this.refresh} .innerHTML=${icon_sync}></div>
                     <div class="icon-btn" title="Pull" @click=${this.pull} .innerHTML=${icon_cloud_download}></div>
                     <div class="icon-btn" title="Push" @click=${this.push} .innerHTML=${icon_cloud_upload}></div>
