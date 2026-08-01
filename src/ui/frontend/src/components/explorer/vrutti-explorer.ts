@@ -117,6 +117,13 @@ export class VruttiExplorer extends LitElement {
     }));
   }
 
+  private handleDragStart(e: DragEvent) {
+    if (!this.item.isDirectory && e.dataTransfer) {
+      e.dataTransfer.setData('application/json', JSON.stringify({ filePath: this.item.resource, source: 'explorer' }));
+      e.dataTransfer.effectAllowed = 'copy';
+    }
+  }
+
   private async createFile(e: Event) {
     e.stopPropagation();
     const name = window.prompt("Enter new file name:");
@@ -198,6 +205,8 @@ export class VruttiExplorer extends LitElement {
     
     return html`
       <div class="tree-node" style="padding-left: ${paddingLeft}px" 
+           draggable="${this.item.isDirectory ? 'false' : 'true'}"
+           @dragstart="${this.handleDragStart}"
            @click="${this.toggle}" 
            @dblclick="${this.handleDoubleClick}" 
            @contextmenu="${this.handleContextMenu}">
