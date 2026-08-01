@@ -57,7 +57,7 @@ export class VruttiEditorLayout extends LitElement {
         .split-container {
             display: flex;
             width: 100%;
-            height: 100%;
+            flex: 1 1 0%;
             overflow: hidden;
             min-height: 0;
             min-width: 0;
@@ -105,10 +105,11 @@ export class VruttiEditorLayout extends LitElement {
             display: flex;
             flex-direction: column;
             width: 100%;
-            height: 100%;
+            flex: 1 1 0%;
             background: #1e1e1e;
             min-height: 0;
             min-width: 0;
+            overflow: hidden;
         }
 
         .tabs-header {
@@ -518,7 +519,7 @@ export class VruttiEditorLayout extends LitElement {
                 </div>
                 <div class="editor-area ${this.activePaneId === leaf.id ? 'active-pane' : ''}" style="${this.activePaneId === leaf.id ? 'box-shadow: inset 0 0 0 1px #3b4261;' : ''}">
                     ${leaf.activeTab ? html`
-                        <vrutti-editor .filePath=${leaf.activeTab} style="width: 100%; height: 100%;"></vrutti-editor>
+                        <vrutti-editor .filePath=${leaf.activeTab} style="flex: 1 1 0%;"></vrutti-editor>
                     ` : html`
                         <div class="empty-pane" style="position: relative; width: 100%; height: 100%; overflow: hidden;">
                             <img src="./vrutti-logo.png" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.15; pointer-events: none; user-select: none; width: 400px; height: 400px; object-fit: contain;" />
