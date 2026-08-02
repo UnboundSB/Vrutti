@@ -32,7 +32,8 @@ int main(int argc, char* argv[]) {
     si.wShowWindow = SW_HIDE;
     ZeroMemory(&pi, sizeof(pi));
 
-    std::string cmd = "node src/ext/bootstrapper.js --pipe=\\\\.\\pipe\\vrutti_pipe";
+    // Use the bundled node.exe
+    std::string cmd = "src\\ext\\bin\\node.exe src/ext/bootstrapper.js --pipe=\\\\.\\pipe\\vrutti_pipe";
     
     std::cout << "[Core] Spawning Node.js Extension Host..." << std::endl;
     if (!CreateProcessA(NULL, (LPSTR)cmd.c_str(), NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
