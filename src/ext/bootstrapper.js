@@ -64,9 +64,28 @@ async function main() {
                     if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
                         resolve(download(res.headers.location, dest));
                     } else if (res.statusCode === 200) {
+                        const totalSize = parseInt(res.headers['content-length'] || '0', 10);
+                        let downloaded = 0;
+                        let lastPercentage = -1;
+
                         const file = fs.createWriteStream(dest);
+                        res.on('data', (chunk) => {
+                            downloaded += chunk.length;
+                            if (totalSize > 0) {
+                                const percentage = Math.round((downloaded / totalSize) * 100);
+                                if (percentage !== lastPercentage) {
+                                    lastPercentage = percentage;
+                                    ipcClient.sendNotification('extensions/progress', { name: params.name, percentage });
+                                }
+                            }
+                        });
+
                         res.pipe(file);
-                        file.on('finish', () => { file.close(); resolve(); });
+                        file.on('finish', () => { 
+                            ipcClient.sendNotification('extensions/progress', { name: params.name, percentage: 100 });
+                            file.close(); 
+                            resolve(); 
+                        });
                     } else {
                         reject(new Error(`Failed with status ${res.statusCode}`));
                     }
