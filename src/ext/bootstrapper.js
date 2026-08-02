@@ -45,6 +45,68 @@ async function main() {
         
         // Let the C++ core know we are ready to receive commands
         await ipcClient.sendRequest('host/ready');
+
+        ipcClient.on('extensions/install', async (params) => {
+            console.log(`[Bootstrapper] Installing extension ${params.name}...`);
+            const https = require('https');
+            const fs = require('fs');
+            const path = require('path');
+            const os = require('os');
+            const AdmZip = require('adm-zip');
+
+            const extDir = path.join(os.homedir(), '.vrutti', 'extensions', params.name);
+            fs.mkdirSync(extDir, { recursive: true });
+            
+            const zipPath = path.join(extDir, 'extension.vsix');
+            
+            const download = (url, dest) => new Promise((resolve, reject) => {
+                const req = https.get(url, (res) => {
+                    if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+                        resolve(download(res.headers.location, dest));
+                    } else if (res.statusCode === 200) {
+                        const file = fs.createWriteStream(dest);
+                        res.pipe(file);
+                        file.on('finish', () => { file.close(); resolve(); });
+                    } else {
+                        reject(new Error(`Failed with status ${res.statusCode}`));
+                    }
+                });
+                req.on('error', reject);
+            });
+
+            try {
+                await download(params.url, zipPath);
+                console.log(`[Bootstrapper] Downloaded to ${zipPath}`);
+                
+                const zip = new AdmZip(zipPath);
+                zip.extractAllTo(extDir, true);
+                
+                const pkgPath = path.join(extDir, 'extension', 'package.json');
+                if (fs.existsSync(pkgPath)) {
+                    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+                    if (pkg.contributes && pkg.contributes.themes && pkg.contributes.themes.length > 0) {
+                        const theme = pkg.contributes.themes[0];
+                        const themePath = path.join(extDir, 'extension', theme.path);
+                        if (fs.existsSync(themePath)) {
+                            let themeRaw = fs.readFileSync(themePath, 'utf8');
+                            // Strip comments (VS Code themes often have them)
+                            themeRaw = themeRaw.replace(/\\/\\*([\\s\\S]*?)\\*\\/|([^\\\\:]|^)\\/\\/.*$/gm, '$2');
+                            
+                            const themeData = JSON.parse(themeRaw);
+                            
+                            ipcClient.sendNotification('theme/apply', {
+                                name: theme.label || pkg.name,
+                                type: theme.uiTheme,
+                                colors: themeData.colors
+                            });
+                            console.log(`[Bootstrapper] Sent theme ${theme.label} to Core`);
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error(`[Bootstrapper] Install failed:`, err);
+            }
+        });
         
         if (config.extensionPath) {
             console.log(`[Bootstrapper] Loading extension from: ${config.extensionPath}`);
