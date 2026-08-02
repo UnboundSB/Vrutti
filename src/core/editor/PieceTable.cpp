@@ -291,13 +291,19 @@ namespace vrutti::core::editor {
                 int64_t delta = -static_cast<int64_t>(originalLength);
                 n->piece.length = 0;
                 updateSizeLeft(n, delta);
+                m_deletedNodesCount++;
             }
+
             if (nOffset + n->size_left > offset) self(self, n->left, nOffset);
             if (nStart + originalLength < offset + length) self(self, n->right, nStart + originalLength);
         };
         
         deleteRange(deleteRange, m_root, 0);
         m_totalLength -= length;
+
+        if (m_deletedNodesCount > 1000) {
+            garbageCollect();
+        }
     }
 
     void PieceTable::buildString(TreeNode* node, size_t offset, size_t length, std::string& result, size_t& currentOffset, size_t& remaining) const {
@@ -339,6 +345,39 @@ namespace vrutti::core::editor {
 
     size_t PieceTable::length() const {
         return m_totalLength;
+    }
+
+    void PieceTable::garbageCollect() {
+        std::vector<Piece> validPieces;
+        auto collect = [&](auto& self, TreeNode* n) -> void {
+            if (n == m_nil) return;
+            self(self, n->left);
+            if (n->piece.length > 0) {
+                validPieces.push_back(n->piece);
+            }
+            self(self, n->right);
+        };
+        collect(collect, m_root);
+
+        auto freeAll = [&](auto& self, TreeNode* n) -> void {
+            if (n == m_nil) return;
+            self(self, n->left);
+            self(self, n->right);
+            freeNode(n);
+        };
+        freeAll(freeAll, m_root);
+
+        m_root = m_nil;
+        m_deletedNodesCount = 0;
+        size_t offset = 0;
+
+        for (const auto& p : validPieces) {
+            TreeNode* newNode = allocateNode(p);
+            newNode->left = m_nil;
+            newNode->right = m_nil;
+            insertNodeAt(offset, newNode);
+            offset += p.length;
+        }
     }
 
 } // namespace vrutti::core::editor

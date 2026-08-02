@@ -21,6 +21,7 @@ namespace vrutti::core::editor {
         std::string getText() const;
         std::string substring(size_t offset, size_t length) const;
         size_t length() const;
+        void garbageCollect(); // Rebuilds the tree, pruning all 0-length nodes
 
     private:
         enum class BufferType { Original, Append };
@@ -59,6 +60,8 @@ namespace vrutti::core::editor {
         // Red-Black Tree operations
         TreeNode* m_root;
         TreeNode* m_nil; // Sentinel node for leaves
+        size_t m_deletedNodesCount = 0;
+
 
         void leftRotate(TreeNode* x);
         void rightRotate(TreeNode* x);
