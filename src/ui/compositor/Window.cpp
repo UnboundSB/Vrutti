@@ -268,6 +268,29 @@ namespace vrutti::ui {
             return "{}";
         });
 
+        w->bind("vruttiInstallExtension", [this](const std::string& req) -> std::string {
+            auto parsedReq = vrutti::core::utils::JsonParser::parse(req);
+            if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 2) {
+                auto urlNode = parsedReq->arrayElements[0];
+                auto nameNode = parsedReq->arrayElements[1];
+                if (urlNode && urlNode->type == vrutti::core::utils::JsonNode::Type::String &&
+                    nameNode && nameNode->type == vrutti::core::utils::JsonNode::Type::String) {
+                    
+                    std::string url = vrutti::core::utils::JsonParser::unescapeString(urlNode->stringValue);
+                    std::string name = vrutti::core::utils::JsonParser::unescapeString(nameNode->stringValue);
+                    
+                    std::cout << "[Core] Request to install extension '" << name << "' from " << url << std::endl;
+                    
+                    // Forward to IPC Node Host if connected
+                    if (this->m_ipc) {
+                        std::string payload = "{\"url\":\"" + url + "\",\"name\":\"" + name + "\"}";
+                        this->m_ipc->sendMessage("extensions/install", payload);
+                    }
+                }
+            }
+            return "{}";
+        });
+
         w->bind("vruttiReadDirectory", [this](const std::string& req) -> std::string {
             auto parsedReq = vrutti::core::utils::JsonParser::parse(req);
             if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
