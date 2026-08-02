@@ -65,6 +65,11 @@ export class VruttiExtensions extends LitElement {
             align-items: flex-start;
             padding: 10px 0;
             border-bottom: 1px solid #3c3c3c;
+            cursor: pointer;
+        }
+
+        .extension-card:hover {
+            background-color: #2a2d2e;
         }
 
         .ext-icon {
@@ -178,11 +183,20 @@ export class VruttiExtensions extends LitElement {
         }
     }
 
-    private install(ext: ExtensionResult) {
+    private install(ext: ExtensionResult, e: Event) {
+        e.stopPropagation();
         console.log(`Requesting installation for ${ext.namespace}.${ext.name} from ${ext.downloadUrl}`);
         if ((window as any).vruttiInstallExtension) {
             (window as any).vruttiInstallExtension(ext.downloadUrl, ext.name).catch(console.error);
         }
+    }
+
+    private selectExtension(ext: ExtensionResult) {
+        this.dispatchEvent(new CustomEvent('extension-selected', {
+            detail: ext,
+            bubbles: true,
+            composed: true
+        }));
     }
 
     render() {
@@ -195,13 +209,13 @@ export class VruttiExtensions extends LitElement {
                 ${this.isLoading ? html`<div class="loading">Searching Open VSX Registry...</div>` : ''}
                 ${!this.isLoading && this.results.length === 0 && this.query ? html`<div class="loading">No extensions found.</div>` : ''}
                 ${this.results.map(ext => html`
-                    <div class="extension-card">
+                    <div class="extension-card" @click=${() => this.selectExtension(ext)}>
                         <img class="ext-icon" src=${ext.iconUrl} @error=${(e: Event) => (e.target as HTMLImageElement).style.display = 'none'} />
                         <div class="ext-info">
                             <div class="ext-name">${ext.displayName}</div>
                             <div class="ext-publisher">${ext.publisherDisplayName}</div>
                             <div class="ext-desc" title=${ext.description}>${ext.description}</div>
-                            <button class="install-btn" @click=${() => this.install(ext)}>Install</button>
+                            <button class="install-btn" @click=${(e: Event) => this.install(ext, e)}>Install</button>
                         </div>
                     </div>
                 `)}
