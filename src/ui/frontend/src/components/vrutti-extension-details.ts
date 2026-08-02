@@ -88,7 +88,7 @@ export class VruttiExtensionDetails extends LitElement {
 
     private install() {
         if (this.extension && (window as any).vruttiInstallExtension) {
-            console.log(\`Installing \${this.extension.name}...\`);
+            console.log(`Installing ${this.extension.name}...`);
             (window as any).vruttiInstallExtension(this.extension.downloadUrl, this.extension.name).catch(console.error);
         }
     }
@@ -100,17 +100,17 @@ export class VruttiExtensionDetails extends LitElement {
 
         return html`
             <div class="header">
-                <img class="ext-icon" src=\${this.extension.iconUrl} @error=\${(e: Event) => (e.target as HTMLImageElement).style.display = 'none'} />
+                <img class="ext-icon" src=${this.extension.iconUrl} @error=${(e: Event) => (e.target as HTMLImageElement).style.display = 'none'} />
                 <div class="info">
-                    <div class="display-name">\${this.extension.displayName}</div>
-                    <div class="publisher">\${this.extension.publisherDisplayName} | Version: \${this.extension.version}</div>
-                    <div class="description">\${this.extension.description}</div>
-                    <button class="install-btn" @click=\${this.install}>Install Extension</button>
+                    <div class="display-name">${this.extension.displayName}</div>
+                    <div class="publisher">${this.extension.publisherDisplayName} | Version: ${this.extension.version}</div>
+                    <div class="description">${this.extension.description}</div>
+                    <button class="install-btn" @click=${this.install}>Install Extension</button>
                 </div>
             </div>
             <div class="readme">
                 <h3>Extension Overview</h3>
-                <p>Welcome to \${this.extension.displayName}. Click the Install button above to download and apply this extension.</p>
+                <p>Welcome to ${this.extension.displayName}. Click the Install button above to download and apply this extension.</p>
                 <p>Because Vrutti fetches directly from the Open VSX Registry, all downloaded extensions are fully open source.</p>
             </div>
         `;
