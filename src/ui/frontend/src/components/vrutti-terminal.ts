@@ -108,6 +108,29 @@ export class VruttiTerminal extends LitElement {
     
     window.addEventListener('resize', this.handleResize);
     
+    let outputBuffer: Uint8Array[] = [];
+    let isFlushPending = false;
+    
+    const flushOutput = () => {
+      if (outputBuffer.length > 0 && this.terminal) {
+        // Calculate total size
+        let totalLen = 0;
+        for (const buf of outputBuffer) totalLen += buf.length;
+        
+        // Combine into one array for faster write
+        const merged = new Uint8Array(totalLen);
+        let offset = 0;
+        for (const buf of outputBuffer) {
+          merged.set(buf, offset);
+          offset += buf.length;
+        }
+        
+        this.terminal.write(merged);
+        outputBuffer = [];
+      }
+      isFlushPending = false;
+    };
+
     const handleTerminalOutput = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       if (detail.id === this.terminalId && this.terminal) {
@@ -117,7 +140,12 @@ export class VruttiTerminal extends LitElement {
           for (let i = 0; i < binString.length; i++) {
             bytes[i] = binString.charCodeAt(i);
           }
-          this.terminal.write(bytes);
+          outputBuffer.push(bytes);
+          
+          if (!isFlushPending) {
+            isFlushPending = true;
+            requestAnimationFrame(flushOutput);
+          }
         } catch (err) {}
       }
     };
@@ -177,7 +205,8 @@ export class VruttiTerminal extends LitElement {
       fontWeight: '500',
       cursorBlink: true,
       allowTransparency: true,
-      windowsMode: true
+      windowsMode: true,
+      scrollback: 1000
     });
 
     this.fitAddon = new FitAddon();
