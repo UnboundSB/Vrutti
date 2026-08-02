@@ -6,6 +6,7 @@ import './components/vrutti-menubar';
 import './components/vrutti-panel';
 import './components/vrutti-editor-layout';
 import './components/vrutti-quick-open';
+import './components/vrutti-extension-details';
 
 import { globalHoverStyle } from './shared-styles';
 
@@ -16,6 +17,8 @@ export class VruttiApp extends LitElement {
 
   @state()
   private contextMenu: { x: number, y: number, path: string, name: string, isDirectory: boolean } | null = null;
+
+  @state() private activeExtension: any = null;
 
   @state() private showSettings = false;
   @state() private showGitGraph = false;
@@ -110,6 +113,7 @@ export class VruttiApp extends LitElement {
     this.addEventListener('close-git-graph', this.handleCloseGitGraph);
     window.addEventListener('click', this.closeContextMenu);
     window.addEventListener('keydown', this.handleGlobalKeydown);
+    this.addEventListener('extension-selected', this.handleExtensionSelected as EventListener);
   }
 
   disconnectedCallback() {
@@ -123,6 +127,7 @@ export class VruttiApp extends LitElement {
     this.removeEventListener('close-git-graph', this.handleCloseGitGraph);
     window.removeEventListener('click', this.closeContextMenu);
     window.removeEventListener('keydown', this.handleGlobalKeydown);
+    this.removeEventListener('extension-selected', this.handleExtensionSelected as EventListener);
   }
 
   private handleMenuAction = async (e: Event) => {
@@ -174,7 +179,12 @@ export class VruttiApp extends LitElement {
     this.contextMenu = null;
   };
 
+  private handleExtensionSelected = (e: Event) => {
+    this.activeExtension = (e as CustomEvent).detail;
+  };
+
   private handleOpenFile = (e: CustomEvent) => {
+    this.activeExtension = null;
     const layout = this.shadowRoot?.querySelector('#main-layout') as any;
     if (layout && layout.openFile) {
         layout.openFile(e.detail.path);
@@ -619,6 +629,7 @@ export class VruttiApp extends LitElement {
             <vrutti-settings style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 500;"></vrutti-settings>
           ` : html`
             <div style="flex: 1; display: flex; flex-direction: column; position: relative;">
+              ${this.activeExtension ? html`<vrutti-extension-details .extension=${this.activeExtension} style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 400;"></vrutti-extension-details>` : ''}
               <vrutti-editor-layout id="main-layout"></vrutti-editor-layout>
             </div>
             ${this.showTerminal ? html`
