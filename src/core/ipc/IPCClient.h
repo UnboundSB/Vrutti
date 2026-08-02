@@ -21,6 +21,9 @@ namespace vrutti::core::ipc {
         // Sends an event back to Node.js (e.g., text changed, window resized)
         void sendMessage(const std::string& method, const std::string& payload);
 
+        // Callback for arbitrary messages from Node.js
+        void setOnMessage(std::function<void(const std::string&)> cb) { m_onMessage = cb; }
+
         // Binds the active PieceTable so IPC can directly manipulate the C++ text buffer
         void bindEditorBuffer(vrutti::core::editor::PieceTable* table);
 
@@ -34,6 +37,8 @@ namespace vrutti::core::ipc {
 
         // Platform-specific connection handle (e.g. HANDLE for Windows Named Pipes)
         void* m_connectionHandle;
+
+        std::function<void(const std::string&)> m_onMessage;
 
         void listenLoop();
     };
