@@ -34,6 +34,49 @@
     </style>
   </head>
   <body>
+    <script>
+      window.vruttiIpcMessage = function(b64) {
+          try {
+              const str = atob(b64);
+              const msg = JSON.parse(str);
+              if (msg.method === 'theme/apply') {
+                  const colors = msg.params.colors;
+                  const root = document.documentElement;
+                  
+                  // Map VS Code theme tokens to Vrutti CSS variables
+                  const mapping = {
+                      'editor.background': '--vrutti-bg',
+                      'sideBar.background': '--vrutti-surface',
+                      'activityBar.background': '--vrutti-surface',
+                      'editorGroupHeader.tabsBackground': '--vrutti-surface',
+                      'editor.foreground': '--vrutti-text-bright',
+                      'sideBarTitle.foreground': '--vrutti-text',
+                      'tab.activeBackground': '--vrutti-surface-border',
+                      'button.background': '--vrutti-accent',
+                      'focusBorder': '--vrutti-accent',
+                      'editorLineNumber.foreground': '--vrutti-text',
+                      'terminal.background': '--vrutti-bg'
+                  };
+                  
+                  for (const [vsc, vrv] of Object.entries(mapping)) {
+                      // Some themes use #RRGGBBAA. We could parse it, but standard hex is fine.
+                      if (colors[vsc]) {
+                          root.style.setProperty(vrv, colors[vsc]);
+                      }
+                  }
+                  
+                  // Update HTML body background
+                  if (colors['editor.background']) {
+                      document.body.style.backgroundColor = colors['editor.background'];
+                  }
+                  
+                  console.log(`[Theme] Applied ${msg.params.name}`);
+              }
+          } catch(e) {
+              console.error("IPC Message Error:", e);
+          }
+      };
+    </script>
     <vrutti-app></vrutti-app>
     <script type="module" src="/src/main.ts"></script>
   </body>
