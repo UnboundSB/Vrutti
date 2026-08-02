@@ -109,9 +109,8 @@ export class VruttiExtensionDetails extends LitElement {
                 </div>
             </div>
             <div class="readme">
-                <h3>Extension Overview</h3>
-                <p>Welcome to ${this.extension.displayName}. Click the Install button above to download and apply this extension.</p>
-                <p>Because Vrutti fetches directly from the Open VSX Registry, all downloaded extensions are fully open source.</p>
+                <h3>About ${this.extension.displayName}</h3>
+                <p>${this.extension.description}</p>
             </div>
         `;
     }
