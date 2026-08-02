@@ -39,6 +39,10 @@
           try {
               const str = atob(b64);
               const msg = JSON.parse(str);
+              
+              // Dispatch a global event for any Lit component to consume
+              window.dispatchEvent(new CustomEvent('vrutti-ipc', { detail: msg }));
+              
               if (msg.method === 'theme/apply') {
                   const colors = msg.params.colors;
                   const root = document.documentElement;
