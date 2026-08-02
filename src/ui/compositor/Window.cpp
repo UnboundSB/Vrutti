@@ -153,6 +153,15 @@ namespace vrutti::ui {
             }
         }, nullptr);
 
+        if (this->m_ipc) {
+            this->m_ipc->setOnMessage([w](const std::string& msg) {
+                std::string b64 = base64_encode(msg);
+                w->dispatch([w, b64]() {
+                    w->eval("if (window.vruttiIpcMessage) window.vruttiIpcMessage('" + b64 + "');");
+                });
+            });
+        }
+
         w->bind("vruttiTerminalInit", [this, w](const std::string& req) -> std::string {
             std::string id = "";
             std::string cwd = "";
