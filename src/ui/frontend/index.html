@@ -38,13 +38,17 @@
       window.vruttiIpcMessage = function(b64) {
           try {
               const str = atob(b64);
-              const msg = JSON.parse(str);
-              
-              // Dispatch a global event for any Lit component to consume
-              window.dispatchEvent(new CustomEvent('vrutti-ipc', { detail: msg }));
-              
-              if (msg.method === 'theme/apply') {
-                  const colors = msg.params.colors;
+              const lines = str.split('\\n');
+              for (const line of lines) {
+                  if (!line.trim()) continue;
+                  try {
+                      const msg = JSON.parse(line);
+                      
+                      // Dispatch a global event for any Lit component to consume
+                      window.dispatchEvent(new CustomEvent('vrutti-ipc', { detail: msg }));
+                      
+                      if (msg.method === 'theme/apply') {
+                          const colors = msg.params.colors;
                   const root = document.documentElement;
                   
                   // Map VS Code theme tokens to Vrutti CSS variables
@@ -76,8 +80,12 @@
                   
                   console.log(`[Theme] Applied ${msg.params.name}`);
               }
+                  } catch (e) {
+                      console.error("Failed to parse individual IPC message:", e);
+                  }
+              }
           } catch(e) {
-              console.error("IPC Message Error:", e);
+              console.error("IPC Base64/Dispatch Error:", e);
           }
       };
     </script>
