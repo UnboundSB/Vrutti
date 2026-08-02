@@ -58,7 +58,10 @@ else()
 endif()
 
 # Main Executable
-add_executable(vrutti_app src/app/main.cpp src/app/vrutti_app.rc)
+add_executable(vrutti_app WIN32 src/app/main.cpp src/app/vrutti_app.rc)
+if(MSVC)
+    set_target_properties(vrutti_app PROPERTIES LINK_FLAGS "/ENTRY:\"mainCRTStartup\"")
+endif()
 target_link_libraries(vrutti_app PRIVATE vrutti_core)
 
 # Lazy Loaded Search DLL
