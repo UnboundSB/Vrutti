@@ -2,8 +2,10 @@
 #include <iostream>
 #include <iostream>
 #include <thread>
-// For full implementation on Windows: #include <windows.h>
-// Here we stub the named pipe loop to demonstrate architecture without locking the thread.
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 
 #ifndef _WIN32
 #include <sys/socket.h>
@@ -51,6 +53,12 @@ namespace vrutti::core::ipc {
             close(fd);
             m_connectionHandle = nullptr;
         }
+#else
+        if (m_connectionHandle && m_connectionHandle != INVALID_HANDLE_VALUE) {
+            DisconnectNamedPipe(m_connectionHandle);
+            CloseHandle(m_connectionHandle);
+            m_connectionHandle = nullptr;
+        }
 #endif
     }
 
@@ -60,8 +68,17 @@ namespace vrutti::core::ipc {
         // Serialize to JSON-RPC and write to pipe
         std::string rpc = "{\"jsonrpc\":\"2.0\",\"method\":\"" + method + "\",\"params\":" + payload + "}\n";
         
-        // Mock output for testing
-        // std::cout << "[IPC -> Node.js] " << rpc;
+#ifdef _WIN32
+        if (m_connectionHandle && m_connectionHandle != INVALID_HANDLE_VALUE) {
+            DWORD bytesWritten;
+            WriteFile(m_connectionHandle, rpc.c_str(), rpc.length(), &bytesWritten, NULL);
+        }
+#else
+        if (m_connectionHandle) {
+            int fd = static_cast<int>(reinterpret_cast<intptr_t>(m_connectionHandle));
+            write(fd, rpc.c_str(), rpc.length());
+        }
+#endif
     }
 
     void IPCClient::handleIncomingMessage(const std::string& jsonMessage) {
@@ -110,6 +127,7 @@ namespace vrutti::core::ipc {
             while (m_running) {
                 int client_fd = accept(server_fd, NULL, NULL);
                 if (client_fd < 0) continue;
+                m_connectionHandle = reinterpret_cast<void*>(static_cast<intptr_t>(client_fd));
 
                 char buffer[4096];
                 while (m_running) {
@@ -119,9 +137,42 @@ namespace vrutti::core::ipc {
                     handleIncomingMessage(std::string(buffer));
                 }
                 close(client_fd);
+                m_connectionHandle = nullptr;
             }
             close(server_fd);
             unlink(m_pipeName.c_str());
+#else
+            std::string pipePath = "\\\\.\\pipe\\" + m_pipeName;
+            HANDLE hPipe = CreateNamedPipeA(
+                pipePath.c_str(),
+                PIPE_ACCESS_DUPLEX,
+                PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT,
+                1, 4096, 4096, 0, NULL);
+                
+            if (hPipe == INVALID_HANDLE_VALUE) {
+                std::cerr << "[IPC] Failed to create named pipe. Error: " << GetLastError() << std::endl;
+                return;
+            }
+            
+            while (m_running) {
+                BOOL connected = ConnectNamedPipe(hPipe, NULL) ? TRUE : (GetLastError() == ERROR_PIPE_CONNECTED);
+                if (connected) {
+                    m_connectionHandle = hPipe;
+                    char buffer[4096];
+                    DWORD bytesRead;
+                    while (m_running) {
+                        if (ReadFile(hPipe, buffer, sizeof(buffer) - 1, &bytesRead, NULL) && bytesRead > 0) {
+                            buffer[bytesRead] = '\0';
+                            handleIncomingMessage(std::string(buffer));
+                        } else {
+                            break;
+                        }
+                    }
+                    DisconnectNamedPipe(hPipe);
+                    m_connectionHandle = nullptr;
+                }
+            }
+            CloseHandle(hPipe);
 #endif
         }
     }
