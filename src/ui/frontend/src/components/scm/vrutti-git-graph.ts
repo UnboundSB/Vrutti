@@ -310,7 +310,6 @@ export class VruttiGitGraph extends LitElement {
     private scrollLeftStart = 0;
     private scrollTopStart = 0;
 
-    @state() private viewportRect = { left: 0, top: 0, width: 800, height: 600 };
     private handleMouseDown = (e: MouseEvent) => {
         if ((e.target as HTMLElement).closest('.commit-node') || (e.target as HTMLElement).closest('.node-msg') || (e.target as HTMLElement).closest('.ref-tag')) return;
         this.isDragging = true;
@@ -493,12 +492,6 @@ export class VruttiGitGraph extends LitElement {
         const edgeLines: any[] = [];
         const nodeElements: any[] = [];
         const htmlLabels: any[] = [];
-
-        const vLeft = this.viewportRect.left / this.zoom;
-        const vTop = this.viewportRect.top / this.zoom;
-        const vRight = vLeft + (this.viewportRect.width || 800) / this.zoom;
-        const vBottom = vTop + (this.viewportRect.height || 600) / this.zoom;
-        const margin = 200;
 
         this.graphRows.forEach((row) => {
             const pos = nodePositions.get(row.commit.hash)!;
