@@ -41,6 +41,7 @@ namespace vrutti::core::ipc {
         std::mutex m_pipeMutex;
 
         std::function<void(const std::string&)> m_onMessage;
+        std::string m_incomingBuffer;
 
         void listenLoop();
     };

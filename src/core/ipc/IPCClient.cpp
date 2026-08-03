@@ -95,8 +95,15 @@ namespace vrutti::core::ipc {
     }
 
     void IPCClient::handleIncomingMessage(const std::string& jsonMessage) {
-        if (m_onMessage) {
-            m_onMessage(jsonMessage);
+        m_incomingBuffer += jsonMessage;
+        
+        size_t pos = 0;
+        while ((pos = m_incomingBuffer.find('\n')) != std::string::npos) {
+            std::string line = m_incomingBuffer.substr(0, pos);
+            m_incomingBuffer.erase(0, pos + 1);
+            if (m_onMessage) {
+                m_onMessage(line);
+            }
         }
 
         // Fast zero-copy parsing would happen here via core::utils::Json
