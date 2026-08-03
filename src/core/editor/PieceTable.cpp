@@ -10,8 +10,7 @@ namespace vrutti::core::editor {
     {
         m_fileStream.open(filePath, std::ios::binary);
         if (!m_fileStream && m_totalLength > 0) {
-            // If file doesn't exist but length > 0, something is wrong, but we proceed
-            // safely. In a real IDE, we'd throw or handle graceful failure.
+            throw std::runtime_error("Failed to open file for PieceTable: " + filePath);
         }
 
         m_nil = allocateNode({ BufferType::Original, 0, 0 });
@@ -35,8 +34,6 @@ namespace vrutti::core::editor {
         if (m_fileStream.is_open()) {
             m_fileStream.close();
         }
-        // Arena automatically destroys all nodes in one massive, instant O(1) deallocation.
-        // We do NOT recursively delete nodes. Huge CPU win.
     }
 
     PieceTable::TreeNode* PieceTable::allocateNode(const Piece& p) {
@@ -239,7 +236,7 @@ namespace vrutti::core::editor {
         Piece rightPiece = { node->piece.buffer, node->piece.start + offsetInPiece, node->piece.length - offsetInPiece };
         int64_t shrinkDelta = -static_cast<int64_t>(rightPiece.length);
         node->piece.length = offsetInPiece;
-        updateSizeLeft(node, shrinkDelta); // MUST UPDATE ANCESTORS!
+        updateSizeLeft(node, shrinkDelta);
         
         TreeNode* rightNode = allocateNode(rightPiece);
         rightNode->left = m_nil;

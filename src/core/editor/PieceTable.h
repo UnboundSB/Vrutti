@@ -10,12 +10,8 @@ namespace vrutti::core::editor {
 
     class PieceTable {
     public:
-        // Initialize with a file path for LAZY LOADING. 
-        // We do not load the whole file into RAM.
         explicit PieceTable(const std::string& filePath, size_t fileLength);
         ~PieceTable();
-
-        // Core API - Keeps names simple for connecting to outer systems
         void insert(size_t offset, const std::string& text);
         void remove(size_t offset, size_t length);
         std::string getText() const;
@@ -70,16 +66,12 @@ namespace vrutti::core::editor {
         void splitNode(TreeNode* node, size_t offsetInPiece);
         PieceLocation findNode(size_t logicalOffset) const;
         void updateSizeLeft(TreeNode* node, int64_t delta);
-        
-        // Memory Architecture (Cache-Locality & Zero-Malloc)
         vrutti::core::memory::ArenaAllocator m_arena;
         TreeNode* m_freeList;
         TreeNode* allocateNode(const Piece& p);
         void freeNode(TreeNode* node); // Just adds to freelist
 
         void buildString(TreeNode* node, size_t offset, size_t length, std::string& result, size_t& currentOffset, size_t& remaining) const;
-
-        // Lazy Loading Architecture
         mutable std::ifstream m_fileStream;
         std::string m_appendBuffer;
         size_t m_totalLength;
