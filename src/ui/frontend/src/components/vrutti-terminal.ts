@@ -146,7 +146,9 @@ export class VruttiTerminal extends LitElement {
             isFlushPending = true;
             requestAnimationFrame(flushOutput);
           }
-        } catch (err) {}
+        } catch (err) {
+            console.error('[Terminal] Failed to parse terminal output payload:', err);
+        }
       }
     };
     this.addEventListener('disconnected', () => {
