@@ -9,8 +9,7 @@
 
 namespace vrutti::core::concurrency {
 
-    // A lightweight ThreadPool for executing asynchronous background tasks
-    // designed to keep the main IDE UI thread highly responsive.
+    // A lightweight ThreadPool for executing asynchronous background tasks.
     class ThreadPool {
     public:
         // Initialize the thread pool with a specific number of hardware threads.
