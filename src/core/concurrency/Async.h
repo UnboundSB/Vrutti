@@ -32,14 +32,13 @@ namespace vrutti::core::concurrency {
             int waitTime = delayMs >= 0 ? delayMs : m_defaultDelay;
 
             // Fire and forget a thread to handle the delay.
-            // In a production event loop, this would hook into the OS timer queue instead.
             std::thread([task, waitTime, currentCancelFlag]() {
                 std::this_thread::sleep_for(std::chrono::milliseconds(waitTime));
                 if (!currentCancelFlag->load()) {
                     try {
                         task();
                     } catch (...) {
-                        // Suppress exception to avoid terminating the process
+                        // Ignore task exceptions
                     }
                 }
             }).detach();
@@ -88,7 +87,7 @@ namespace vrutti::core::concurrency {
                 try {
                     taskToRun();
                 } catch (...) {
-                    // Suppress exception to avoid breaking the Throttler state
+                    // Ignore task exceptions
                 }
                 this->runNext();
             }).detach();
