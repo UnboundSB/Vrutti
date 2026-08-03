@@ -325,8 +325,8 @@ namespace vrutti::ui {
                             json += "}";
                             first = false;
                         }
-                    } catch (...) {
-                        // Return empty on error
+                    } catch (const std::exception& e) {
+                        std::cerr << "[UI] Failed to read directory: " << e.what() << std::endl;
                     }
                     json += "]";
                     return json;
@@ -345,8 +345,9 @@ namespace vrutti::ui {
                         std::ofstream f(path);
                         f.close();
                         return "{\"success\":true}";
-                    } catch (...) {}
-                }
+                    } catch (const std::exception& e) {
+                        std::cerr << "[UI] Failed to create file: " << e.what() << std::endl;
+                    }
             }
             return "{\"success\":false}";
         });
@@ -360,8 +361,9 @@ namespace vrutti::ui {
                     try {
                         std::filesystem::create_directories(path);
                         return "{\"success\":true}";
-                    } catch (...) {}
-                }
+                    } catch (const std::exception& e) {
+                        std::cerr << "[UI] Failed to create folder: " << e.what() << std::endl;
+                    }
             }
             return "{\"success\":false}";
         });
@@ -399,36 +401,7 @@ namespace vrutti::ui {
             return json;
         });
 
-        w->bind("vruttiCreateFolder", [this](const std::string& req) -> std::string {
-            auto parsedReq = vrutti::core::utils::JsonParser::parse(req);
-            if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
-                auto pathNode = parsedReq->arrayElements[0];
-                if (pathNode && pathNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    std::string path = vrutti::core::utils::JsonParser::unescapeString(pathNode->stringValue);
-                    try {
-                        std::filesystem::create_directory(path);
-                        return "{\"success\":true}";
-                    } catch (...) {}
-                }
-            }
-            return "{\"success\":false}";
-        });
 
-        w->bind("vruttiCreateFile", [this](const std::string& req) -> std::string {
-            auto parsedReq = vrutti::core::utils::JsonParser::parse(req);
-            if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
-                auto pathNode = parsedReq->arrayElements[0];
-                if (pathNode && pathNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    std::string path = vrutti::core::utils::JsonParser::unescapeString(pathNode->stringValue);
-                    try {
-                        std::ofstream f(path);
-                        f.close();
-                        return "{\"success\":true}";
-                    } catch (...) {}
-                }
-            }
-            return "{\"success\":false}";
-        });
         w->bind("vruttiReadFile", [this](const std::string& req) -> std::string {
             auto parsedReq = vrutti::core::utils::JsonParser::parse(req);
             if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
@@ -441,7 +414,9 @@ namespace vrutti::ui {
                             std::string content((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
                             return vrutti::core::utils::JsonSerializer::escapeString(content);
                         }
-                    } catch (...) {}
+                    } catch (const std::exception& e) {
+                        std::cerr << "[UI] Failed to read file: " << e.what() << std::endl;
+                    }
                 }
             }
             return "\"\"";
@@ -460,7 +435,9 @@ namespace vrutti::ui {
                         f << content;
                         f.close();
                         return "{\"success\":true}";
-                    } catch (...) {}
+                    } catch (const std::exception& e) {
+                        std::cerr << "[UI] Failed to write file: " << e.what() << std::endl;
+                    }
                 }
             }
             return "{\"success\":false}";
