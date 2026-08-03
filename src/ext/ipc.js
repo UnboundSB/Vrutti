@@ -21,6 +21,10 @@ class IPCClient extends EventEmitter {
             this.client.on('data', (data) => this._handleData(data));
             
             this.client.on('error', (err) => {
+                if (err.code === 'EPIPE' || err.code === 'ECONNRESET') {
+                    console.log('[IPC] Connection closed by host (EPIPE/ECONNRESET). Exiting gracefully.');
+                    process.exit(0);
+                }
                 console.error('[IPC] Connection error:', err);
                 reject(err);
             });
