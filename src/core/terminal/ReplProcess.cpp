@@ -31,10 +31,23 @@ namespace vrutti::core::terminal {
         if (!CreatePipe(&hChildStd_IN_Rd, &m_hChildStd_IN_Wr, &saAttr, 0)) return false;
         SetHandleInformation(m_hChildStd_IN_Wr, HANDLE_FLAG_INHERIT, 0);
 
-        if (!CreatePipe(&m_hChildStd_OUT_Rd, &hChildStd_OUT_Wr, &saAttr, 0)) return false;
+        if (!CreatePipe(&m_hChildStd_OUT_Rd, &hChildStd_OUT_Wr, &saAttr, 0)) {
+            CloseHandle(hChildStd_IN_Rd);
+            CloseHandle(m_hChildStd_IN_Wr);
+            m_hChildStd_IN_Wr = NULL;
+            return false;
+        }
         SetHandleInformation(m_hChildStd_OUT_Rd, HANDLE_FLAG_INHERIT, 0);
 
-        if (!CreatePipe(&m_hChildStd_ERR_Rd, &hChildStd_ERR_Wr, &saAttr, 0)) return false;
+        if (!CreatePipe(&m_hChildStd_ERR_Rd, &hChildStd_ERR_Wr, &saAttr, 0)) {
+            CloseHandle(hChildStd_IN_Rd);
+            CloseHandle(m_hChildStd_IN_Wr);
+            CloseHandle(m_hChildStd_OUT_Rd);
+            CloseHandle(hChildStd_OUT_Wr);
+            m_hChildStd_IN_Wr = NULL;
+            m_hChildStd_OUT_Rd = NULL;
+            return false;
+        }
         SetHandleInformation(m_hChildStd_ERR_Rd, HANDLE_FLAG_INHERIT, 0);
 
         STARTUPINFOW siStartInfo;
@@ -59,6 +72,12 @@ namespace vrutti::core::terminal {
         CloseHandle(hChildStd_ERR_Wr);
 
         if (!bSuccess) {
+            CloseHandle(m_hChildStd_IN_Wr);
+            CloseHandle(m_hChildStd_OUT_Rd);
+            CloseHandle(m_hChildStd_ERR_Rd);
+            m_hChildStd_IN_Wr = NULL;
+            m_hChildStd_OUT_Rd = NULL;
+            m_hChildStd_ERR_Rd = NULL;
             return false;
         }
 
