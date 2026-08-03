@@ -629,7 +629,7 @@ export class VruttiApp extends LitElement {
             <vrutti-settings style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 500;"></vrutti-settings>
           ` : html`
             <div style="flex: 1; display: flex; flex-direction: column; position: relative;">
-              ${this.activeExtension ? html`<vrutti-extension-details .extension=${this.activeExtension} style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 400;"></vrutti-extension-details>` : ''}
+              ${this.activeExtension ? html`<vrutti-extension-details .extension=${this.activeExtension} style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 40;"></vrutti-extension-details>` : ''}
               <vrutti-editor-layout id="main-layout"></vrutti-editor-layout>
             </div>
             ${this.showTerminal ? html`
