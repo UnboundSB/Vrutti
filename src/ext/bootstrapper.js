@@ -47,11 +47,8 @@ async function main() {
         await ipcClient.sendRequest('host/ready');
 
         ipcClient.on('extensions/install', async (params) => {
-            console.log(`[Bootstrapper] Installing extension ${params.name}...`);
+            log(`Installing extension ${params.name} from ${params.url}`);
             const https = require('https');
-            const fs = require('fs');
-            const path = require('path');
-            const os = require('os');
             const AdmZip = require('adm-zip');
 
             const extDir = path.join(os.homedir(), '.vrutti', 'extensions', params.name);
@@ -60,11 +57,14 @@ async function main() {
             const zipPath = path.join(extDir, 'extension.vsix');
             
             const download = (url, dest) => new Promise((resolve, reject) => {
+                log(`Downloading from ${url}`);
                 const req = https.get(url, (res) => {
+                    log(`Response status: ${res.statusCode}`);
                     if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
                         resolve(download(res.headers.location, dest));
                     } else if (res.statusCode === 200) {
                         const totalSize = parseInt(res.headers['content-length'] || '0', 10);
+                        log(`Content-Length: ${totalSize}`);
                         let downloaded = 0;
                         let lastPercentage = -1;
 
@@ -82,20 +82,28 @@ async function main() {
 
                         res.pipe(file);
                         file.on('finish', () => { 
+                            log(`Download finished for ${params.name}`);
                             ipcClient.sendNotification('extensions/progress', { name: params.name, percentage: 100 });
                             file.close(); 
                             resolve(); 
+                        });
+                        file.on('error', (err) => {
+                            log(`File stream error: ${err.message}`);
+                            reject(err);
                         });
                     } else {
                         reject(new Error(`Failed with status ${res.statusCode}`));
                     }
                 });
-                req.on('error', reject);
+                req.on('error', (err) => {
+                    log(`HTTPS request error: ${err.message}`);
+                    reject(err);
+                });
             });
 
             try {
                 await download(params.url, zipPath);
-                console.log(`[Bootstrapper] Downloaded to ${zipPath}`);
+                log(`Downloaded to ${zipPath}`);
                 
                 const zip = new AdmZip(zipPath);
                 zip.extractAllTo(extDir, true);
@@ -109,7 +117,7 @@ async function main() {
                         if (fs.existsSync(themePath)) {
                             let themeRaw = fs.readFileSync(themePath, 'utf8');
                             // Strip comments (VS Code themes often have them)
-                            themeRaw = themeRaw.replace(/\\/\\*([\\s\\S]*?)\\*\\/|([^\\\\:]|^)\\/\\/.*$/gm, '$2');
+                            themeRaw = themeRaw.replace(/\/\*([\s\S]*?)\*\/|([^\\:]|^)\/\/.*$/gm, '$2');
                             
                             const themeData = JSON.parse(themeRaw);
                             
@@ -122,8 +130,11 @@ async function main() {
                         }
                     }
                 }
+                fs.unlinkSync(zipPath);
+                
+                log(`Successfully installed extension ${params.name}`);
             } catch (err) {
-                console.error(`[Bootstrapper] Install failed:`, err);
+                log(`Failed to install extension ${params.name}: ${err.message}\n${err.stack}`);
             }
         });
         
