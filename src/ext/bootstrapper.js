@@ -117,11 +117,15 @@ async function main() {
                                 // Strip comments (VS Code themes often have them)
                                 themeRaw = themeRaw.replace(/\/\*([\s\S]*?)\*\/|([^\\:]|^)\/\/.*$/gm, '$2');
                                 
-                                const themeData = JSON.parse(themeRaw);
-                                
-                                // Forward to C++ core
-                                log(`Loading theme: ${theme.label}`);
-                                ipcClient.sendNotification('theme/load', themeData);
+                                try {
+                                    const themeData = JSON.parse(themeRaw);
+                                    
+                                    // Forward to C++ core
+                                    log(`Loading theme: ${theme.label}`);
+                                    ipcClient.sendNotification('theme/load', themeData);
+                                } catch (e) {
+                                    console.error(`Failed to parse theme JSON: ${themePath}`);
+                                }
                             }
                         }
                     }
