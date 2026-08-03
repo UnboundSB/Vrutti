@@ -5,7 +5,7 @@
 #include <windows.h>
 #include <strsafe.h>
 
-// Typedefs for dynamically loading ConPTY APIs (in case we need to build against older SDKs, but here we assume modern SDK is used, but dynamically load for safety/compatibility)
+// Typedefs for dynamically loading ConPTY APIs
 typedef HRESULT (WINAPI *PFNCREATEPSEUDOCONSOLE)(COORD c, HANDLE hIn, HANDLE hOut, DWORD dwFlags, HPCON *phpcon);
 typedef void (WINAPI *PFNRESIZEPSEUDOCONSOLE)(HPCON hpc, COORD size);
 typedef void (WINAPI *PFNCLOSEPSEUDOCONSOLE)(HPCON hpc);
@@ -67,7 +67,12 @@ namespace vrutti::core::terminal {
         InitializeProcThreadAttributeList(NULL, 1, 0, &attrListSize);
         siEx.lpAttributeList = (LPPROC_THREAD_ATTRIBUTE_LIST)HeapAlloc(GetProcessHeap(), 0, attrListSize);
         if (!InitializeProcThreadAttributeList(siEx.lpAttributeList, 1, 0, &attrListSize)) {
-            // error
+            HeapFree(GetProcessHeap(), 0, siEx.lpAttributeList);
+            CloseHandle(hPipePTYInRd);
+            CloseHandle(m_hChildStd_IN_Wr);
+            CloseHandle(m_hChildStd_OUT_Rd);
+            CloseHandle(hPipePTYOutWr);
+            return false;
         }
 
         UpdateProcThreadAttribute(siEx.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE, hPC, sizeof(HPCON), NULL, NULL);
