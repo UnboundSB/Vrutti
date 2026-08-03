@@ -36,6 +36,9 @@ namespace vrutti::core::memory {
     void ArenaAllocator::allocateNewBlock(size_t minimumSize) {
         size_t sizeToAllocate = std::max(m_blockSize, minimumSize);
         uint8_t* mem = static_cast<uint8_t*>(std::malloc(sizeToAllocate));
+        if (!mem) {
+            throw std::bad_alloc();
+        }
         m_blocks.push_back({ mem, sizeToAllocate, 0 });
         m_currentBlock = &m_blocks.back();
     }
