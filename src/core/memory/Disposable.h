@@ -6,7 +6,7 @@
 
 namespace vrutti::core::memory {
 
-    // Replaces garbage collection reliance by strictly managing resource lifecycles.
+    // Strictly manages resource lifecycles.
     class IDisposable {
     public:
         virtual ~IDisposable() = default;
@@ -50,7 +50,7 @@ namespace vrutti::core::memory {
                     try {
                         (*it)->dispose();
                     } catch (...) {
-                        // Suppress exception to ensure all resources are disposed
+                        // Ignore exceptions in dispose to ensure all resources are disposed
                     }
                 }
             }
