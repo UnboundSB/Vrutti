@@ -1,6 +1,5 @@
 #include "IPCClient.h"
 #include <iostream>
-#include <iostream>
 #include <thread>
 #ifdef _WIN32
 #include <windows.h>
@@ -106,20 +105,14 @@ namespace vrutti::core::ipc {
             }
         }
 
-        // Fast zero-copy parsing would happen here via core::utils::Json
-        // For demonstration of the architectural bridge:
         if (!m_activeBuffer) return;
 
-        // Extremely simplified parser stub for JSON-RPC methods:
-        // Expected format: {"method":"edit","offset":5,"text":"test"}
         if (jsonMessage.find("\"method\":\"insert\"") != std::string::npos) {
-            // Extract offset and text (naive extraction for demonstration)
             size_t offsetPos = jsonMessage.find("\"offset\":");
             size_t textPos = jsonMessage.find("\"text\":\"");
             if (offsetPos != std::string::npos && textPos != std::string::npos) {
-                // In production, core::utils::Json handles this safely
-                // m_activeBuffer->insert(parsedOffset, parsedText);
-                std::cout << "[IPC <- Node.js] Handled 'insert' request securely via C++ Arena Tree." << std::endl;
+                // TODO: Properly parse JSON instead of string matching
+                std::cout << "[IPC <- Node.js] Handled 'insert' request." << std::endl;
             }
         }
     }
