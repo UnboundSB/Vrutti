@@ -3,6 +3,7 @@
 #include <memory>
 #include <mutex>
 #include "../utils/Json.h"
+#include <future>
 
 namespace vrutti::core::config {
 
@@ -33,6 +34,7 @@ namespace vrutti::core::config {
         std::mutex mutex_;
         std::shared_ptr<vrutti::core::utils::JsonNode> root_;
         std::string cachedSource_; // Keep the source alive since JsonNode holds string_views
+        std::future<void> m_saveFuture;
     };
 
 } // namespace vrutti::core::config
