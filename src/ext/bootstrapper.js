@@ -44,7 +44,7 @@ async function main() {
         };
         
         // Let the C++ core know we are ready to receive commands
-        await ipcClient.sendRequest('host/ready');
+        ipcClient.sendNotification('host/ready');
 
         const fs = require('fs');
         const path = require('path');

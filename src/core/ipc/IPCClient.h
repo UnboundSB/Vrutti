@@ -2,6 +2,7 @@
 #include <string>
 #include <functional>
 #include <unordered_map>
+#include <mutex>
 #include "core/editor/PieceTable.h"
 
 namespace vrutti::core::ipc {
@@ -37,6 +38,7 @@ namespace vrutti::core::ipc {
 
         // Platform-specific connection handle (e.g. HANDLE for Windows Named Pipes)
         void* m_connectionHandle;
+        std::mutex m_pipeMutex;
 
         std::function<void(const std::string&)> m_onMessage;
 

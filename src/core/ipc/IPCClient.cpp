@@ -54,6 +54,7 @@ namespace vrutti::core::ipc {
             m_connectionHandle = nullptr;
         }
 #else
+        std::lock_guard<std::mutex> lock(m_pipeMutex);
         if (m_connectionHandle && m_connectionHandle != INVALID_HANDLE_VALUE) {
             DisconnectNamedPipe(m_connectionHandle);
             CloseHandle(m_connectionHandle);
@@ -69,16 +70,19 @@ namespace vrutti::core::ipc {
         std::string rpc = "{\"jsonrpc\":\"2.0\",\"method\":\"" + method + "\",\"params\":" + payload + "}\n";
         
 #ifdef _WIN32
-        if (m_connectionHandle && m_connectionHandle != INVALID_HANDLE_VALUE) {
-            std::cout << "[IPC] Writing to pipe..." << std::endl;
-            DWORD bytesWritten;
-            if (!WriteFile(m_connectionHandle, rpc.c_str(), rpc.length(), &bytesWritten, NULL)) {
-                std::cerr << "[IPC] WriteFile failed. Error: " << GetLastError() << std::endl;
+        {
+            std::lock_guard<std::mutex> lock(m_pipeMutex);
+            if (m_connectionHandle && m_connectionHandle != INVALID_HANDLE_VALUE) {
+                std::cout << "[IPC] Writing to pipe..." << std::endl;
+                DWORD bytesWritten;
+                if (!WriteFile(m_connectionHandle, rpc.c_str(), rpc.length(), &bytesWritten, NULL)) {
+                    std::cerr << "[IPC] WriteFile failed. Error: " << GetLastError() << std::endl;
+                } else {
+                    std::cout << "[IPC] WriteFile succeeded, wrote " << bytesWritten << " bytes." << std::endl;
+                }
             } else {
-                std::cout << "[IPC] WriteFile succeeded, wrote " << bytesWritten << " bytes." << std::endl;
+                std::cerr << "[IPC] Cannot write, handle is invalid!" << std::endl;
             }
-        } else {
-            std::cerr << "[IPC] Cannot write, handle is invalid!" << std::endl;
         }
 #else
         if (m_connectionHandle) {
@@ -175,27 +179,41 @@ namespace vrutti::core::ipc {
                     DWORD bytesRead;
                     DWORD bytesAvail;
                     while (m_running) {
-                        if (PeekNamedPipe(hPipe, NULL, 0, NULL, &bytesAvail, NULL)) {
-                            if (bytesAvail > 0) {
-                                if (ReadFile(hPipe, buffer, sizeof(buffer) - 1, &bytesRead, NULL) && bytesRead > 0) {
-                                    buffer[bytesRead] = '\0';
-                                    handleIncomingMessage(std::string(buffer));
-                                } else {
-                                    break;
+                        bool hasData = false;
+                        {
+                            std::lock_guard<std::mutex> lock(m_pipeMutex);
+                            if (PeekNamedPipe(hPipe, NULL, 0, NULL, &bytesAvail, NULL)) {
+                                if (bytesAvail > 0) {
+                                    if (ReadFile(hPipe, buffer, sizeof(buffer) - 1, &bytesRead, NULL) && bytesRead > 0) {
+                                        buffer[bytesRead] = '\0';
+                                        hasData = true;
+                                    } else {
+                                        break; // Error during read
+                                    }
                                 }
                             } else {
-                                Sleep(10);
+                                if (GetLastError() == ERROR_BROKEN_PIPE) break;
                             }
+                        }
+                        
+                        if (hasData) {
+                            handleIncomingMessage(std::string(buffer));
                         } else {
-                            if (GetLastError() == ERROR_BROKEN_PIPE) break;
                             Sleep(10);
                         }
                     }
-                    DisconnectNamedPipe(hPipe);
-                    m_connectionHandle = nullptr;
+                    
+                    {
+                        std::lock_guard<std::mutex> lock(m_pipeMutex);
+                        DisconnectNamedPipe(hPipe);
+                        m_connectionHandle = nullptr;
+                    }
                 }
             }
-            CloseHandle(hPipe);
+            {
+                std::lock_guard<std::mutex> lock(m_pipeMutex);
+                CloseHandle(hPipe);
+            }
 #endif
         }
     }
