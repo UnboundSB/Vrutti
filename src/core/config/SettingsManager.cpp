@@ -97,16 +97,20 @@ namespace vrutti::core::config {
     }
 
     void SettingsManager::saveAsync() {
-        // Deep copy the JSON string so the detached thread can write it safely
+        // Deep copy the JSON string so the async task can write it safely
         std::string jsonStr = cachedSource_;
         std::string path = getConfigFilePath();
 
-        std::thread([path, jsonStr]() {
+        if (m_saveFuture.valid()) {
+            m_saveFuture.wait(); // Ensure sequential file writes
+        }
+
+        m_saveFuture = std::async(std::launch::async, [path, jsonStr]() {
             std::ofstream file(path);
             if (file.is_open()) {
                 file << jsonStr;
             }
-        }).detach();
+        });
     }
 
 } // namespace vrutti::core::config
