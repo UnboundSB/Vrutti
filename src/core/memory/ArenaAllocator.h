@@ -5,9 +5,7 @@
 
 namespace vrutti::core::memory {
 
-    // A simple, fast Arena Allocator designed for low-overhead, contiguous memory 
-    // allocations. Ideal for UI trees or syntax trees where nodes are created in bulk
-    // and destroyed together.
+    // A fast Arena Allocator designed for low-overhead, contiguous memory allocations.
     class ArenaAllocator {
     public:
         explicit ArenaAllocator(size_t blockSize = 1024 * 1024); // Default 1MB blocks
