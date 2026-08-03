@@ -67,7 +67,6 @@
                   };
                   
                   for (const [vsc, vrv] of Object.entries(mapping)) {
-                      // Some themes use #RRGGBBAA. We could parse it, but standard hex is fine.
                       if (colors[vsc]) {
                           root.style.setProperty(vrv, colors[vsc]);
                       }
