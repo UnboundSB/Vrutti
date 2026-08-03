@@ -43,7 +43,7 @@ namespace vrutti::core::events {
                     obs->handleChange();
                     obs->endUpdate();
                 } catch (...) {
-                    // Suppress exceptions to avoid crashing the event pipeline
+                    // Ignore observer exceptions
                 }
             }
         }
@@ -67,8 +67,7 @@ namespace vrutti::core::events {
         std::vector<IObserver*> m_observers;
     };
 
-    // Helper to automatically run a function when observed values change
-    // For this minimal implementation, the user must explicitly register the observable they care about.
+    // Helper to automatically run a function when observed values change.
     class Autorun : public IObserver, public vrutti::core::memory::IDisposable {
     public:
         template<typename T>
