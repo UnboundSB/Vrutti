@@ -8,7 +8,7 @@
 namespace vrutti::core::ipc {
 
     // A lightweight IPC (Inter-Process Communication) endpoint.
-    // This connects our ultra-fast C++ native core to the background Node.js
+    // Connects the C++ core to the background Node.js
     // Extension Host process using JSON-RPC over Named Pipes/Domain Sockets.
     class IPCClient {
     public:
