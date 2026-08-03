@@ -70,13 +70,22 @@ namespace vrutti::core::ipc {
         
 #ifdef _WIN32
         if (m_connectionHandle && m_connectionHandle != INVALID_HANDLE_VALUE) {
+            std::cout << "[IPC] Writing to pipe..." << std::endl;
             DWORD bytesWritten;
-            WriteFile(m_connectionHandle, rpc.c_str(), rpc.length(), &bytesWritten, NULL);
+            if (!WriteFile(m_connectionHandle, rpc.c_str(), rpc.length(), &bytesWritten, NULL)) {
+                std::cerr << "[IPC] WriteFile failed. Error: " << GetLastError() << std::endl;
+            } else {
+                std::cout << "[IPC] WriteFile succeeded, wrote " << bytesWritten << " bytes." << std::endl;
+            }
+        } else {
+            std::cerr << "[IPC] Cannot write, handle is invalid!" << std::endl;
         }
 #else
         if (m_connectionHandle) {
+            std::cout << "[IPC] Writing to socket..." << std::endl;
             int fd = static_cast<int>(reinterpret_cast<intptr_t>(m_connectionHandle));
             write(fd, rpc.c_str(), rpc.length());
+            std::cout << "[IPC] Write complete." << std::endl;
         }
 #endif
     }
@@ -164,12 +173,22 @@ namespace vrutti::core::ipc {
                     m_connectionHandle = hPipe;
                     char buffer[4096];
                     DWORD bytesRead;
+                    DWORD bytesAvail;
                     while (m_running) {
-                        if (ReadFile(hPipe, buffer, sizeof(buffer) - 1, &bytesRead, NULL) && bytesRead > 0) {
-                            buffer[bytesRead] = '\0';
-                            handleIncomingMessage(std::string(buffer));
+                        if (PeekNamedPipe(hPipe, NULL, 0, NULL, &bytesAvail, NULL)) {
+                            if (bytesAvail > 0) {
+                                if (ReadFile(hPipe, buffer, sizeof(buffer) - 1, &bytesRead, NULL) && bytesRead > 0) {
+                                    buffer[bytesRead] = '\0';
+                                    handleIncomingMessage(std::string(buffer));
+                                } else {
+                                    break;
+                                }
+                            } else {
+                                Sleep(10);
+                            }
                         } else {
-                            break;
+                            if (GetLastError() == ERROR_BROKEN_PIPE) break;
+                            Sleep(10);
                         }
                     }
                     DisconnectNamedPipe(hPipe);

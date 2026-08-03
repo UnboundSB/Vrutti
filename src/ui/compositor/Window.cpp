@@ -292,8 +292,10 @@ namespace vrutti::ui {
                     
                     // Forward to IPC Node Host if connected
                     if (this->m_ipc) {
+                        std::cout << "[Core] Sending message to IPC..." << std::endl;
                         std::string payload = "{\"url\":\"" + url + "\",\"name\":\"" + name + "\"}";
                         this->m_ipc->sendMessage("extensions/install", payload);
+                        std::cout << "[Core] Finished sending message to IPC." << std::endl;
                     }
                 }
             }
