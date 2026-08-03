@@ -46,93 +46,118 @@ async function main() {
         // Let the C++ core know we are ready to receive commands
         await ipcClient.sendRequest('host/ready');
 
-        ipcClient.on('extensions/install', async (params) => {
-            log(`Installing extension ${params.name} from ${params.url}`);
-            const https = require('https');
-            const AdmZip = require('adm-zip');
+        const fs = require('fs');
+        const path = require('path');
+        const os = require('os');
 
-            const extDir = path.join(os.homedir(), '.vrutti', 'extensions', params.name);
-            fs.mkdirSync(extDir, { recursive: true });
-            
-            const zipPath = path.join(extDir, 'extension.vsix');
-            
-            const download = (url, dest) => new Promise((resolve, reject) => {
-                log(`Downloading from ${url}`);
-                const req = https.get(url, (res) => {
-                    log(`Response status: ${res.statusCode}`);
-                    if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-                        resolve(download(res.headers.location, dest));
-                    } else if (res.statusCode === 200) {
-                        const totalSize = parseInt(res.headers['content-length'] || '0', 10);
-                        log(`Content-Length: ${totalSize}`);
-                        let downloaded = 0;
-                        let lastPercentage = -1;
+        const vruttiDir = path.join(os.homedir(), '.vrutti');
+        if (!fs.existsSync(vruttiDir)) {
+            fs.mkdirSync(vruttiDir, { recursive: true });
+        }
 
-                        const file = fs.createWriteStream(dest);
-                        res.on('data', (chunk) => {
-                            downloaded += chunk.length;
-                            if (totalSize > 0) {
-                                const percentage = Math.round((downloaded / totalSize) * 100);
-                                if (percentage !== lastPercentage) {
-                                    lastPercentage = percentage;
-                                    ipcClient.sendNotification('extensions/progress', { name: params.name, percentage });
-                                }
-                            }
-                        });
+        const logFile = fs.createWriteStream(path.join(vruttiDir, 'bootstrapper.log'), { flags: 'a' });
+        function log(msg) {
+            const out = `[${new Date().toISOString()}] ${msg}\n`;
+            logFile.write(out);
+        }
 
-                        res.pipe(file);
-                        file.on('finish', () => { 
-                            log(`Download finished for ${params.name}`);
-                            ipcClient.sendNotification('extensions/progress', { name: params.name, percentage: 100 });
-                            file.close(); 
-                            resolve(); 
-                        });
-                        file.on('error', (err) => {
-                            log(`File stream error: ${err.message}`);
-                            reject(err);
-                        });
-                    } else {
-                        reject(new Error(`Failed with status ${res.statusCode}`));
-                    }
-                });
-                req.on('error', (err) => {
-                    log(`HTTPS request error: ${err.message}`);
-                    reject(err);
-                });
-            });
+        log('Bootstrapper started');
 
-            try {
-                await download(params.url, zipPath);
-                log(`Downloaded to ${zipPath}`);
+        class ExtensionDownloader {
+            constructor() {
+                this.extDirBase = path.join(os.homedir(), '.vrutti', 'extensions');
+                if (!fs.existsSync(this.extDirBase)) {
+                    fs.mkdirSync(this.extDirBase, { recursive: true });
+                }
+            }
+
+            async downloadExtension(url, name, progressCallback) {
+                const extDir = path.join(this.extDirBase, name);
+                if (!fs.existsSync(extDir)) fs.mkdirSync(extDir, { recursive: true });
                 
+                const zipPath = path.join(extDir, 'extension.vsix');
+                
+                await this._downloadFile(url, zipPath, progressCallback);
+                
+                log(`Extracting ${zipPath}...`);
+                const AdmZip = require('adm-zip');
                 const zip = new AdmZip(zipPath);
                 zip.extractAllTo(extDir, true);
                 
-                const pkgPath = path.join(extDir, 'extension', 'package.json');
-                if (fs.existsSync(pkgPath)) {
-                    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
-                    if (pkg.contributes && pkg.contributes.themes && pkg.contributes.themes.length > 0) {
-                        const theme = pkg.contributes.themes[0];
-                        const themePath = path.join(extDir, 'extension', theme.path);
-                        if (fs.existsSync(themePath)) {
-                            let themeRaw = fs.readFileSync(themePath, 'utf8');
-                            // Strip comments (VS Code themes often have them)
-                            themeRaw = themeRaw.replace(/\/\*([\s\S]*?)\*\/|([^\\:]|^)\/\/.*$/gm, '$2');
-                            
-                            const themeData = JSON.parse(themeRaw);
-                            
-                            ipcClient.sendNotification('theme/apply', {
-                                name: theme.label || pkg.name,
-                                type: theme.uiTheme,
-                                colors: themeData.colors
-                            });
-                            console.log(`[Bootstrapper] Sent theme ${theme.label} to Core`);
+                // Special handling for themes
+                const pkgJsonPath = path.join(extDir, 'extension', 'package.json');
+                if (fs.existsSync(pkgJsonPath)) {
+                    const pkg = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
+                    if (pkg.contributes && pkg.contributes.themes) {
+                        for (const theme of pkg.contributes.themes) {
+                            const themePath = path.join(extDir, 'extension', theme.path);
+                            if (fs.existsSync(themePath)) {
+                                let themeRaw = fs.readFileSync(themePath, 'utf8');
+                                // Strip comments (VS Code themes often have them)
+                                themeRaw = themeRaw.replace(/\/\*([\s\S]*?)\*\/|([^\\:]|^)\/\/.*$/gm, '$2');
+                                
+                                const themeData = JSON.parse(themeRaw);
+                                
+                                // Forward to C++ core
+                                log(`Loading theme: ${theme.label}`);
+                                ipcClient.sendNotification('theme/load', themeData);
+                            }
                         }
                     }
                 }
-                fs.unlinkSync(zipPath);
                 
-                log(`Successfully installed extension ${params.name}`);
+                fs.unlinkSync(zipPath);
+                log(`Successfully installed extension ${name}`);
+            }
+
+            _downloadFile(url, dest, progressCallback) {
+                const https = require('https');
+                return new Promise((resolve, reject) => {
+                    const req = https.get(url, (res) => {
+                        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+                            resolve(this._downloadFile(res.headers.location, dest, progressCallback));
+                        } else if (res.statusCode === 200) {
+                            const totalSize = parseInt(res.headers['content-length'] || '0', 10);
+                            let downloaded = 0;
+                            let lastPercentage = -1;
+
+                            const file = fs.createWriteStream(dest);
+                            res.on('data', (chunk) => {
+                                downloaded += chunk.length;
+                                if (totalSize > 0) {
+                                    const percentage = Math.round((downloaded / totalSize) * 100);
+                                    if (percentage !== lastPercentage) {
+                                        lastPercentage = percentage;
+                                        if (progressCallback) progressCallback(percentage);
+                                    }
+                                }
+                            });
+
+                            res.pipe(file);
+                            file.on('finish', () => { 
+                                file.close(); 
+                                resolve(); 
+                            });
+                            file.on('error', reject);
+                        } else {
+                            reject(new Error(`Failed with status ${res.statusCode}`));
+                        }
+                    });
+                    req.on('error', reject);
+                });
+            }
+        }
+
+        const downloader = new ExtensionDownloader();
+
+        ipcClient.on('extensions/install', async (params) => {
+            log(`Installing extension ${params.name} from ${params.url}`);
+            try {
+                await downloader.downloadExtension(params.url, params.name, (percentage) => {
+                    ipcClient.sendNotification('extensions/progress', { name: params.name, percentage });
+                });
+                // Ensure UI knows we hit 100%
+                ipcClient.sendNotification('extensions/progress', { name: params.name, percentage: 100 });
             } catch (err) {
                 log(`Failed to install extension ${params.name}: ${err.message}\n${err.stack}`);
             }

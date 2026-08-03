@@ -311,18 +311,6 @@ export class VruttiGitGraph extends LitElement {
     private scrollTopStart = 0;
 
     @state() private viewportRect = { left: 0, top: 0, width: 800, height: 600 };
-
-    private handleScroll = (e: Event) => {
-        const target = e.target as HTMLElement;
-        this.viewportRect = {
-            left: target.scrollLeft,
-            top: target.scrollTop,
-            width: target.clientWidth,
-            height: target.clientHeight
-        };
-    };
-
-
     private handleMouseDown = (e: MouseEvent) => {
         if ((e.target as HTMLElement).closest('.commit-node') || (e.target as HTMLElement).closest('.node-msg') || (e.target as HTMLElement).closest('.ref-tag')) return;
         this.isDragging = true;
@@ -512,28 +500,20 @@ export class VruttiGitGraph extends LitElement {
         const vBottom = vTop + (this.viewportRect.height || 600) / this.zoom;
         const margin = 200;
 
-        const isVisible = (x: number, y: number) => {
-            return x >= vLeft - margin && x <= vRight + margin && y >= vTop - margin && y <= vBottom + margin;
-        };
-
         this.graphRows.forEach((row) => {
             const pos = nodePositions.get(row.commit.hash)!;
-            const nodeVisible = isVisible(pos.x, pos.y);
             
             row.commit.parents.forEach(pHash => {
                 const pPos = nodePositions.get(pHash);
                 if (pPos) {
-                    const edgeVisible = nodeVisible || isVisible(pPos.x, pPos.y);
-                    if (edgeVisible) {
                         const color = this.getColor(row.colIndex);
                         const match = isMatch(row.commit);
                         const opacity = (this.searchQuery && !match) ? 0.2 : 1.0;
                         edgeLines.push(svg`<path d="M ${pos.x} ${pos.y} C ${pos.x - 40} ${pos.y}, ${pPos.x + 40} ${pPos.y}, ${pPos.x} ${pPos.y}" fill="none" stroke="${color}" stroke-width="5" opacity="${opacity}" />`);
-                    }
                 }
             });
 
-            if (nodeVisible) {
+            {
                 const color = this.getColor(row.colIndex);
                 const match = isMatch(row.commit);
                 const opacity = (this.searchQuery && !match) ? 0.2 : 1.0;
@@ -598,7 +578,7 @@ export class VruttiGitGraph extends LitElement {
                         ${this.errorMsg}
                     </div>
                 ` : html`
-                    <div class="canvas-scroll-view" @scroll=${this.handleScroll} @wheel=${this.handleWheel} @mousedown=${this.handleMouseDown} @mousemove=${this.handleMouseMove} @mouseup=${this.handleMouseUp} @mouseleave=${this.handleMouseUp}>
+                    <div class="canvas-scroll-view" @wheel=${this.handleWheel} @mousedown=${this.handleMouseDown} @mousemove=${this.handleMouseMove} @mouseup=${this.handleMouseUp} @mouseleave=${this.handleMouseUp}>
                         <div class="canvas-container" style="width: ${svgWidth * this.zoom}px; height: ${svgHeight * this.zoom}px; position: relative; overflow: hidden;">
                             <div style="transform: scale(${this.zoom}); transform-origin: top left; position: absolute; top: 0; left: 0; width: ${svgWidth}px; height: ${svgHeight}px;">
                                 <svg width="${svgWidth}" height="${svgHeight}" style="position: absolute; top: 0; left: 0;">${edgeLines}${nodeElements}</svg>
