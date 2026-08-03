@@ -23,12 +23,12 @@ namespace vrutti::core::fs {
         const FileNode& getRoot() const { return m_root; }
         FileNode& getRootMutable() { return m_root; }
 
-        // === Lazy Loading Memory Management ===
+        // === Directory Management ===
         
-        // Lazy loads children of a specific node into RAM
+        // Scans the directory to load its children
         void scanDirectory(FileNode& node);
 
-        // Instantly frees RAM when a folder is collapsed
+        // Clears the loaded children to free memory
         void unloadDirectory(FileNode& node);
 
     private:
