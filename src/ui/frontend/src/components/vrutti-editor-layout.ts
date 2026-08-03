@@ -478,7 +478,9 @@ export class VruttiEditorLayout extends LitElement {
                         this.activePaneId = targetLeafId;
                         this.openFile(data.filePath);
                     }
-                } catch (e) {}
+                } catch (e) {
+                    console.error('[EditorLayout] Failed to parse drop data:', e);
+                }
             }
         }
     }
