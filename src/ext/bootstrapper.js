@@ -50,15 +50,8 @@ async function main() {
         const path = require('path');
         const os = require('os');
 
-        const vruttiDir = path.join(os.homedir(), '.vrutti');
-        if (!fs.existsSync(vruttiDir)) {
-            fs.mkdirSync(vruttiDir, { recursive: true });
-        }
-
-        const logFile = fs.createWriteStream(path.join(vruttiDir, 'bootstrapper.log'), { flags: 'a' });
         function log(msg) {
-            const out = `[${new Date().toISOString()}] ${msg}\n`;
-            logFile.write(out);
+            console.log(`[Bootstrapper] ${msg}`);
         }
 
         log('Bootstrapper started');

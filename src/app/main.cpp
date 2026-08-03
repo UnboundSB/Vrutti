@@ -36,7 +36,7 @@ int main(int argc, char* argv[]) {
     std::string cmd = "src\\ext\\bin\\node.exe src/ext/bootstrapper.js --pipe=\\\\.\\pipe\\vrutti_pipe";
     
     std::cout << "[Core] Spawning Node.js Extension Host..." << std::endl;
-    if (!CreateProcessA(NULL, (LPSTR)cmd.c_str(), NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
+    if (!CreateProcessA(NULL, (LPSTR)cmd.c_str(), NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
         std::cerr << "[Core] Failed to spawn Node.js Extension Host! Error: " << GetLastError() << std::endl;
     } else {
         CloseHandle(pi.hProcess);
