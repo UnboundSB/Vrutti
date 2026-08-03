@@ -64,6 +64,34 @@ async function main() {
                 }
             }
 
+            getInstalledExtensions() {
+                const installed = [];
+                if (!fs.existsSync(this.extDirBase)) return installed;
+                
+                const dirs = fs.readdirSync(this.extDirBase);
+                for (const dir of dirs) {
+                    const extPath = path.join(this.extDirBase, dir);
+                    const pkgPath = path.join(extPath, 'extension', 'package.json');
+                    if (fs.existsSync(pkgPath)) {
+                        try {
+                            const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+                            installed.push({
+                                name: pkg.name,
+                                displayName: pkg.displayName || pkg.name,
+                                publisherDisplayName: pkg.publisher || pkg.author || dir,
+                                description: pkg.description || '',
+                                version: pkg.version || '1.0.0',
+                                isTheme: pkg.contributes && pkg.contributes.themes ? true : false,
+                                localPath: extPath
+                            });
+                        } catch (e) {
+                            console.error(`Failed to read package.json for ${dir}`);
+                        }
+                    }
+                }
+                return installed;
+            }
+
             async downloadExtension(url, name, progressCallback) {
                 const extDir = path.join(this.extDirBase, name);
                 if (!fs.existsSync(extDir)) fs.mkdirSync(extDir, { recursive: true });
@@ -142,6 +170,10 @@ async function main() {
         }
 
         const downloader = new ExtensionDownloader();
+        
+        // Broadcast installed extensions to frontend on startup
+        const installedExts = downloader.getInstalledExtensions();
+        ipcClient.sendNotification('extensions/installed', installedExts);
 
         ipcClient.on('extensions/install', async (params) => {
             log(`Installing extension ${params.name} from ${params.url}`);
@@ -151,6 +183,8 @@ async function main() {
                 });
                 // Ensure UI knows we hit 100%
                 ipcClient.sendNotification('extensions/progress', { name: params.name, percentage: 100 });
+                // Broadcast updated list
+                ipcClient.sendNotification('extensions/installed', downloader.getInstalledExtensions());
             } catch (err) {
                 log(`Failed to install extension ${params.name}: ${err.message}\n${err.stack}`);
             }

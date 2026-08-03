@@ -135,8 +135,42 @@ export class VruttiExtensions extends LitElement {
 
     @state() private query = '';
     @state() private results: ExtensionResult[] = [];
+    @state() private installed: ExtensionResult[] = [];
     @state() private isLoading = false;
+    @state() private progressMap: Map<string, number> = new Map();
     private searchTimeout: any;
+
+    connectedCallback() {
+        super.connectedCallback();
+        window.addEventListener('vrutti-ipc', this.handleIpc as EventListener);
+    }
+
+    disconnectedCallback() {
+        super.disconnectedCallback();
+        window.removeEventListener('vrutti-ipc', this.handleIpc as EventListener);
+    }
+
+    private handleIpc = (e: CustomEvent) => {
+        const msg = e.detail;
+        if (msg.method === 'extensions/installed') {
+            this.installed = msg.params || [];
+        } else if (msg.method === 'extensions/progress') {
+            const { name, percentage } = msg.params;
+            const newMap = new Map(this.progressMap);
+            newMap.set(name, percentage);
+            this.progressMap = newMap;
+            
+            if (percentage === 100) {
+                // If it was just installed, maybe we should ask backend to resend installed list,
+                // but for now let's just clear the progress after 2 seconds
+                setTimeout(() => {
+                    const cleanMap = new Map(this.progressMap);
+                    cleanMap.delete(name);
+                    this.progressMap = cleanMap;
+                }, 2000);
+            }
+        }
+    };
 
     private onInput(e: Event) {
         const input = e.target as HTMLInputElement;
@@ -200,6 +234,8 @@ export class VruttiExtensions extends LitElement {
     }
 
     render() {
+        const displayList = this.query ? this.results : this.installed;
+        
         return html`
             <div class="header">EXTENSIONS</div>
             <div class="search-container">
@@ -207,18 +243,32 @@ export class VruttiExtensions extends LitElement {
             </div>
             <div class="results">
                 ${this.isLoading ? html`<div class="loading">Searching Open VSX Registry...</div>` : ''}
-                ${!this.isLoading && this.results.length === 0 && this.query ? html`<div class="loading">No extensions found.</div>` : ''}
-                ${this.results.map(ext => html`
+                ${!this.isLoading && this.query && this.results.length === 0 ? html`<div class="loading">No extensions found.</div>` : ''}
+                ${!this.isLoading && !this.query && this.installed.length === 0 ? html`<div class="loading">No extensions installed.</div>` : ''}
+                
+                ${displayList.map(ext => {
+                    const progress = this.progressMap.get(ext.name) || 0;
+                    const isInstalling = progress > 0 && progress < 100;
+                    return html`
                     <div class="extension-card" @click=${() => this.selectExtension(ext)}>
-                        <img class="ext-icon" src=${ext.iconUrl} @error=${(e: Event) => (e.target as HTMLImageElement).style.display = 'none'} />
+                        <img class="ext-icon" src=${ext.iconUrl || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23333"/><text x="50" y="50" fill="%23888" font-size="40" text-anchor="middle" dominant-baseline="middle">E</text></svg>'} @error=${(e: Event) => (e.target as HTMLImageElement).style.display = 'none'} />
                         <div class="ext-info">
                             <div class="ext-name">${ext.displayName}</div>
                             <div class="ext-publisher">${ext.publisherDisplayName}</div>
                             <div class="ext-desc" title=${ext.description}>${ext.description}</div>
-                            <button class="install-btn" @click=${(e: Event) => this.install(ext, e)}>Install</button>
+                            
+                            ${isInstalling ? html`
+                                <div style="width: 100%; height: 4px; background: #333; margin-top: 4px; border-radius: 2px; overflow: hidden;">
+                                    <div style="width: ${progress}%; height: 100%; background: #007fd4; transition: width 0.2s;"></div>
+                                </div>
+                            ` : (!this.query ? html`
+                                <span style="font-size: 11px; color: #888; background: #333; padding: 2px 6px; border-radius: 4px; align-self: flex-start;">Installed</span>
+                            ` : html`
+                                <button class="install-btn" @click=${(e: Event) => this.install(ext, e)}>Install</button>
+                            `)}
                         </div>
                     </div>
-                `)}
+                `})}
             </div>
         `;
     }

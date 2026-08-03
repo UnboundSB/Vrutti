@@ -47,7 +47,7 @@
                       // Dispatch a global event for any Lit component to consume
                       window.dispatchEvent(new CustomEvent('vrutti-ipc', { detail: msg }));
                       
-                      if (msg.method === 'theme/apply') {
+                      if (msg.method === 'theme/load') {
                           const colors = msg.params.colors;
                   const root = document.documentElement;
                   
