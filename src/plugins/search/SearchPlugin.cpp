@@ -155,8 +155,8 @@ namespace vrutti::plugins::search {
         if (useRegexEngine) {
             try {
                 re = std::regex(searchPattern, regexFlags);
-            } catch (...) {
-                std::cerr << "[SearchPlugin] Invalid regex pattern.\n";
+            } catch (const std::regex_error& e) {
+                std::cerr << "[SearchPlugin] Invalid regex pattern: " << e.what() << "\n";
                 return results;
             }
         }
