@@ -74,7 +74,7 @@ namespace vrutti::core::events {
                     try {
                         entry.callback(eventData);
                     } catch (...) {
-                        // Suppress exceptions from faulty listeners to ensure all receive the event
+                        // Ignore listener exceptions
                     }
                 }
             }
