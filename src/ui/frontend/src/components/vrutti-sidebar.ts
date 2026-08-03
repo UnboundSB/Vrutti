@@ -35,7 +35,9 @@ export class VruttiSidebar extends LitElement {
         if (json && json.path && json.path !== "") {
           initialPath = json.path;
         }
-      } catch (e) {}
+      } catch (e) {
+        console.warn("Failed to get initial workspace from backend, falling back to local storage.", e);
+      }
     }
     
     // If no initial path was provided via CLI argument, restore from localStorage
