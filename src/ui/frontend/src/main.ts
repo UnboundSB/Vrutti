@@ -228,10 +228,29 @@ export class VruttiApp extends LitElement {
       const editorActions = [
         'Undo', 'Redo', 'Cut', 'Copy', 'Paste', 'Find', 'Replace', 'Select All',
         'Expand Selection', 'Add Cursor Above', 'Add Cursor Below', 'Add Next Occurrence',
-        'Select All Occurrences'
+        'Select All Occurrences', 'Toggle Line Comment', 'Toggle Block Comment', 
+        'Shrink Selection', 'Copy Line Up', 'Copy Line Down', 'Move Line Up', 
+        'Move Line Down', 'Duplicate Selection', 'Add Cursors to Line Ends', 
+        'Add Previous Occurrence', 'Save'
       ];
+      
+      const externalLinks: Record<string, string> = {
+        'Documentation': 'https://github.com/UnboundSB/Vrutti/wiki',
+        'Release Notes': 'https://github.com/UnboundSB/Vrutti/releases',
+        'Join Us on YouTube': 'https://youtube.com/',
+        'Report Issue': 'https://github.com/UnboundSB/Vrutti/issues'
+      };
+
       if (editorActions.includes(detail.action)) {
         window.dispatchEvent(new CustomEvent('editor-action', { detail: { action: detail.action } }));
+      } else if (externalLinks[detail.action]) {
+        if ((window as any).vruttiOpenExternalUrl) {
+           (window as any).vruttiOpenExternalUrl(externalLinks[detail.action]);
+        }
+      } else {
+        // Fallback for not yet implemented items
+        console.warn(`Action not yet implemented: ${detail.action}`);
+        window.alert(`Feature Not Yet Implemented: ${detail.action}`);
       }
     }
   };
