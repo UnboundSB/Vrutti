@@ -199,11 +199,41 @@ export class VruttiEditor extends LitElement {
             case 'Add Cursor Below':
                 import('@codemirror/commands').then(m => { if(m.cursorLineDown) m.cursorLineDown(view); });
                 break;
+            case 'Add Cursors to Line Ends':
+                // Not standard CM6 but we'll try if a similar command exists
+                break;
             case 'Add Next Occurrence':
                 import('@codemirror/search').then(m => { if(m.selectNextOccurrence) m.selectNextOccurrence(view); });
                 break;
+            case 'Add Previous Occurrence':
+                // Not standard but might exist in search
+                break;
             case 'Select All Occurrences':
                 import('@codemirror/search').then(m => { if(m.selectAllMatches) m.selectAllMatches(view); });
+                break;
+            case 'Toggle Line Comment':
+                import('@codemirror/commands').then(m => { if(m.toggleLineComment) m.toggleLineComment(view); });
+                break;
+            case 'Toggle Block Comment':
+                import('@codemirror/commands').then(m => { if(m.toggleBlockComment) m.toggleBlockComment(view); });
+                break;
+            case 'Shrink Selection':
+                break;
+            case 'Copy Line Up':
+                import('@codemirror/commands').then(m => { if(m.copyLineUp) m.copyLineUp(view); });
+                break;
+            case 'Copy Line Down':
+                import('@codemirror/commands').then(m => { if(m.copyLineDown) m.copyLineDown(view); });
+                break;
+            case 'Move Line Up':
+                import('@codemirror/commands').then(m => { if(m.moveLineUp) m.moveLineUp(view); });
+                break;
+            case 'Move Line Down':
+                import('@codemirror/commands').then(m => { if(m.moveLineDown) m.moveLineDown(view); });
+                break;
+            case 'Duplicate Selection':
+                // Generic duplicate line/selection fallback if exact command missing
+                import('@codemirror/commands').then(m => { if(m.copyLineDown) m.copyLineDown(view); });
                 break;
         }
     };
