@@ -653,6 +653,24 @@ namespace vrutti::ui {
             return "{}";
         });
 
+        w->bind("vruttiOpenExternalUrl", [this](const std::string& req) -> std::string {
+            auto parsedReq = vrutti::core::utils::JsonParser::parse(req);
+            if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
+                auto urlNode = parsedReq->arrayElements[0];
+                if (urlNode && urlNode->type == vrutti::core::utils::JsonNode::Type::String) {
+                    std::string url = vrutti::core::utils::JsonParser::unescapeString(urlNode->stringValue);
+#ifdef _WIN32
+                    ShellExecuteA(NULL, "open", url.c_str(), NULL, NULL, SW_SHOWNORMAL);
+#else
+                    std::string cmd = "xdg-open \"" + url + "\"";
+                    std::system(cmd.c_str());
+#endif
+                }
+            }
+            return "{}";
+        });
+
+
         return true;
     }
 
