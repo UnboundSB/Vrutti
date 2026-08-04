@@ -114,6 +114,7 @@ export class VruttiApp extends LitElement {
     window.addEventListener('click', this.closeContextMenu);
     window.addEventListener('keydown', this.handleGlobalKeydown);
     this.addEventListener('extension-selected', this.handleExtensionSelected as EventListener);
+    this.addEventListener('close-extension-details', this.handleCloseExtensionDetails);
   }
 
   disconnectedCallback() {
@@ -128,6 +129,7 @@ export class VruttiApp extends LitElement {
     window.removeEventListener('click', this.closeContextMenu);
     window.removeEventListener('keydown', this.handleGlobalKeydown);
     this.removeEventListener('extension-selected', this.handleExtensionSelected as EventListener);
+    this.removeEventListener('close-extension-details', this.handleCloseExtensionDetails);
   }
 
   private handleMenuAction = async (e: Event) => {
@@ -181,6 +183,10 @@ export class VruttiApp extends LitElement {
 
   private handleExtensionSelected = (e: Event) => {
     this.activeExtension = (e as CustomEvent).detail;
+  };
+
+  private handleCloseExtensionDetails = () => {
+    this.activeExtension = null;
   };
 
   private handleOpenFile = (e: CustomEvent) => {

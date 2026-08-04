@@ -35,6 +35,45 @@
   </head>
   <body>
     <script>
+      function applyThemeColors(colors, themeName) {
+          if (!colors) return;
+          const root = document.documentElement;
+          const mapping = {
+              'editor.background': '--vrutti-bg',
+              'sideBar.background': '--vrutti-surface',
+              'activityBar.background': '--vrutti-surface',
+              'editorGroupHeader.tabsBackground': '--vrutti-surface',
+              'editor.foreground': '--vrutti-text-bright',
+              'sideBarTitle.foreground': '--vrutti-text',
+              'tab.activeBackground': '--vrutti-surface-border',
+              'button.background': '--vrutti-accent',
+              'focusBorder': '--vrutti-accent',
+              'editorLineNumber.foreground': '--vrutti-text',
+              'terminal.background': '--vrutti-bg'
+          };
+          for (const [vsc, vrv] of Object.entries(mapping)) {
+              if (colors[vsc]) {
+                  root.style.setProperty(vrv, colors[vsc]);
+              }
+          }
+          if (colors['editor.background']) {
+              document.body.style.backgroundColor = colors['editor.background'];
+          }
+          if (themeName) {
+              console.log(`[Theme] Applied ${themeName}`);
+          }
+      }
+
+      // Load theme on startup
+      try {
+          const storedColors = localStorage.getItem('vrutti-theme-colors');
+          if (storedColors) {
+              applyThemeColors(JSON.parse(storedColors), 'Saved Theme');
+          }
+      } catch (e) {
+          console.error('Failed to load saved theme', e);
+      }
+
       window.vruttiIpcMessage = function(b64) {
           try {
               const str = atob(b64);
@@ -49,36 +88,9 @@
                       
                       if (msg.method === 'theme/load') {
                           const colors = msg.params.colors;
-                  const root = document.documentElement;
-                  
-                  // Map VS Code theme tokens to Vrutti CSS variables
-                  const mapping = {
-                      'editor.background': '--vrutti-bg',
-                      'sideBar.background': '--vrutti-surface',
-                      'activityBar.background': '--vrutti-surface',
-                      'editorGroupHeader.tabsBackground': '--vrutti-surface',
-                      'editor.foreground': '--vrutti-text-bright',
-                      'sideBarTitle.foreground': '--vrutti-text',
-                      'tab.activeBackground': '--vrutti-surface-border',
-                      'button.background': '--vrutti-accent',
-                      'focusBorder': '--vrutti-accent',
-                      'editorLineNumber.foreground': '--vrutti-text',
-                      'terminal.background': '--vrutti-bg'
-                  };
-                  
-                  for (const [vsc, vrv] of Object.entries(mapping)) {
-                      if (colors[vsc]) {
-                          root.style.setProperty(vrv, colors[vsc]);
+                          localStorage.setItem('vrutti-theme-colors', JSON.stringify(colors));
+                          applyThemeColors(colors, msg.params.name);
                       }
-                  }
-                  
-                  // Update HTML body background
-                  if (colors['editor.background']) {
-                      document.body.style.backgroundColor = colors['editor.background'];
-                  }
-                  
-                  console.log(`[Theme] Applied ${msg.params.name}`);
-              }
                   } catch (e) {
                       console.error("Failed to parse individual IPC message:", e);
                   }

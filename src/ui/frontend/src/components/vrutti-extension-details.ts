@@ -21,6 +21,27 @@ export class VruttiExtensionDetails extends LitElement {
             display: flex;
             align-items: flex-start;
             margin-bottom: 24px;
+            position: relative;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 0;
+            right: 0;
+            background: transparent;
+            border: none;
+            color: var(--vrutti-text);
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .close-btn:hover {
+            background: var(--vrutti-surface-border, #3c3c3c);
+            color: var(--vrutti-text-bright, #ffffff);
         }
 
         .ext-icon {
@@ -152,6 +173,9 @@ export class VruttiExtensionDetails extends LitElement {
 
         return html`
             <div class="header">
+                <button class="close-btn" @click=${() => this.dispatchEvent(new CustomEvent('close-extension-details', { bubbles: true, composed: true }))} title="Close Extension Details">
+                    <svg viewBox="0 0 16 16" width="20" height="20" fill="currentColor"><path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/></svg>
+                </button>
                 <img class="ext-icon" src=${this.extension.iconUrl} @error=${(e: Event) => (e.target as HTMLImageElement).style.display = 'none'} />
                 <div class="info">
                     <div class="display-name">${this.extension.displayName}</div>

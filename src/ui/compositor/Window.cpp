@@ -348,6 +348,7 @@ namespace vrutti::ui {
                     } catch (const std::exception& e) {
                         std::cerr << "[UI] Failed to create file: " << e.what() << std::endl;
                     }
+                }
             }
             return "{\"success\":false}";
         });
@@ -364,6 +365,7 @@ namespace vrutti::ui {
                     } catch (const std::exception& e) {
                         std::cerr << "[UI] Failed to create folder: " << e.what() << std::endl;
                     }
+                }
             }
             return "{\"success\":false}";
         });

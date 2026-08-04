@@ -37,10 +37,12 @@ export class VruttiExtensions extends LitElement {
         .search-container {
             padding: 10px 20px;
             border-bottom: 1px solid #3c3c3c;
+            display: flex;
+            align-items: center;
         }
         
         .search-box {
-            width: 100%;
+            flex: 1;
             padding: 6px 8px;
             background: #3c3c3c;
             border: 1px solid transparent;
@@ -52,6 +54,24 @@ export class VruttiExtensions extends LitElement {
         
         .search-box:focus {
             border-color: #007fd4;
+        }
+
+        .clear-search-btn {
+            background: transparent;
+            border: none;
+            color: #cccccc;
+            cursor: pointer;
+            padding: 4px;
+            margin-left: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+        }
+
+        .clear-search-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
         }
 
         .results {
@@ -185,6 +205,14 @@ export class VruttiExtensions extends LitElement {
         }, 500);
     }
 
+    private clearSearch() {
+        this.query = '';
+        this.results = [];
+        if (this.searchTimeout) {
+            clearTimeout(this.searchTimeout);
+        }
+    }
+
     private async search() {
         if (!this.query.trim()) {
             this.results = [];
@@ -240,6 +268,11 @@ export class VruttiExtensions extends LitElement {
             <div class="header">EXTENSIONS</div>
             <div class="search-container">
                 <input type="text" class="search-box" placeholder="Search Extensions in Marketplace" .value=${this.query} @input=${this.onInput} />
+                ${this.query ? html`
+                    <button class="clear-search-btn" @click=${this.clearSearch} title="Clear Search">
+                        <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/></svg>
+                    </button>
+                ` : ''}
             </div>
             <div class="results">
                 ${this.isLoading ? html`<div class="loading">Searching Open VSX Registry...</div>` : ''}
