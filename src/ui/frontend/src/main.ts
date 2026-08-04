@@ -61,8 +61,7 @@ export class VruttiApp extends LitElement {
   @state()
   private globalSettings: Record<string, any> = {};
 
-  @state()
-  private activeTab: 'explorer' | 'search' | 'git' | 'run' | 'extensions' = 'explorer';
+
 
   @state()
   private greeting = '';
