@@ -1,5 +1,5 @@
 import { LitElement, html, css } from 'lit';
-import { customElement, property, query } from 'lit/decorators.js';
+import { customElement, property, query, state } from 'lit/decorators.js';
 import { EditorState, StateField, StateEffect, RangeSet } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers, highlightActiveLineGutter, highlightSpecialChars, drawSelection, dropCursor, rectangularSelection, crosshairCursor, highlightActiveLine, gutter, GutterMarker } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
@@ -130,9 +130,29 @@ export class VruttiEditor extends LitElement {
     @property({ type: String }) filePath = '';
     @query('#editor-container') editorContainer!: HTMLElement;
 
+    @state() private _fileContent: string = '';
     private _editorView?: EditorView;
-    private _fileContent = '';
     private _saveTimeout?: number;
+    private _wordWrap: boolean = false;
+    private _autoSave: boolean = true;
+
+    private _settingsHandler = (e: Event) => {
+        const detail = (e as CustomEvent).detail;
+        if (detail.key === 'editor.wordWrap') {
+            this._wordWrap = detail.value;
+            if (this._editorView) {
+                // Reconfigure word wrap dynamically
+                this.initEditor();
+            }
+        } else if (detail.key === 'files.autoSave') {
+            this._autoSave = detail.value;
+        }
+    };
+
+    constructor() {
+        super();
+        window.addEventListener('setting-changed', this._settingsHandler as EventListener);
+    }
 
     async firstUpdated() {
         if (this.filePath) {
@@ -247,54 +267,62 @@ export class VruttiEditor extends LitElement {
                 if (this._saveTimeout) {
                     clearTimeout(this._saveTimeout);
                 }
-                this._saveTimeout = window.setTimeout(() => {
-                    this.saveFile();
-                }, 800); // Auto-save after 800ms of inactivity
+                if (this._autoSave) {
+                    this._saveTimeout = window.setTimeout(() => {
+                        this.saveFile();
+                    }, 800); // Auto-save after 800ms of inactivity
+                }
             }
         });
 
+        const extensions = [
+            breakpointGutter,
+            lineNumbers({
+                domEventHandlers: {
+                    mousedown(view, line) {
+                        toggleBreakpoint(view, line.from);
+                        return true;
+                    }
+                }
+            }),
+            highlightActiveLineGutter(),
+            highlightSpecialChars(),
+            history(),
+            foldGutter(),
+            drawSelection(),
+            dropCursor(),
+            EditorState.allowMultipleSelections.of(true),
+            indentOnInput(),
+            syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+            bracketMatching(),
+            closeBrackets(),
+            autocompletion(),
+            rectangularSelection(),
+            crosshairCursor(),
+            highlightActiveLine(),
+            highlightSelectionMatches(),
+            keymap.of([
+                ...closeBracketsKeymap,
+                ...defaultKeymap,
+                ...searchKeymap,
+                ...historyKeymap,
+                ...foldKeymap,
+                ...completionKeymap,
+                ...lintKeymap
+            ]),
+            oneDark,
+            saveKeymap,
+            updateListener,
+            this.getLanguageExtension()
+        ];
+
+        if (this._wordWrap) {
+            extensions.push(EditorView.lineWrapping);
+        }
+
         const state = EditorState.create({
             doc: this._fileContent,
-            extensions: [
-                breakpointGutter,
-                lineNumbers({
-                    domEventHandlers: {
-                        mousedown(view, line) {
-                            toggleBreakpoint(view, line.from);
-                            return true;
-                        }
-                    }
-                }),
-                highlightActiveLineGutter(),
-                highlightSpecialChars(),
-                history(),
-                foldGutter(),
-                drawSelection(),
-                dropCursor(),
-                EditorState.allowMultipleSelections.of(true),
-                indentOnInput(),
-                syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
-                bracketMatching(),
-                closeBrackets(),
-                autocompletion(),
-                rectangularSelection(),
-                crosshairCursor(),
-                highlightActiveLine(),
-                highlightSelectionMatches(),
-                keymap.of([
-                    ...closeBracketsKeymap,
-                    ...defaultKeymap,
-                    ...searchKeymap,
-                    ...historyKeymap,
-                    ...foldKeymap,
-                    ...completionKeymap,
-                    ...lintKeymap
-                ]),
-                oneDark,
-                saveKeymap,
-                updateListener,
-                this.getLanguageExtension()
-            ]
+            extensions: extensions
         });
 
         this._editorView = new EditorView({
@@ -305,10 +333,13 @@ export class VruttiEditor extends LitElement {
 
     disconnectedCallback() {
         super.disconnectedCallback();
+        window.removeEventListener('setting-changed', this._settingsHandler as EventListener);
         if (this._editorView) {
             this._editorView.destroy();
         }
     }
+
+
 
     render() {
         return html`

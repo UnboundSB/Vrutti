@@ -277,6 +277,24 @@ namespace vrutti::ui {
             return "{}";
         });
 
+        w->bind("vruttiGetSettings", [this](const std::string& req) -> std::string {
+            return vrutti::core::config::SettingsManager::getInstance().getSettingsJson();
+        });
+
+        w->bind("vruttiUpdateSetting", [this](const std::string& req) -> std::string {
+            auto parsedReq = vrutti::core::utils::JsonParser::parse(req);
+            if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 2) {
+                auto keyNode = parsedReq->arrayElements[0];
+                auto valNode = parsedReq->arrayElements[1];
+                if (keyNode && keyNode->type == vrutti::core::utils::JsonNode::Type::String) {
+                    std::string key = vrutti::core::utils::JsonParser::unescapeString(keyNode->stringValue);
+                    std::string valStr = vrutti::core::utils::JsonSerializer::stringify(valNode, 0, false);
+                    vrutti::core::config::SettingsManager::getInstance().updateSetting(key, valStr);
+                }
+            }
+            return "{}";
+        });
+
         w->bind("vruttiInstallExtension", [this](const std::string& req) -> std::string {
             auto parsedReq = vrutti::core::utils::JsonParser::parse(req);
             if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 2) {

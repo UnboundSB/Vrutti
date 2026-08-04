@@ -59,6 +59,12 @@ export class VruttiApp extends LitElement {
   };
 
   @state()
+  private globalSettings: Record<string, any> = {};
+
+  @state()
+  private activeTab: 'explorer' | 'search' | 'git' | 'run' | 'extensions' = 'explorer';
+
+  @state()
   private greeting = '';
 
   @state()
@@ -115,6 +121,41 @@ export class VruttiApp extends LitElement {
     window.addEventListener('keydown', this.handleGlobalKeydown);
     this.addEventListener('extension-selected', this.handleExtensionSelected as EventListener);
     this.addEventListener('close-extension-details', this.handleCloseExtensionDetails);
+    
+    // Fetch initial settings from native
+    if ((window as any).vruttiGetSettings) {
+      (window as any).vruttiGetSettings().then((jsonStr: string) => {
+        try {
+          const settings = JSON.parse(jsonStr);
+          this.globalSettings = settings;
+          
+          // Broadcast them to components
+          for (const key in settings) {
+            window.dispatchEvent(new CustomEvent('setting-changed', {
+              detail: { key, value: settings[key] }
+            }));
+          }
+        } catch (e) {
+          console.error("Failed to parse settings", e);
+        }
+      }).catch(console.error);
+    }
+  }
+
+  private toggleSetting(key: string) {
+    const currentVal = this.globalSettings[key];
+    const newVal = !currentVal;
+    this.globalSettings = { ...this.globalSettings, [key]: newVal };
+    
+    // Broadcast to UI components (e.g. vrutti-editor)
+    window.dispatchEvent(new CustomEvent('setting-changed', {
+      detail: { key, value: newVal }
+    }));
+
+    // Update native settings manager
+    if ((window as any).vruttiUpdateSetting) {
+      (window as any).vruttiUpdateSetting(key, newVal);
+    }
   }
 
   disconnectedCallback() {
@@ -139,6 +180,10 @@ export class VruttiApp extends LitElement {
         await import('./components/vrutti-settings');
       }
       this.showSettings = true;
+    } else if (detail.action === 'Word Wrap') {
+      this.toggleSetting('editor.wordWrap');
+    } else if (detail.action === 'Auto Save') {
+      this.toggleSetting('files.autoSave');
     } else if (detail.action === 'openFolder') {
       if ((window as any).vruttiOpenFolderDialog) {
         try {
