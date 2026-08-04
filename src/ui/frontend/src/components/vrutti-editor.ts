@@ -152,7 +152,61 @@ export class VruttiEditor extends LitElement {
     constructor() {
         super();
         window.addEventListener('setting-changed', this._settingsHandler as EventListener);
+        window.addEventListener('editor-action', this._editorActionHandler as EventListener);
     }
+
+    private _editorActionHandler = (e: Event) => {
+        const detail = (e as CustomEvent).detail;
+        if (!this._editorView) return;
+        const view = this._editorView;
+        
+        switch (detail.action) {
+            case 'Undo':
+                import('@codemirror/commands').then(m => m.undo(view));
+                break;
+            case 'Redo':
+                import('@codemirror/commands').then(m => m.redo(view));
+                break;
+            case 'Cut':
+                document.execCommand('cut');
+                break;
+            case 'Copy':
+                document.execCommand('copy');
+                break;
+            case 'Paste':
+                navigator.clipboard.readText().then(text => {
+                   const selection = view.state.selection.main;
+                   view.dispatch({
+                       changes: {from: selection.from, to: selection.to, insert: text},
+                       selection: {anchor: selection.from + text.length}
+                   });
+                }).catch(() => document.execCommand('paste'));
+                break;
+            case 'Find':
+            case 'Replace':
+                import('@codemirror/search').then(m => m.openSearchPanel(view));
+                break;
+            case 'Select All':
+                import('@codemirror/commands').then(m => m.selectAll(view));
+                break;
+            case 'Expand Selection':
+                import('@codemirror/commands').then(m => m.selectLine(view));
+                break;
+            case 'Add Cursor Above':
+                // best effort mapping if available
+                import('@codemirror/commands').then(m => { if(m.cursorLineUp) m.cursorLineUp(view); });
+                break;
+            case 'Add Cursor Below':
+                import('@codemirror/commands').then(m => { if(m.cursorLineDown) m.cursorLineDown(view); });
+                break;
+            case 'Add Next Occurrence':
+                import('@codemirror/search').then(m => { if(m.selectNextOccurrence) m.selectNextOccurrence(view); });
+                break;
+            case 'Select All Occurrences':
+                import('@codemirror/search').then(m => { if(m.selectAllMatches) m.selectAllMatches(view); });
+                break;
+        }
+    };
 
     async firstUpdated() {
         if (this.filePath) {
@@ -334,6 +388,7 @@ export class VruttiEditor extends LitElement {
     disconnectedCallback() {
         super.disconnectedCallback();
         window.removeEventListener('setting-changed', this._settingsHandler as EventListener);
+        window.removeEventListener('editor-action', this._editorActionHandler as EventListener);
         if (this._editorView) {
             this._editorView.destroy();
         }

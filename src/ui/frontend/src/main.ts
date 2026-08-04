@@ -208,6 +208,31 @@ export class VruttiApp extends LitElement {
       }
     } else if (detail.action === 'toggleTerminal') {
       this.toggleTerminal();
+    } else if (['Explorer', 'Search', 'Source Control', 'Run', 'Extensions'].includes(detail.action)) {
+      const sidebar = this.shadowRoot?.querySelector('vrutti-sidebar') as any;
+      if (sidebar && sidebar.selectTab) {
+        const tabMap: Record<string, string> = {
+          'Explorer': 'explorer',
+          'Search': 'search',
+          'Source Control': 'scm',
+          'Run': 'debug',
+          'Extensions': 'extensions'
+        };
+        sidebar.selectTab(tabMap[detail.action]);
+      }
+    } else if (detail.action === 'Toggle Developer Tools') {
+      if ((window as any).vruttiToggleDevTools) {
+        (window as any).vruttiToggleDevTools();
+      }
+    } else {
+      const editorActions = [
+        'Undo', 'Redo', 'Cut', 'Copy', 'Paste', 'Find', 'Replace', 'Select All',
+        'Expand Selection', 'Add Cursor Above', 'Add Cursor Below', 'Add Next Occurrence',
+        'Select All Occurrences'
+      ];
+      if (editorActions.includes(detail.action)) {
+        window.dispatchEvent(new CustomEvent('editor-action', { detail: { action: detail.action } }));
+      }
     }
   };
 
