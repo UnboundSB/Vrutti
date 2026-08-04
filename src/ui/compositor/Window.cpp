@@ -302,6 +302,28 @@ namespace vrutti::ui {
             return "{}";
         });
 
+        w->bind("vruttiUninstallExtension", [this](const std::string& req) -> std::string {
+            auto parsedReq = vrutti::core::utils::JsonParser::parse(req);
+            if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
+                auto nameNode = parsedReq->arrayElements[0];
+                if (nameNode && nameNode->type == vrutti::core::utils::JsonNode::Type::String) {
+                    std::string name = vrutti::core::utils::JsonParser::unescapeString(nameNode->stringValue);
+                    if (this->m_ipc) {
+                        std::string payload = "{\"name\":\"" + name + "\"}";
+                        this->m_ipc->sendMessage("extensions/uninstall", payload);
+                    }
+                }
+            }
+            return "{}";
+        });
+
+        w->bind("vruttiRequestInstalledExtensions", [this](const std::string& req) -> std::string {
+            if (this->m_ipc) {
+                this->m_ipc->sendMessage("extensions/request_installed", "{}");
+            }
+            return "{}";
+        });
+
         w->bind("vruttiReadDirectory", [this](const std::string& req) -> std::string {
             auto parsedReq = vrutti::core::utils::JsonParser::parse(req);
             if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {

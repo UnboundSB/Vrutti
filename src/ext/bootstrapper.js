@@ -175,9 +175,23 @@ async function main() {
 
         const downloader = new ExtensionDownloader();
         
-        // Broadcast installed extensions to frontend on startup
-        const installedExts = downloader.getInstalledExtensions();
-        ipcClient.sendNotification('extensions/installed', installedExts);
+        ipcClient.on('extensions/request_installed', () => {
+            const installedExts = downloader.getInstalledExtensions();
+            ipcClient.sendNotification('extensions/installed', installedExts);
+        });
+
+        ipcClient.on('extensions/uninstall', (params) => {
+            log(`Uninstalling extension ${params.name}`);
+            try {
+                const extDir = path.join(downloader.extDirBase, params.name);
+                if (fs.existsSync(extDir)) {
+                    fs.rmSync(extDir, { recursive: true, force: true });
+                }
+                ipcClient.sendNotification('extensions/installed', downloader.getInstalledExtensions());
+            } catch (err) {
+                log(`Failed to uninstall extension ${params.name}: ${err.message}`);
+            }
+        });
 
         ipcClient.on('extensions/install', async (params) => {
             log(`Installing extension ${params.name} from ${params.url}`);

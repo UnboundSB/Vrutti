@@ -163,6 +163,9 @@ export class VruttiExtensions extends LitElement {
     connectedCallback() {
         super.connectedCallback();
         window.addEventListener('vrutti-ipc', this.handleIpc as EventListener);
+        if ((window as any).vruttiRequestInstalledExtensions) {
+            (window as any).vruttiRequestInstalledExtensions().catch(console.error);
+        }
     }
 
     disconnectedCallback() {
@@ -249,7 +252,17 @@ export class VruttiExtensions extends LitElement {
         e.stopPropagation();
         console.log(`Requesting installation for ${ext.namespace}.${ext.name} from ${ext.downloadUrl}`);
         if ((window as any).vruttiInstallExtension) {
+            this.progressMap.set(ext.name, 0);
+            this.requestUpdate();
             (window as any).vruttiInstallExtension(ext.downloadUrl, ext.name).catch(console.error);
+        }
+    }
+
+    private uninstall(ext: ExtensionResult, e: Event) {
+        e.stopPropagation();
+        console.log(`Requesting uninstall for ${ext.name}`);
+        if ((window as any).vruttiUninstallExtension) {
+            (window as any).vruttiUninstallExtension(ext.name).catch(console.error);
         }
     }
 
@@ -295,7 +308,10 @@ export class VruttiExtensions extends LitElement {
                                     <div style="width: ${progress}%; height: 100%; background: #007fd4; transition: width 0.2s;"></div>
                                 </div>
                             ` : (!this.query ? html`
-                                <span style="font-size: 11px; color: #888; background: #333; padding: 2px 6px; border-radius: 4px; align-self: flex-start;">Installed</span>
+                                <div style="display: flex; gap: 8px;">
+                                    <span style="font-size: 11px; color: #888; background: #333; padding: 2px 6px; border-radius: 4px; align-self: flex-start;">Installed</span>
+                                    <button class="install-btn" style="background: #e81123;" @click=${(e: Event) => this.uninstall(ext, e)}>Uninstall</button>
+                                </div>
                             ` : html`
                                 <button class="install-btn" @click=${(e: Event) => this.install(ext, e)}>Install</button>
                             `)}

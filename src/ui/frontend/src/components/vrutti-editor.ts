@@ -11,6 +11,7 @@ import { oneDark } from '@codemirror/theme-one-dark';
 import { javascript } from '@codemirror/lang-javascript';
 import { cpp } from '@codemirror/lang-cpp';
 import { json } from '@codemirror/lang-json';
+import { python } from '@codemirror/lang-python';
 
 const breakpointEffect = StateEffect.define<{pos: number, on: boolean}>({
     map: (val, mapping) => ({pos: mapping.mapPos(val.pos), on: val.on})
@@ -169,6 +170,8 @@ export class VruttiEditor extends LitElement {
                 return cpp();
             case 'json':
                 return json();
+            case 'py':
+                return python();
             default:
                 return []; // No specific language, default behavior
         }
