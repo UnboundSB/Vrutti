@@ -229,6 +229,21 @@ export class VruttiApp extends LitElement {
       if (layout && layout.openFile) {
           layout.openFile('Untitled-1');
       }
+    } else if (detail.action === 'Open File') {
+      if ((window as any).vruttiOpenFileDialog) {
+        try {
+          const jsonStr = await (window as any).vruttiOpenFileDialog();
+          const json = typeof jsonStr === 'string' ? JSON.parse(jsonStr) : jsonStr;
+          if (json && json.path) {
+            const layout = this.shadowRoot?.querySelector('#main-layout') as any;
+            if (layout && layout.openFile) {
+                layout.openFile(json.path);
+            }
+          }
+        } catch (err) {
+          console.error("Failed to open file dialog", err);
+        }
+      }
     } else if (detail.action === 'Close Editor') {
       const layout = this.shadowRoot?.querySelector('#main-layout') as any;
       if (layout && layout.closeActiveEditor) {
