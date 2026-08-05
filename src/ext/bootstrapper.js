@@ -207,6 +207,83 @@ async function main() {
                 log(`Failed to install extension ${params.name}: ${err.message}\n${err.stack}`);
             }
         });
+
+        ipcClient.on('editor/run', (payloadJson) => {
+            try {
+                // Window.cpp sends the raw array arguments from sendIpcMessage.
+                // It arrives as `[{"file":"...", "mode":"...", "params":"..."}]`
+                const reqArray = typeof payloadJson === 'string' ? JSON.parse(payloadJson) : payloadJson;
+                if (!Array.isArray(reqArray) || reqArray.length === 0) return;
+                
+                // The frontend sends a stringified JSON string inside the first argument, 
+                // so we parse it again.
+                const reqStr = reqArray[0];
+                const req = typeof reqStr === 'string' ? JSON.parse(reqStr) : reqStr;
+                
+                const file = req.file;
+                const mode = req.mode || 'run';
+                const userParams = req.params || '';
+                
+                if (!file) return;
+
+                const ext = path.extname(file);
+                const dir = path.dirname(file);
+                
+                let cmd = '';
+                let args = [];
+                
+                if (ext === '.py') {
+                    cmd = 'python';
+                    args.push(file);
+                } else if (ext === '.js') {
+                    cmd = 'node';
+                    if (mode === 'debug') args.push('--inspect');
+                    args.push(file);
+                } else if (ext === '.ts') {
+                    cmd = 'npx';
+                    args.push('ts-node');
+                    if (mode === 'debug') args.push('--inspect');
+                    args.push(file);
+                } else if (ext === '.cpp') {
+                    ipcClient.sendNotification('run/output', { text: `Compile & Run for C++ in Node host not yet fully implemented.\n` });
+                    return;
+                } else {
+                    ipcClient.sendNotification('run/output', { text: `Unsupported file extension: ${ext}\n` });
+                    return;
+                }
+                
+                if (userParams) {
+                    const extraArgs = userParams.match(/(?:[^\s"]+|"[^"]*")+/g) || [];
+                    for (const a of extraArgs) {
+                        args.push(a.replace(/^"|"$/g, ''));
+                    }
+                }
+                
+                ipcClient.sendNotification('run/output', { text: `--- Running ${file} (Mode: ${mode}) ---\n` });
+                
+                const { spawn } = require('child_process');
+                const child = spawn(cmd, args, { cwd: dir });
+                
+                child.stdout.on('data', (data) => {
+                    ipcClient.sendNotification('run/output', { text: data.toString() });
+                });
+                
+                child.stderr.on('data', (data) => {
+                    ipcClient.sendNotification('run/output', { text: data.toString() });
+                });
+                
+                child.on('close', (code) => {
+                    ipcClient.sendNotification('run/output', { text: `\n--- Exited with code ${code} ---\n` });
+                });
+                
+                child.on('error', (err) => {
+                    ipcClient.sendNotification('run/output', { text: `Failed to start process: ${err.message}\n` });
+                });
+
+            } catch (err) {
+                log(`Failed to parse editor/run request: ${err.message}`);
+            }
+        });
         
         if (config.extensionPath) {
             console.log(`[Bootstrapper] Loading extension from: ${config.extensionPath}`);
