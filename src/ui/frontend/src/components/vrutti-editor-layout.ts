@@ -267,6 +267,26 @@ export class VruttiEditorLayout extends LitElement {
         }
     }
 
+    public closeActiveEditor() {
+        const leaf = this.findNode(this.rootNode, this.activePaneId) as LeafNode;
+        if (leaf && leaf.activeTab) {
+            const newTabs = leaf.tabs.filter(t => t !== leaf.activeTab);
+            let newActive = newTabs.length > 0 ? newTabs[newTabs.length - 1] : null;
+            
+            if (newTabs.length === 0 && this.rootNode.id !== leaf.id) {
+                this.closePane(leaf.id);
+            } else {
+                this.replaceNode(leaf.id, {
+                    ...leaf,
+                    tabs: newTabs,
+                    activeTab: newActive
+                });
+                this.dispatchActiveFile(newActive);
+                this.requestUpdate();
+            }
+        }
+    }
+
     private dispatchActiveFile(path: string | null) {
         window.dispatchEvent(new CustomEvent('active-file-changed', {
             detail: { path }

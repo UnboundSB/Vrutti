@@ -224,6 +224,18 @@ export class VruttiApp extends LitElement {
       if ((window as any).vruttiToggleDevTools) {
         (window as any).vruttiToggleDevTools();
       }
+    } else if (detail.action === 'New File') {
+      const layout = this.shadowRoot?.querySelector('#main-layout') as any;
+      if (layout && layout.openFile) {
+          layout.openFile('Untitled-1');
+      }
+    } else if (detail.action === 'Close Editor') {
+      const layout = this.shadowRoot?.querySelector('#main-layout') as any;
+      if (layout && layout.closeActiveEditor) {
+          layout.closeActiveEditor();
+      }
+    } else if (detail.action === 'Agent MCP Instance') {
+      window.alert('Agent MCP Instance initialization requested. Waiting for backend connection.');
     } else {
       const editorActions = [
         'Undo', 'Redo', 'Cut', 'Copy', 'Paste', 'Find', 'Replace', 'Select All',

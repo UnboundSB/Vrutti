@@ -235,6 +235,9 @@ export class VruttiEditor extends LitElement {
                 // Generic duplicate line/selection fallback if exact command missing
                 import('@codemirror/commands').then(m => { if(m.copyLineDown) m.copyLineDown(view); });
                 break;
+            case 'Save':
+                this.saveFile();
+                break;
         }
     };
 

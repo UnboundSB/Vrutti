@@ -117,6 +117,7 @@ export class VruttiMenuBar extends LitElement {
         { label: 'Output' },
         { label: 'Debug Console' },
         { label: 'Terminal', action: 'toggleTerminal' },
+        { label: 'Agent MCP Instance' },
         { separator: true, label: '' },
         { label: 'Word Wrap' }
       ]
