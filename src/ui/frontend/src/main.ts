@@ -253,7 +253,15 @@ export class VruttiApp extends LitElement {
         'Select All Occurrences', 'Toggle Line Comment', 'Toggle Block Comment', 
         'Shrink Selection', 'Copy Line Up', 'Copy Line Down', 'Move Line Up', 
         'Move Line Down', 'Duplicate Selection', 'Add Cursors to Line Ends', 
-        'Add Previous Occurrence', 'Save'
+        'Add Previous Occurrence', 'Save',
+        // Go Actions
+        'Back', 'Forward', 'Go to Symbol in Workspace', 'Go to Line/Column',
+        'Go to Definition', 'Go to Declaration', 'Go to Type Definition',
+        'Go to Implementations', 'Go to References', 'Next Problem', 'Previous Problem',
+        'Next Change', 'Previous Change',
+        // Run/Debug Actions
+        'Start Debugging', 'Run Without Debugging', 'Stop Debugging', 'Restart Debugging',
+        'Step Over', 'Step Into', 'Step Out', 'Continue', 'Toggle Breakpoint'
       ];
       
       const externalLinks: Record<string, string> = {
