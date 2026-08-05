@@ -80,6 +80,20 @@ export class VruttiApp extends LitElement {
       window.dispatchEvent(new CustomEvent('vrutti-output-write', { detail: { channel, text } }));
     };
 
+    (window as any).vruttiIpcMessage = (b64: string) => {
+      try {
+        const jsonStr = decodeURIComponent(escape(atob(b64)));
+        const msg = JSON.parse(jsonStr);
+        if (msg.method === 'run/output') {
+           if ((window as any).vruttiWriteOutput) {
+               (window as any).vruttiWriteOutput('Execution', msg.params.text);
+           }
+        }
+      } catch (e) {
+        console.error("Failed to parse IPC message from backend:", e);
+      }
+    };
+
     // Load user configuration
     const storedName = localStorage.getItem('vrutti-username');
     if (storedName) {
