@@ -209,7 +209,7 @@ export class VruttiEditor extends LitElement {
                 // Not standard but might exist in search
                 break;
             case 'Select All Occurrences':
-                import('@codemirror/search').then(m => { if(m.selectAllMatches) m.selectAllMatches(view); });
+                import('@codemirror/search').then(m => { if(m.selectMatches) m.selectMatches(view); });
                 break;
             case 'Toggle Line Comment':
                 import('@codemirror/commands').then(m => { if(m.toggleLineComment) m.toggleLineComment(view); });
