@@ -244,6 +244,10 @@ export class VruttiApp extends LitElement {
       window.alert('Process Explorer is not available in this environment.');
     } else if (detail.action === 'Appearance' || detail.action === 'Editor Layout') {
       this.showSettings = true;
+    } else if (['New Terminal', 'Split Terminal'].includes(detail.action)) {
+      this.showTerminal = true;
+    } else if (['Run Task', 'Build Task', 'Active Tasks', 'Configure Tasks', 'Configure Default Build Task'].includes(detail.action)) {
+      window.alert('Task management is not yet implemented.');
     } else if (detail.action === 'Agent MCP Instance') {
       window.alert('Agent MCP Instance initialization requested. Waiting for backend connection.');
     } else {
