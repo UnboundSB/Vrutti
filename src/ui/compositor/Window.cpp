@@ -638,6 +638,77 @@ namespace vrutti::ui {
         });
 
         w->bind("vruttiToggleDevTools", [this](const std::string& req) -> std::string {
+            auto parsedReq = vrutti::core::utils::JsonParser::parse(req);
+            return "{}";
+        });
+
+        w->bind("vruttiRunFile", [this](const std::string& req) -> std::string {
+            auto parsedReq = vrutti::core::utils::JsonParser::parse(req);
+            std::string stdoutStr = "";
+            int exitCode = -1;
+
+            if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
+                auto pathNode = parsedReq->arrayElements[0];
+                if (pathNode && pathNode->type == vrutti::core::utils::JsonNode::Type::String) {
+                    std::string path = vrutti::core::utils::JsonParser::unescapeString(pathNode->stringValue);
+                    
+                    std::filesystem::path fsPath(path);
+                    std::string ext = fsPath.extension().string();
+                    std::string dir = fsPath.parent_path().string();
+                    std::string stem = fsPath.stem().string();
+                    
+                    std::string cmd = "";
+                    if (ext == ".py") {
+                        cmd = "python \"" + path + "\"";
+                    } else if (ext == ".js") {
+                        cmd = "node \"" + path + "\"";
+                    } else if (ext == ".ts") {
+                        cmd = "npx ts-node \"" + path + "\"";
+                    } else if (ext == ".cpp") {
+#ifdef _WIN32
+                        std::string exeName = stem + ".exe";
+                        cmd = "g++ \"" + path + "\" -o \"" + dir + "\\" + exeName + "\" && \"" + dir + "\\" + exeName + "\"";
+#else
+                        std::string exeName = stem;
+                        cmd = "g++ \"" + path + "\" -o \"" + dir + "/" + exeName + "\" && \"" + dir + "/" + exeName + "\"";
+#endif
+                    } else {
+                        return "{\"error\":\"Unsupported file extension for running\"}";
+                    }
+                    
+#ifdef _WIN32
+                    std::string fullCmd = "cd /d \"" + dir + "\" && " + cmd + " 2>&1";
+                    FILE* pipe = _popen(fullCmd.c_str(), "r");
+#else
+                    std::string fullCmd = "cd \"" + dir + "\" && " + cmd + " 2>&1";
+                    FILE* pipe = popen(fullCmd.c_str(), "r");
+#endif
+                    if (pipe) {
+                        char buffer[1024];
+                        while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
+                            stdoutStr += buffer;
+                        }
+#ifdef _WIN32
+                        exitCode = _pclose(pipe);
+#else
+                        exitCode = pclose(pipe);
+                        if (WIFEXITED(exitCode)) {
+                            exitCode = WEXITSTATUS(exitCode);
+                        }
+#endif
+                    } else {
+                        return "{\"error\":\"Failed to spawn process\"}";
+                    }
+                }
+            }
+            std::string result = "{";
+            result += "\"stdout\":" + vrutti::core::utils::JsonSerializer::escapeString(stdoutStr) + ",";
+            result += "\"exitCode\":" + std::to_string(exitCode);
+            result += "}";
+            return result;
+        });
+
+        w->bind("vruttiToggleDevTools", [this](const std::string& req) -> std::string {
 #ifdef _WIN32
             INPUT ip;
             ip.type = INPUT_KEYBOARD;
