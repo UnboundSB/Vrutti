@@ -287,6 +287,32 @@ export class VruttiEditorLayout extends LitElement {
         }
     }
 
+    private async runFile(filePath: string | null) {
+        if (!filePath) return;
+        if ((window as any).vruttiRunFile) {
+            try {
+                // Trigger terminal to open
+                window.dispatchEvent(new CustomEvent('menu-action', { detail: { action: 'New Terminal' } }));
+                const jsonStr = await (window as any).vruttiRunFile(filePath);
+                const result = typeof jsonStr === 'string' ? JSON.parse(jsonStr) : jsonStr;
+                
+                if (result.error) {
+                    window.alert("Run Error: " + result.error);
+                } else {
+                    const out = `--- Running ${filePath} ---\n${result.stdout}\n--- Exited with code ${result.exitCode} ---\n`;
+                    if ((window as any).vruttiWriteOutput) {
+                        (window as any).vruttiWriteOutput('Execution', out);
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to run file", e);
+            }
+        } else {
+            console.warn("Backend run functionality not connected yet.");
+            window.alert("Backend run functionality not connected yet.");
+        }
+    }
+
     private dispatchActiveFile(path: string | null) {
         window.dispatchEvent(new CustomEvent('active-file-changed', {
             detail: { path }
@@ -558,6 +584,11 @@ export class VruttiEditorLayout extends LitElement {
                         </div>
                     `)}
                     <div class="pane-actions">
+                        ${leaf.activeTab ? html`
+                            <button class="pane-action" title="Run File" @click=${() => this.runFile(leaf.activeTab)}>
+                                <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M4 2v12l10-6L4 2z"/></svg>
+                            </button>
+                        ` : ''}
                         <button class="pane-action" title="Split Right" @click=${() => this.splitPane(leaf.id, 'horizontal')}>
                             <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M2 2h12v12H2V2zm5 11h6V3H7v10zM3 13h3V3H3v10z"/></svg>
                         </button>
