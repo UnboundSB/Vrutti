@@ -26,7 +26,6 @@ export class VruttiMenuBar extends LitElement {
     {
       title: 'File',
       items: [
-        { label: 'New Text File' },
         { label: 'New File' },
         { label: 'New Window' },
         { separator: true, label: '' },
