@@ -234,6 +234,16 @@ export class VruttiApp extends LitElement {
       if (layout && layout.closeActiveEditor) {
           layout.closeActiveEditor();
       }
+    } else if (['Command Palette', 'Show All Commands', 'Open View', 'Go to File'].includes(detail.action)) {
+      this.showQuickOpen = true;
+    } else if (detail.action === 'About') {
+      window.alert('Vrutti IDE\nVersion 1.0.0\nBuilt by UnboundSB');
+    } else if (detail.action === 'Check for Updates') {
+      window.alert('There are currently no updates available.');
+    } else if (detail.action === 'Open Process Explorer') {
+      window.alert('Process Explorer is not available in this environment.');
+    } else if (detail.action === 'Appearance' || detail.action === 'Editor Layout') {
+      this.showSettings = true;
     } else if (detail.action === 'Agent MCP Instance') {
       window.alert('Agent MCP Instance initialization requested. Waiting for backend connection.');
     } else {
@@ -247,10 +257,18 @@ export class VruttiApp extends LitElement {
       ];
       
       const externalLinks: Record<string, string> = {
+        'Welcome': 'https://github.com/UnboundSB/Vrutti',
         'Documentation': 'https://github.com/UnboundSB/Vrutti/wiki',
+        'Editor Playground': 'https://github.com/UnboundSB/Vrutti/wiki/Playground',
         'Release Notes': 'https://github.com/UnboundSB/Vrutti/releases',
+        'Keyboard Shortcuts Reference': 'https://github.com/UnboundSB/Vrutti/wiki/Shortcuts',
+        'Video Tutorials': 'https://youtube.com/c/VruttiIDE',
+        'Tips and Tricks': 'https://github.com/UnboundSB/Vrutti/wiki/Tips',
         'Join Us on YouTube': 'https://youtube.com/',
-        'Report Issue': 'https://github.com/UnboundSB/Vrutti/issues'
+        'Search Feature Requests': 'https://github.com/UnboundSB/Vrutti/issues?q=label%3Aenhancement',
+        'Report Issue': 'https://github.com/UnboundSB/Vrutti/issues',
+        'View License': 'https://github.com/UnboundSB/Vrutti/blob/main/LICENSE',
+        'Privacy Statement': 'https://github.com/UnboundSB/Vrutti/blob/main/PRIVACY.md'
       };
 
       if (editorActions.includes(detail.action)) {
