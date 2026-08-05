@@ -233,6 +233,9 @@ export class VruttiEditorLayout extends LitElement {
     @state()
     private activePaneId: PaneId = this.rootNode.id;
 
+    @state()
+    private openRunDropdownId: string | null = null;
+
     // Resizing state
     private resizingNodeId: string | null = null;
     private resizeStartPos = 0;
@@ -287,25 +290,29 @@ export class VruttiEditorLayout extends LitElement {
         }
     }
 
-    private async runFile(filePath: string | null) {
+    private async runFile(filePath: string | null, mode: 'run' | 'params' | 'debug' = 'run') {
         if (!filePath) return;
-        if ((window as any).vruttiRunFile) {
+        this.openRunDropdownId = null;
+        
+        let params = "";
+        if (mode === 'params') {
+            const userInput = window.prompt("Enter command line parameters for this execution:");
+            if (userInput === null) return;
+            params = userInput;
+        }
+
+        if ((window as any).sendIpcMessage) {
             try {
                 // Trigger terminal to open
                 window.dispatchEvent(new CustomEvent('menu-action', { detail: { action: 'New Terminal' } }));
-                const jsonStr = await (window as any).vruttiRunFile(filePath);
-                const result = typeof jsonStr === 'string' ? JSON.parse(jsonStr) : jsonStr;
                 
-                if (result.error) {
-                    window.alert("Run Error: " + result.error);
-                } else {
-                    const out = `--- Running ${filePath} ---\n${result.stdout}\n--- Exited with code ${result.exitCode} ---\n`;
-                    if ((window as any).vruttiWriteOutput) {
-                        (window as any).vruttiWriteOutput('Execution', out);
-                    }
-                }
+                (window as any).sendIpcMessage("editor/run", JSON.stringify({
+                    file: filePath,
+                    mode: mode,
+                    params: params
+                }));
             } catch (e) {
-                console.error("Failed to run file", e);
+                console.error("Failed to trigger run via IPC", e);
             }
         } else {
             console.warn("Backend run functionality not connected yet.");
@@ -585,9 +592,21 @@ export class VruttiEditorLayout extends LitElement {
                     `)}
                     <div class="pane-actions">
                         ${leaf.activeTab ? html`
-                            <button class="pane-action" title="Run File" @click=${() => this.runFile(leaf.activeTab)}>
-                                <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M4 2v12l10-6L4 2z"/></svg>
-                            </button>
+                            <div style="position: relative; display: flex;">
+                                <button class="pane-action" title="Run File" @click=${() => this.runFile(leaf.activeTab, 'run')}>
+                                    <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M4 2v12l10-6L4 2z"/></svg>
+                                </button>
+                                <button class="pane-action" style="margin-left: 0; padding-left: 2px; padding-right: 2px;" @click=${() => this.openRunDropdownId = this.openRunDropdownId === leaf.id ? null : leaf.id}>
+                                    <svg viewBox="0 0 16 16" width="10" height="10" fill="currentColor"><path d="M4 6h8l-4 5z"/></svg>
+                                </button>
+                                ${this.openRunDropdownId === leaf.id ? html`
+                                    <div style="position: absolute; top: 100%; right: 0; background: #1f2335; border: 1px solid #3b4261; border-radius: 4px; z-index: 1000; min-width: 150px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
+                                        <div style="padding: 6px 12px; cursor: pointer; font-size: 12px; color: #a9b1d6;" @click=${() => this.runFile(leaf.activeTab, 'run')} onmouseover="this.style.background='#292e42'" onmouseout="this.style.background='transparent'">Run File</div>
+                                        <div style="padding: 6px 12px; cursor: pointer; font-size: 12px; color: #a9b1d6;" @click=${() => this.runFile(leaf.activeTab, 'params')} onmouseover="this.style.background='#292e42'" onmouseout="this.style.background='transparent'">Run with params</div>
+                                        <div style="padding: 6px 12px; cursor: pointer; font-size: 12px; color: #a9b1d6;" @click=${() => this.runFile(leaf.activeTab, 'debug')} onmouseover="this.style.background='#292e42'" onmouseout="this.style.background='transparent'">Run and Debug</div>
+                                    </div>
+                                ` : ''}
+                            </div>
                         ` : ''}
                         <button class="pane-action" title="Split Right" @click=${() => this.splitPane(leaf.id, 'horizontal')}>
                             <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M2 2h12v12H2V2zm5 11h6V3H7v10zM3 13h3V3H3v10z"/></svg>
