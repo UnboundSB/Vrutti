@@ -254,26 +254,12 @@ async function main() {
                     }
                 }
                 
-                ipcClient.sendNotification('run/output', { text: `--- Running ${file} (Mode: ${mode}) ---\n` });
+                // Construct the full command string for the terminal
+                // We quote the arguments to handle spaces in paths
+                const cmdString = `${cmd} ${args.map(a => `"${a}"`).join(' ')}`;
                 
-                const { spawn } = require('child_process');
-                const child = spawn(cmd, args, { cwd: dir });
-                
-                child.stdout.on('data', (data) => {
-                    ipcClient.sendNotification('run/output', { text: data.toString() });
-                });
-                
-                child.stderr.on('data', (data) => {
-                    ipcClient.sendNotification('run/output', { text: data.toString() });
-                });
-                
-                child.on('close', (code) => {
-                    ipcClient.sendNotification('run/output', { text: `\n--- Exited with code ${code} ---\n` });
-                });
-                
-                child.on('error', (err) => {
-                    ipcClient.sendNotification('run/output', { text: `Failed to start process: ${err.message}\n` });
-                });
+                // Route the command to the interactive terminal
+                ipcClient.sendNotification('terminal/runCommand', { command: cmdString });
 
             } catch (err) {
                 log(`Failed to parse editor/run request: ${err.message}`);
