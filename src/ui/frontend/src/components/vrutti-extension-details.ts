@@ -134,7 +134,20 @@ export class VruttiExtensionDetails extends LitElement {
         }
     `;
 
-    @property({ type: Object }) extension: any = null;
+    @property({ type: Object })
+    set extension(val: any) {
+        const oldVal = this._extension;
+        if (oldVal?.name !== val?.name) {
+            this.downloadProgress = null;
+        }
+        this._extension = val;
+        this.requestUpdate('extension', oldVal);
+    }
+    get extension() {
+        return this._extension;
+    }
+    private _extension: any = null;
+
     @state() private downloadProgress: number | null = null;
 
     connectedCallback() {
@@ -162,7 +175,14 @@ export class VruttiExtensionDetails extends LitElement {
         if (this.extension && (window as any).vruttiInstallExtension) {
             this.downloadProgress = 0; // Initialize progress to show UI immediately
             console.log(`Installing ${this.extension.name}...`);
-            (window as any).vruttiInstallExtension(this.extension.downloadUrl, this.extension.name).catch(console.error);
+            try {
+                const res = (window as any).vruttiInstallExtension(this.extension.downloadUrl, this.extension.name);
+                if (res && typeof res.catch === 'function') {
+                    res.catch(console.error);
+                }
+            } catch (err) {
+                console.error("Install error:", err);
+            }
         }
     }
 
