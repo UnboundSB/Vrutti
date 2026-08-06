@@ -45,12 +45,31 @@ export class VruttiPanel extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     window.addEventListener('vrutti-output-write', this.handleOutputWrite);
+    window.addEventListener('vrutti-ipc', this.handleIpc as EventListener);
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     window.removeEventListener('vrutti-output-write', this.handleOutputWrite);
+    window.removeEventListener('vrutti-ipc', this.handleIpc as EventListener);
   }
+
+  private handleIpc = (e: Event) => {
+    const msg = (e as CustomEvent).detail;
+    if (msg && msg.method === 'terminal/runCommand' && msg.params && msg.params.command) {
+      // Ensure the panel is open and focused on terminal
+      this.activePanelTab = 'TERMINAL';
+      
+      // Get the currently active terminal ID
+      const activeGroup = this.terminalGroups.find(g => g.id === this.activeGroupId);
+      if (activeGroup && activeGroup.activeTerminalId) {
+        const cmd = msg.params.command + "\r";
+        if ((window as any).vruttiTerminalInput) {
+          (window as any).vruttiTerminalInput(activeGroup.activeTerminalId, btoa(cmd));
+        }
+      }
+    }
+  };
 
   private handleOutputWrite = (e: Event) => {
     const detail = (e as CustomEvent).detail;
