@@ -210,15 +210,10 @@ async function main() {
 
         ipcClient.on('editor/run', (payloadJson) => {
             try {
-                // Window.cpp sends the raw array arguments from sendIpcMessage.
-                // It arrives as `[{"file":"...", "mode":"...", "params":"..."}]`
-                const reqArray = typeof payloadJson === 'string' ? JSON.parse(payloadJson) : payloadJson;
-                if (!Array.isArray(reqArray) || reqArray.length === 0) return;
-                
-                // The frontend sends a stringified JSON string inside the first argument, 
-                // so we parse it again.
-                const reqStr = reqArray[0];
-                const req = typeof reqStr === 'string' ? JSON.parse(reqStr) : reqStr;
+                // payloadJson is now properly forwarded by C++ as the exact JSON object 
+                // sent by the frontend, e.g., { file: "...", mode: "..." }
+                const req = typeof payloadJson === 'string' ? JSON.parse(payloadJson) : payloadJson;
+                if (!req || typeof req !== 'object') return;
                 
                 const file = req.file;
                 const mode = req.mode || 'run';
