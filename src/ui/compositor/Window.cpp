@@ -144,12 +144,19 @@ namespace vrutti::ui {
 #endif
         }, nullptr);
 
-        // Bind IPC message handler for Lit frontend to communicate with C++ Core natively
         w->bind("sendIpcMessage", [this](const std::string& seq, const std::string& req, void* arg) {
             if (this->m_ipc) {
-                // The 'req' payload from webview is always a JSON array string containing the arguments.
-                // We pass it directly to the IPC client to handle.
-                this->m_ipc->handleIncomingMessage(req);
+                auto parsedReq = vrutti::core::utils::JsonParser::parse(req);
+                if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 2) {
+                    auto methodNode = parsedReq->arrayElements[0];
+                    auto payloadNode = parsedReq->arrayElements[1];
+                    if (methodNode && methodNode->type == vrutti::core::utils::JsonNode::Type::String &&
+                        payloadNode && payloadNode->type == vrutti::core::utils::JsonNode::Type::String) {
+                        std::string method = vrutti::core::utils::JsonParser::unescapeString(methodNode->stringValue);
+                        std::string payload = vrutti::core::utils::JsonParser::unescapeString(payloadNode->stringValue);
+                        this->m_ipc->sendMessage(method, payload);
+                    }
+                }
             }
         }, nullptr);
 
