@@ -318,6 +318,7 @@ export class VruttiExtensions extends LitElement {
                 ${displayList.map(ext => {
                     const progress = this.progressMap.get(ext.name) || 0;
                     const isInstalling = progress > 0 && progress < 100;
+                    const isInstalled = this.installed.some(i => i.name === ext.name);
                     return html`
                     <div class="extension-card" @click=${() => this.selectExtension(ext)}>
                         <img class="ext-icon" src=${ext.iconUrl || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23333"/><text x="50" y="50" fill="%23888" font-size="40" text-anchor="middle" dominant-baseline="middle">E</text></svg>'} @error=${(e: Event) => (e.target as HTMLImageElement).style.display = 'none'} />
@@ -330,10 +331,10 @@ export class VruttiExtensions extends LitElement {
                                 <div style="width: 100%; height: 4px; background: #333; margin-top: 4px; border-radius: 2px; overflow: hidden;">
                                     <div style="width: ${progress}%; height: 100%; background: #007fd4; transition: width 0.2s;"></div>
                                 </div>
-                            ` : (!this.query ? html`
+                            ` : (isInstalled ? html`
                                 <div style="display: flex; gap: 8px;">
                                     <span style="font-size: 11px; color: #888; background: #333; padding: 2px 6px; border-radius: 4px; align-self: flex-start;">Installed</span>
-                                    <button class="install-btn" style="background: #e81123;" @click=${(e: Event) => this.uninstall(ext, e)}>Uninstall</button>
+                                    ${!this.query ? html`<button class="install-btn" style="background: #e81123;" @click=${(e: Event) => this.uninstall(ext, e)}>Uninstall</button>` : ''}
                                 </div>
                             ` : html`
                                 <button class="install-btn" @click=${(e: Event) => this.install(ext, e)}>Install</button>
