@@ -578,8 +578,9 @@ export class VruttiEditorLayout extends LitElement {
     private renderLeaf(leaf: LeafNode): TemplateResult {
         return html`
             <div class="leaf-container" @click=${() => { this.activePaneId = leaf.id; this.requestUpdate(); }}>
-                <div class="tabs-header" @dragover=${(e: DragEvent) => e.preventDefault()} @drop=${(e: DragEvent) => this.onDrop(e, leaf.id)}>
-                    ${leaf.tabs.map(tab => html`
+                <div style="display: flex; background: #1a1b26; height: 35px; min-height: 35px; border-bottom: 1px solid #2a2e42;">
+                    <div class="tabs-header" style="flex: 1; border-bottom: none; height: 100%; min-height: 100%;" @dragover=${(e: DragEvent) => e.preventDefault()} @drop=${(e: DragEvent) => this.onDrop(e, leaf.id)}>
+                        ${leaf.tabs.map(tab => html`
                         <div class="tab ${leaf.activeTab === tab ? 'active' : ''}" 
                              draggable="true" 
                              @dragstart=${(e: DragEvent) => this.onDragStart(e, leaf.id, tab)}
@@ -590,7 +591,8 @@ export class VruttiEditorLayout extends LitElement {
                             </span>
                         </div>
                     `)}
-                    <div class="pane-actions">
+                    </div>
+                    <div class="pane-actions" style="margin-left: auto; background: #1a1b26; z-index: 100;">
                         ${leaf.activeTab ? html`
                             <div style="position: relative; display: flex;">
                                 <button class="pane-action" title="Run File" @click=${() => this.runFile(leaf.activeTab, 'run')}>
