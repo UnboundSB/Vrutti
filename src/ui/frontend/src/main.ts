@@ -84,6 +84,10 @@ export class VruttiApp extends LitElement {
       try {
         const jsonStr = decodeURIComponent(escape(atob(b64)));
         const msg = JSON.parse(jsonStr);
+        
+        // Dispatch event so other components can listen to it
+        window.dispatchEvent(new CustomEvent('vrutti-ipc', { detail: msg }));
+        
         if (msg.method === 'run/output') {
            if ((window as any).vruttiWriteOutput) {
                (window as any).vruttiWriteOutput('Execution', msg.params.text);
