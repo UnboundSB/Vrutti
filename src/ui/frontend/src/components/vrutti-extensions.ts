@@ -316,8 +316,8 @@ export class VruttiExtensions extends LitElement {
                 ${!this.isLoading && !this.query && this.installed.length === 0 ? html`<div class="loading">No extensions installed.</div>` : ''}
                 
                 ${displayList.map(ext => {
-                    const progress = this.progressMap.get(ext.name) || 0;
-                    const isInstalling = progress > 0 && progress < 100;
+                    const progress = this.progressMap.get(ext.name);
+                    const isInstalling = progress !== undefined;
                     const isInstalled = this.installed.some(i => i.name === ext.name);
                     return html`
                     <div class="extension-card" @click=${() => this.selectExtension(ext)}>
