@@ -158,7 +158,8 @@ export class VruttiExtensions extends LitElement {
     @state() private installed: ExtensionResult[] = [];
     @state() private isLoading = false;
     @state() private progressMap: Map<string, number> = new Map();
-    private searchTimeout: any;
+    private searchTimeout: ReturnType<typeof setTimeout> | null = null;
+    private currentSearchId = 0;
 
     connectedCallback() {
         super.connectedCallback();
@@ -223,9 +224,14 @@ export class VruttiExtensions extends LitElement {
         }
 
         this.isLoading = true;
+        const searchId = ++this.currentSearchId;
+        
         try {
             const res = await fetch(`https://open-vsx.org/api/-/search?query=${encodeURIComponent(this.query)}`);
             const json = await res.json();
+            
+            if (this.currentSearchId !== searchId) return;
+            
             if (json.extensions) {
                 this.results = json.extensions.map((ext: any) => ({
                     namespace: ext.namespace,
@@ -233,18 +239,21 @@ export class VruttiExtensions extends LitElement {
                     displayName: ext.displayName || ext.name,
                     description: ext.description,
                     version: ext.version,
-                    iconUrl: ext.files.icon,
-                    downloadUrl: ext.files.download,
+                    iconUrl: ext.files?.icon,
+                    downloadUrl: ext.files?.download,
                     publisherDisplayName: ext.publisherDisplayName || ext.namespace
                 }));
             } else {
                 this.results = [];
             }
         } catch (e) {
+            if (this.currentSearchId !== searchId) return;
             console.error("OpenVSX Search failed", e);
             this.results = [];
         } finally {
-            this.isLoading = false;
+            if (this.currentSearchId === searchId) {
+                this.isLoading = false;
+            }
         }
     }
 
