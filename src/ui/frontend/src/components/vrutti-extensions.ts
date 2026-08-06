@@ -263,7 +263,14 @@ export class VruttiExtensions extends LitElement {
         if ((window as any).vruttiInstallExtension) {
             this.progressMap.set(ext.name, 0);
             this.requestUpdate();
-            (window as any).vruttiInstallExtension(ext.downloadUrl, ext.name).catch(console.error);
+            try {
+                const res = (window as any).vruttiInstallExtension(ext.downloadUrl, ext.name);
+                if (res && typeof res.catch === 'function') {
+                    res.catch(console.error);
+                }
+            } catch (err) {
+                console.error("Install error:", err);
+            }
         }
     }
 
@@ -271,7 +278,14 @@ export class VruttiExtensions extends LitElement {
         e.stopPropagation();
         console.log(`Requesting uninstall for ${ext.name}`);
         if ((window as any).vruttiUninstallExtension) {
-            (window as any).vruttiUninstallExtension(ext.name).catch(console.error);
+            try {
+                const res = (window as any).vruttiUninstallExtension(ext.name);
+                if (res && typeof res.catch === 'function') {
+                    res.catch(console.error);
+                }
+            } catch (err) {
+                console.error("Uninstall error:", err);
+            }
         }
     }
 
