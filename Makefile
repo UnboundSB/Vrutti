@@ -24,15 +24,20 @@ BIN_DIR = build/bin
 SRCS = $(SRC_DIR)/app/main.cpp \
        $(SRC_DIR)/core/memory/ArenaAllocator.cpp \
        $(SRC_DIR)/core/concurrency/ThreadPool.cpp \
+       $(SRC_DIR)/core/config/SettingsManager.cpp \
        $(SRC_DIR)/core/editor/PieceTable.cpp \
        $(SRC_DIR)/core/fs/URI.cpp \
        $(SRC_DIR)/core/fs/Path.cpp \
        $(SRC_DIR)/core/fs/Glob.cpp \
+       $(SRC_DIR)/core/fs/Workspace.cpp \
+       $(SRC_DIR)/core/plugins/PluginLoader.cpp \
        $(SRC_DIR)/core/utils/Json.cpp \
        $(SRC_DIR)/core/utils/StringPool.cpp \
        $(SRC_DIR)/core/utils/LineScanner.cpp \
        $(SRC_DIR)/core/ipc/IPCClient.cpp \
+       $(SRC_DIR)/core/terminal/ReplProcess.cpp \
        $(SRC_DIR)/core/terminal/TerminalProcess.cpp \
+       $(SRC_DIR)/plugins/search/SearchPlugin.cpp \
        $(SRC_DIR)/ui/compositor/Window.cpp
 
 # Object files
