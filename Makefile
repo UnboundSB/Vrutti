@@ -3,6 +3,17 @@
 
 CXX = g++
 CXXFLAGS = -std=c++20 -Wall -Wextra -O2 -I./src
+LDFLAGS = 
+
+OS := $(shell uname -s)
+ifeq ($(OS), Linux)
+	CXXFLAGS += $(shell pkg-config --cflags gtk+-3.0 webkit2gtk-4.0)
+	LDFLAGS += $(shell pkg-config --libs gtk+-3.0 webkit2gtk-4.0)
+else ifeq ($(OS), Darwin)
+	LDFLAGS += -framework WebKit -framework Cocoa
+else
+	LDFLAGS += -lole32 -lcomctl32 -loleaut32 -luuid -lgdi32 -lshlwapi
+endif
 
 # Directories
 SRC_DIR = src
@@ -36,7 +47,7 @@ all: $(TARGET)
 # Link the executable
 $(TARGET): $(OBJS)
 	@mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) -o $@ $^
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 	@echo "[SUCCESS] Build complete: $@"
 
 # Compile source files to object files
