@@ -215,11 +215,16 @@ async function main() {
                 const req = typeof payloadJson === 'string' ? JSON.parse(payloadJson) : payloadJson;
                 if (!req || typeof req !== 'object') return;
                 
-                const file = req.file;
+                let file = req.file;
                 const mode = req.mode || 'run';
                 const userParams = req.params || '';
                 
                 if (!file) return;
+
+                if (file.startsWith('file://')) {
+                    const url = require('url');
+                    file = url.fileURLToPath(file);
+                }
 
                 const ext = path.extname(file);
                 const dir = path.dirname(file);
@@ -241,6 +246,9 @@ async function main() {
                     
                     // Compile then run
                     cmdString = `${compiler} "${file}" -o "${outPath}" && "${outPath}"`;
+                } else if (ext === '.html' || ext === '.htm') {
+                    const isWin = os.platform() === 'win32';
+                    cmdString = isWin ? `start "" "${file}"` : (os.platform() === 'darwin' ? `open "${file}"` : `xdg-open "${file}"`);
                 } else {
                     ipcClient.sendNotification('run/output', { text: `Unsupported file extension: ${ext}\n` });
                     return;
