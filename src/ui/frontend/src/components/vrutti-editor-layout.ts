@@ -304,7 +304,7 @@ export class VruttiEditorLayout extends LitElement {
         if ((window as any).sendIpcMessage) {
             try {
                 // Trigger terminal to open
-                window.dispatchEvent(new CustomEvent('menu-action', { detail: { action: 'New Terminal' } }));
+                this.dispatchEvent(new CustomEvent('menu-action', { detail: { action: 'New Terminal' }, bubbles: true, composed: true }));
                 
                 (window as any).sendIpcMessage("editor/run", JSON.stringify({
                     file: filePath,
