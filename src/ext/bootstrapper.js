@@ -223,40 +223,32 @@ async function main() {
 
                 const ext = path.extname(file);
                 const dir = path.dirname(file);
+                const baseName = path.basename(file, ext);
                 
-                let cmd = '';
-                let args = [];
+                let cmdString = '';
                 
                 if (ext === '.py') {
-                    cmd = 'python';
-                    args.push(file);
+                    cmdString = `python "${file}"`;
                 } else if (ext === '.js') {
-                    cmd = 'node';
-                    if (mode === 'debug') args.push('--inspect');
-                    args.push(file);
+                    cmdString = mode === 'debug' ? `node --inspect "${file}"` : `node "${file}"`;
                 } else if (ext === '.ts') {
-                    cmd = 'npx';
-                    args.push('ts-node');
-                    if (mode === 'debug') args.push('--inspect');
-                    args.push(file);
-                } else if (ext === '.cpp') {
-                    ipcClient.sendNotification('run/output', { text: `Compile & Run for C++ in Node host not yet fully implemented.\n` });
-                    return;
+                    cmdString = mode === 'debug' ? `npx ts-node --inspect "${file}"` : `npx ts-node "${file}"`;
+                } else if (ext === '.cpp' || ext === '.c') {
+                    const isWin = os.platform() === 'win32';
+                    const exeName = isWin ? `${baseName}.exe` : baseName;
+                    const outPath = path.join(dir, exeName);
+                    const compiler = ext === '.cpp' ? 'g++' : 'gcc';
+                    
+                    // Compile then run
+                    cmdString = `${compiler} "${file}" -o "${outPath}" && "${outPath}"`;
                 } else {
                     ipcClient.sendNotification('run/output', { text: `Unsupported file extension: ${ext}\n` });
                     return;
                 }
                 
                 if (userParams) {
-                    const extraArgs = userParams.match(/(?:[^\s"]+|"[^"]*")+/g) || [];
-                    for (const a of extraArgs) {
-                        args.push(a.replace(/^"|"$/g, ''));
-                    }
+                    cmdString += ` ${userParams}`;
                 }
-                
-                // Construct the full command string for the terminal
-                // We quote the arguments to handle spaces in paths
-                const cmdString = `${cmd} ${args.map(a => `"${a}"`).join(' ')}`;
                 
                 // Route the command to the interactive terminal
                 ipcClient.sendNotification('terminal/runCommand', { command: cmdString });
