@@ -3,24 +3,31 @@
 
 CXX = g++
 CXXFLAGS = -std=c++20 -Wall -Wextra -O2 -I./src
-LDFLAGS = 
-
-OS := $(shell uname -s)
-ifeq ($(OS), Linux)
-	CXXFLAGS += $(shell pkg-config --cflags gtk+-3.0 webkit2gtk-4.0)
-	LDFLAGS += $(shell pkg-config --libs gtk+-3.0 webkit2gtk-4.0)
-else ifeq ($(OS), Darwin)
-	LDFLAGS += -framework WebKit -framework Cocoa
-else
-	LDFLAGS += -lole32 -lcomctl32 -loleaut32 -luuid -lgdi32 -lshlwapi
-endif
 
 # Directories
 SRC_DIR = src
 OBJ_DIR = build/obj
-BIN_DIR = build/bin
+BIN_DIR = build
 
-# Source files (add new ones here or use wildcard)
+OS := $(shell uname -s 2>/dev/null || echo Windows_NT)
+
+ifeq ($(OS), Windows_NT)
+	TARGET = $(BIN_DIR)/vrutti_app.exe
+	LDFLAGS += -lole32 -lcomctl32 -loleaut32 -luuid -lgdi32 -lshlwapi -static
+else ifeq ($(OS), Linux)
+	TARGET = $(BIN_DIR)/vrutti_app
+	CXXFLAGS += $(shell pkg-config --cflags gtk+-3.0 webkit2gtk-4.0)
+	LDFLAGS += $(shell pkg-config --libs gtk+-3.0 webkit2gtk-4.0)
+else ifeq ($(OS), Darwin)
+	TARGET = $(BIN_DIR)/vrutti_app
+	LDFLAGS += -framework WebKit -framework Cocoa
+else
+	# Fallback for MSYS/MinGW environments where uname -s might return something else
+	TARGET = $(BIN_DIR)/vrutti_app.exe
+	LDFLAGS += -lole32 -lcomctl32 -loleaut32 -luuid -lgdi32 -lshlwapi -static
+endif
+
+# Source files
 SRCS = $(SRC_DIR)/app/main.cpp \
        $(SRC_DIR)/core/memory/ArenaAllocator.cpp \
        $(SRC_DIR)/core/concurrency/ThreadPool.cpp \
@@ -42,9 +49,6 @@ SRCS = $(SRC_DIR)/app/main.cpp \
 
 # Object files
 OBJS = $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(SRCS))
-
-# Target Executable
-TARGET = $(BIN_DIR)/vrutti_app
 
 # Default target
 all: $(TARGET)
