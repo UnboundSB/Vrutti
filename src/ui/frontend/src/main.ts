@@ -7,6 +7,7 @@ import './components/vrutti-panel';
 import './components/vrutti-editor-layout';
 import './components/vrutti-quick-open';
 import './components/vrutti-extension-details';
+import { themeBridge } from './ThemeBridge';
 
 import { globalHoverStyle } from './shared-styles';
 
@@ -126,6 +127,9 @@ export class VruttiApp extends LitElement {
     setTimeout(() => {
       this.isLoading = false;
     }, 2500);
+
+    // Connect theme bridge to listen for IPC themes
+    themeBridge.connect();
 
     this.addEventListener('menu-action', this.handleMenuAction);
     this.addEventListener('close-settings', this.handleCloseSettings);
