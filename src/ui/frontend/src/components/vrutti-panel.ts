@@ -65,7 +65,9 @@ export class VruttiPanel extends LitElement {
       if (activeGroup && activeGroup.activeTerminalId) {
         const cmd = msg.params.command + "\r";
         if ((window as any).vruttiTerminalInput) {
-          (window as any).vruttiTerminalInput(activeGroup.activeTerminalId, btoa(cmd));
+          // Use safe base64 encoding for unicode support
+          const b64 = btoa(new TextEncoder().encode(cmd).reduce((data, byte) => data + String.fromCharCode(byte), ''));
+          (window as any).vruttiTerminalInput(activeGroup.activeTerminalId, b64);
         }
       }
     }
