@@ -77,7 +77,7 @@ namespace vrutti::core::ipc {
                 if (!WriteFile(m_connectionHandle, rpc.c_str(), rpc.length(), &bytesWritten, NULL)) {
                     std::cerr << "[IPC] WriteFile failed. Error: " << GetLastError() << std::endl;
                 } else {
-                    std::cout << "[IPC] WriteFile succeeded, wrote " << bytesWritten << " bytes." << std::endl;
+                    // std::cout << "[IPC] WriteFile succeeded, wrote " << bytesWritten << " bytes." << std::endl;
                 }
             } else {
                 std::cerr << "[IPC] Cannot write, handle is invalid!" << std::endl;
