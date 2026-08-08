@@ -59,6 +59,7 @@ async function main() {
         class ExtensionDownloader {
             constructor() {
                 this.extDirBase = path.join(os.homedir(), '.vrutti', 'extensions');
+                this._cachedThemes = null;
                 if (!fs.existsSync(this.extDirBase)) {
                     fs.mkdirSync(this.extDirBase, { recursive: true });
                 }
@@ -92,7 +93,45 @@ async function main() {
                 return installed;
             }
 
+            translateThemeOnDisk(sourcePath, destPath) {
+                if (fs.existsSync(destPath)) return destPath;
+                if (!fs.existsSync(sourcePath)) return sourcePath;
+                try {
+                    let raw = fs.readFileSync(sourcePath, 'utf8');
+                    raw = raw.replace(/\/\*([\s\S]*?)\*\/|([^\\:]|^)\/\/.*$/gm, '$2');
+                    
+                    const tokenMap = {
+                        'editor.background': '--vrutti-bg',
+                        'sideBar.background': '--vrutti-surface',
+                        'activityBar.background': '--vrutti-surface',
+                        'editorGroupHeader.tabsBackground': '--vrutti-surface',
+                        'editor.foreground': '--vrutti-text-bright',
+                        'sideBarTitle.foreground': '--vrutti-text',
+                        'tab.activeBackground': '--vrutti-surface-border',
+                        'button.background': '--vrutti-accent',
+                        'focusBorder': '--vrutti-accent',
+                        'editorLineNumber.foreground': '--vrutti-text',
+                        'terminal.background': '--vrutti-bg',
+                        'gitDecoration.modifiedResourceForeground': '--vrutti-git-modified',
+                        'gitDecoration.untrackedResourceForeground': '--vrutti-git-untracked',
+                        'gitDecoration.deletedResourceForeground': '--vrutti-git-deleted'
+                    };
+                    
+                    for (const [vsToken, vruttiVar] of Object.entries(tokenMap)) {
+                        const regex = new RegExp(`"${vsToken.replace(/\./g, '\\.')}"`, 'g');
+                        raw = raw.replace(regex, `"${vruttiVar}"`);
+                    }
+                    
+                    fs.writeFileSync(destPath, raw, 'utf8');
+                    return destPath;
+                } catch(e) {
+                    console.error("Theme translation failed:", e);
+                    return sourcePath;
+                }
+            }
+
             getAvailableThemes() {
+                if (this._cachedThemes) return this._cachedThemes;
                 const themes = [];
                 if (!fs.existsSync(this.extDirBase)) return themes;
                 
@@ -105,18 +144,22 @@ async function main() {
                             const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
                             if (pkg.contributes && pkg.contributes.themes) {
                                 for (const theme of pkg.contributes.themes) {
+                                    const origPath = path.join(extPath, 'extension', theme.path);
+                                    const vruttiPath = origPath + '.vrutti.json';
+                                    this.translateThemeOnDisk(origPath, vruttiPath);
                                     themes.push({
                                         id: `${pkg.name}.${theme.id || theme.label}`,
                                         label: theme.label || pkg.name,
                                         uiTheme: theme.uiTheme || 'vs-dark',
                                         extensionName: pkg.name,
-                                        themePath: path.join(extPath, 'extension', theme.path)
+                                        themePath: fs.existsSync(vruttiPath) ? vruttiPath : origPath
                                     });
                                 }
                             }
                         } catch (e) {}
                     }
                 }
+                this._cachedThemes = themes;
                 return themes;
             }
 
@@ -140,8 +183,10 @@ async function main() {
                     if (pkg.contributes && pkg.contributes.themes) {
                         for (const theme of pkg.contributes.themes) {
                             const themePath = path.join(extDir, 'extension', theme.path);
-                            if (fs.existsSync(themePath)) {
-                                let themeRaw = fs.readFileSync(themePath, 'utf8');
+                            const vruttiPath = themePath + '.vrutti.json';
+                            this.translateThemeOnDisk(themePath, vruttiPath);
+                            if (fs.existsSync(vruttiPath)) {
+                                let themeRaw = fs.readFileSync(vruttiPath, 'utf8');
                                 // Strip comments (VS Code themes often have them)
                                 themeRaw = themeRaw.replace(/\/\*([\s\S]*?)\*\/|([^\\:]|^)\/\/.*$/gm, '$2');
                                 
@@ -216,6 +261,7 @@ async function main() {
                 if (fs.existsSync(extDir)) {
                     fs.rmSync(extDir, { recursive: true, force: true });
                 }
+                downloader._cachedThemes = null;
                 ipcClient.sendNotification('extensions/installed', downloader.getInstalledExtensions());
                 ipcClient.sendNotification('themes/available', downloader.getAvailableThemes());
             } catch (err) {
@@ -232,6 +278,7 @@ async function main() {
                 // Ensure UI knows we hit 100%
                 ipcClient.sendNotification('extensions/progress', { name: params.name, percentage: 100 });
                 // Broadcast updated list
+                downloader._cachedThemes = null;
                 ipcClient.sendNotification('extensions/installed', downloader.getInstalledExtensions());
                 ipcClient.sendNotification('themes/available', downloader.getAvailableThemes());
             } catch (err) {
