@@ -137,6 +137,7 @@ async function main() {
                     { dir: path.join(__dirname, 'builtin-themes'), isBuiltin: true },
                     { dir: this.extDirBase, isBuiltin: false }
                 ];
+                console.log(`[Bootstrapper] getAvailableThemes scanning: ${JSON.stringify(pathsToScan)}`);
 
                 for (const target of pathsToScan) {
                     if (!fs.existsSync(target.dir)) continue;

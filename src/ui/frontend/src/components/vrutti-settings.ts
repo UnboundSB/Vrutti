@@ -27,10 +27,10 @@ export class VruttiSettings extends LitElement {
   private availableThemes: { id: string, label: string }[] = [];
 
   @state()
-  private appliedTheme: string = 'Default Dark';
+  private appliedTheme: string = 'vrutti dark';
 
   @state()
-  private selectedTheme: string = 'Default Dark';
+  private selectedTheme: string = 'vrutti dark';
 
   @state()
   private showDirtyModal = false;
