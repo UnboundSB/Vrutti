@@ -5,37 +5,20 @@
  * and convert VS Code tokens into native Vrutti CSS variables.
  */
 
-class ThemeConverter {
-  private static tokenMap: Record<string, string> = {
-    'editor.background': '--vrutti-bg',
-    'sideBar.background': '--vrutti-surface',
-    'activityBar.background': '--vrutti-surface',
-    'editorGroupHeader.tabsBackground': '--vrutti-surface',
-    'editor.foreground': '--vrutti-text-bright',
-    'sideBarTitle.foreground': '--vrutti-text',
-    'tab.activeBackground': '--vrutti-surface-border',
-    'button.background': '--vrutti-accent',
-    'focusBorder': '--vrutti-accent',
-    'editorLineNumber.foreground': '--vrutti-text',
-    'terminal.background': '--vrutti-bg',
-    'gitDecoration.modifiedResourceForeground': '--vrutti-git-modified',
-    'gitDecoration.untrackedResourceForeground': '--vrutti-git-untracked',
-    'gitDecoration.deletedResourceForeground': '--vrutti-git-deleted'
-  };
-
+class ThemeApplier {
   public static apply(themeData: any): void {
     if (!themeData || !themeData.colors) return;
     const root = document.documentElement;
     const colors = themeData.colors;
 
-    for (const [vsToken, vruttiVar] of Object.entries(this.tokenMap)) {
-      if (colors[vsToken]) {
-        root.style.setProperty(vruttiVar, colors[vsToken]);
+    for (const [key, value] of Object.entries(colors)) {
+      if (key.startsWith('--vrutti-')) {
+        root.style.setProperty(key, value as string);
       }
     }
 
-    if (colors['editor.background']) {
-      document.body.style.backgroundColor = colors['editor.background'];
+    if (colors['--vrutti-bg']) {
+      document.body.style.backgroundColor = colors['--vrutti-bg'];
     }
 
     // Persist applied theme in localStorage
@@ -51,7 +34,7 @@ class ThemeConverter {
       console.error('Failed to persist theme state', e);
     }
 
-    console.log(`[ThemeBridge] Converted and applied theme: ${themeData.name || 'Unknown'}`);
+    console.log(`[ThemeBridge] Applied native Vrutti theme: ${themeData.name || 'Unknown'}`);
   }
   
   public static loadStartupTheme(): void {
@@ -60,13 +43,13 @@ class ThemeConverter {
       if (storedColors) {
         const colors = JSON.parse(storedColors);
         const root = document.documentElement;
-        for (const [vsToken, vruttiVar] of Object.entries(this.tokenMap)) {
-          if (colors[vsToken]) {
-            root.style.setProperty(vruttiVar, colors[vsToken]);
+        for (const [key, value] of Object.entries(colors)) {
+          if (key.startsWith('--vrutti-')) {
+            root.style.setProperty(key, value as string);
           }
         }
-        if (colors['editor.background']) {
-          document.body.style.backgroundColor = colors['editor.background'];
+        if (colors['--vrutti-bg']) {
+          document.body.style.backgroundColor = colors['--vrutti-bg'];
         }
         console.log('[ThemeBridge] Restored startup theme');
       }
@@ -82,7 +65,7 @@ export class ThemeBridge {
 
   public connect(): void {
     console.log('[ThemeBridge] Connecting to Extension Host via IPC...');
-    ThemeConverter.loadStartupTheme();
+    ThemeApplier.loadStartupTheme();
     window.addEventListener('vrutti-ipc', this.handleIpc as EventListener);
   }
 
@@ -93,7 +76,7 @@ export class ThemeBridge {
   private handleIpc = (e: Event) => {
     const msg = (e as CustomEvent).detail;
     if (msg && msg.method === 'theme/load' && msg.params) {
-      ThemeConverter.apply(msg.params);
+      ThemeApplier.apply(msg.params);
     }
   };
 }
