@@ -32,6 +32,9 @@ export class VruttiSettings extends LitElement {
   @state()
   private selectedTheme: string = 'Default Dark';
 
+  @state()
+  private showDirtyModal = false;
+
   private categories = ['General', 'Editor', 'Keybindings', 'Theme'];
   private saveTimeout: number | null = null;
 
@@ -70,21 +73,31 @@ export class VruttiSettings extends LitElement {
 
   private requestClose() {
     if (this.selectedTheme !== this.appliedTheme) {
-      if (!window.confirm("Do you want to exit without applying your changes?")) {
-        return; // Cancel the exit
-      }
+      this.showDirtyModal = true;
+      return;
     }
-    // Revert selection
-    this.selectedTheme = this.appliedTheme;
     this.dispatchEvent(new CustomEvent('close-settings', { bubbles: true, composed: true }));
   }
 
-  private applyAndExit() {
+  private confirmExit() {
+    this.selectedTheme = this.appliedTheme;
+    this.showDirtyModal = false;
+    this.dispatchEvent(new CustomEvent('close-settings', { bubbles: true, composed: true }));
+  }
+
+  private cancelExit() {
+    this.showDirtyModal = false;
+  }
+
+  private apply() {
     this.appliedTheme = this.selectedTheme;
-    // Dispatch to core
     if ((window as any).sendIpcMessage) {
       (window as any).sendIpcMessage(JSON.stringify(['theme/set', JSON.stringify({ id: this.selectedTheme })]));
     }
+  }
+
+  private applyAndExit() {
+    this.apply();
     this.dispatchEvent(new CustomEvent('close-settings', { bubbles: true, composed: true }));
   }
 
@@ -265,10 +278,61 @@ export class VruttiSettings extends LitElement {
       filter: brightness(1.2);
       background: var(--vrutti-accent, #0e639c);
     }
+
+    .modal-overlay {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+    }
+
+    .modal-content {
+      background: var(--vrutti-surface, #13151f);
+      border: 1px solid var(--vrutti-surface-border, #23273b);
+      border-radius: 6px;
+      padding: 24px;
+      width: 400px;
+      max-width: 90%;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    }
+
+    .modal-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    .modal-body {
+      font-size: 13px;
+      color: var(--vrutti-text);
+      margin-bottom: 24px;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+    }
   `];
 
   render() {
     return html`
+      ${this.showDirtyModal ? html`
+        <div class="modal-overlay">
+          <div class="modal-content">
+            <div class="modal-title">Unapplied Changes</div>
+            <div class="modal-body">Do you want to exit without applying your changes?</div>
+            <div class="modal-actions">
+              <button class="btn" @click=${this.cancelExit}>Cancel</button>
+              <button class="btn btn-primary" @click=${this.confirmExit}>Exit without Applying</button>
+            </div>
+          </div>
+        </div>
+      ` : ''}
+
       <div class="header">
         <span>Settings</span>
         <button class="close-btn" @click=${this.requestClose}>✕</button>
@@ -326,13 +390,14 @@ export class VruttiSettings extends LitElement {
             <div class="setting-desc">Select the active color theme for the workspace. Applies upon clicking Apply and Exit.</div>
             <select class="input-field" .value=${this.selectedTheme}
                     @change=${(e: any) => this.selectedTheme = e.target.value}>
-              ${this.availableThemes.length === 0 ? html`<option value="${this.selectedTheme}">${this.selectedTheme} (Loading...)</option>` : ''}
+              ${this.availableThemes.length === 0 ? html`<option value="${this.selectedTheme}">${this.selectedTheme}</option>` : ''}
               ${this.availableThemes.map(t => html`<option value="${t.id}">${t.label}</option>`)}
             </select>
           </div>
           <div class="footer-actions">
-            <button class="btn" @click=${this.requestClose}>Cancel</button>
-            <button class="btn btn-primary" @click=${this.applyAndExit}>Apply and Exit</button>
+            <button class="btn" @click=${this.requestClose}>Exit</button>
+            <button class="btn" @click=${this.apply}>Apply</button>
+            <button class="btn btn-primary" @click=${this.applyAndExit}>OK</button>
           </div>
         `;
       case 'Keybindings':
