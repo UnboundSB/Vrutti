@@ -207,6 +207,35 @@ async function main() {
                 log(`Failed to install extension ${params.name}: ${err.message}\n${err.stack}`);
             }
         });
+        ipcClient.on('theme/set', (params) => {
+            log(`Setting theme to ${params.name}`);
+            try {
+                const extDir = path.join(downloader.extDirBase, params.name);
+                const pkgJsonPath = path.join(extDir, 'extension', 'package.json');
+                if (fs.existsSync(pkgJsonPath)) {
+                    const pkg = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
+                    if (pkg.contributes && pkg.contributes.themes) {
+                        for (const theme of pkg.contributes.themes) {
+                            const themePath = path.join(extDir, 'extension', theme.path);
+                            if (fs.existsSync(themePath)) {
+                                let themeRaw = fs.readFileSync(themePath, 'utf8');
+                                themeRaw = themeRaw.replace(/\/\*([\s\S]*?)\*\/|([^\\:]|^)\/\/.*$/gm, '$2');
+                                try {
+                                    const themeData = JSON.parse(themeRaw);
+                                    log(`Loading theme: ${theme.label}`);
+                                    ipcClient.sendNotification('theme/load', themeData);
+                                    break; // Load first theme
+                                } catch (e) {
+                                    console.error(`Failed to parse theme JSON: ${themePath}`);
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (err) {
+                log(`Failed to set theme ${params.name}: ${err.message}`);
+            }
+        });
 
         // Built-in runner extension
         vruttiApi.commands.registerCommand('vrutti.action.run', async (file, mode, userParams) => {

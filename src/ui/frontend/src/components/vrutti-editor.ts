@@ -73,7 +73,7 @@ export class VruttiEditor extends LitElement {
             flex-direction: column;
             width: 100%;
             height: 100%;
-            background-color: var(--vrutti-bg-dark, #1e1e1e);
+            background-color: var(--vrutti-bg, #1e1e1e);
             overflow: hidden;
             min-width: 0;
             min-height: 0;

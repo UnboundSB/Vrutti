@@ -285,8 +285,8 @@ export class VruttiPanel extends LitElement {
       flex-direction: column;
       width: 100%;
       height: 100%;
-      background: #1a1b26;
-      border-top: 1px solid #1f2335;
+      background: var(--vrutti-surface, #1a1b26);
+      border-top: 1px solid var(--vrutti-surface-border, #1f2335);
       position: relative;
       min-width: 0;
       overflow: hidden;
@@ -304,7 +304,7 @@ export class VruttiPanel extends LitElement {
       font-size: 11px;
       text-transform: uppercase;
       font-weight: 500;
-      color: #717cb4;
+      color: var(--vrutti-text, #717cb4);
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -313,11 +313,11 @@ export class VruttiPanel extends LitElement {
       margin-right: 8px;
     }
     .panel-top-tab:hover {
-      color: #a9b1d6;
+      color: var(--vrutti-text-bright, #a9b1d6);
     }
     .panel-top-tab.active {
-      color: #c0caf5;
-      border-bottom: 1px solid #7aa2f7;
+      color: var(--vrutti-text-bright, #c0caf5);
+      border-bottom: 1px solid var(--vrutti-accent, #7aa2f7);
     }
     .panel-header-actions {
       display: flex;
@@ -326,7 +326,7 @@ export class VruttiPanel extends LitElement {
     .panel-header-actions button {
       background: transparent;
       border: none;
-      color: #717cb4;
+      color: var(--vrutti-text, #717cb4);
       cursor: pointer;
       padding: 4px;
       border-radius: 4px;
@@ -336,8 +336,8 @@ export class VruttiPanel extends LitElement {
       margin-left: 4px;
     }
     .panel-header-actions button:hover {
-      background: #292e42;
-      color: #c0caf5;
+      background: var(--vrutti-surface-border, #292e42);
+      color: var(--vrutti-text-bright, #c0caf5);
     }
     
     .terminal-body {
@@ -345,14 +345,14 @@ export class VruttiPanel extends LitElement {
       flex: 1;
       overflow: hidden;
       min-width: 0;
-      background: var(--vscode-terminal-background, #1a1b26);
+      background: var(--vrutti-bg, #1a1b26);
     }
     .terminal-instances {
       flex: 1;
       display: flex;
       flex-direction: row;
       position: relative;
-      background: #1a1b26;
+      background: var(--vrutti-bg, #1a1b26);
       min-width: 0;
       overflow: hidden;
     }
@@ -373,7 +373,7 @@ export class VruttiPanel extends LitElement {
       transition: background 0.1s;
     }
     .split-resizer:hover, .split-resizer.active {
-      background: #7aa2f7;
+      background: var(--vrutti-accent, #7aa2f7);
     }
     
     /* Indicator for active split */
@@ -388,21 +388,21 @@ export class VruttiPanel extends LitElement {
     .terminal-tabs-container {
       width: 150px;
       flex-shrink: 0;
-      border-left: 1px solid #1f2335;
+      border-left: 1px solid var(--vrutti-surface-border, #1f2335);
       display: flex;
       flex-direction: column;
-      background: #1a1b26;
+      background: var(--vrutti-surface, #1a1b26);
     }
     .terminal-tabs-actions {
       display: flex;
       justify-content: flex-end;
       padding: 4px;
-      border-bottom: 1px solid #1f2335;
+      border-bottom: 1px solid var(--vrutti-surface-border, #1f2335);
     }
     .terminal-tabs-actions button {
       background: transparent;
       border: none;
-      color: #a9b1d6;
+      color: var(--vrutti-text-bright, #a9b1d6);
       cursor: pointer;
       padding: 4px;
       border-radius: 4px;
@@ -411,8 +411,8 @@ export class VruttiPanel extends LitElement {
       justify-content: center;
     }
     .terminal-tabs-actions button:hover {
-      background: #292e42;
-      color: #c0caf5;
+      background: var(--vrutti-surface-border, #292e42);
+      color: var(--vrutti-text-bright, #c0caf5);
     }
     .terminal-tabs-list {
       flex: 1;
@@ -425,17 +425,17 @@ export class VruttiPanel extends LitElement {
       align-items: center;
       padding: 4px 10px;
       cursor: pointer;
-      color: #a9b1d6;
+      color: var(--vrutti-text-bright, #a9b1d6);
       font-size: 11px;
       user-select: none;
     }
     .terminal-tab:hover {
-      background: #292e42;
+      background: var(--vrutti-surface-border, #292e42);
     }
     .terminal-tab.active {
-      color: #c0caf5;
-      background: #292e42;
-      border-left: 2px solid #7aa2f7;
+      color: var(--vrutti-text-bright, #c0caf5);
+      background: var(--vrutti-surface-border, #292e42);
+      border-left: 2px solid var(--vrutti-accent, #7aa2f7);
     }
     .terminal-tab-icon {
       margin-right: 6px;

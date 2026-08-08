@@ -39,11 +39,11 @@ namespace vrutti::ui {
         HWND hwnd = static_cast<HWND>(w->window());
         if (hwnd) {
             // Set Icon
-            HICON hIcon = LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(101));
-            if (hIcon) {
-                SendMessage(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hIcon);
-                SendMessage(hwnd, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
-            }
+            HICON hIconSmall = (HICON)LoadImage(GetModuleHandle(NULL), MAKEINTRESOURCE(101), IMAGE_ICON, GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), LR_DEFAULTCOLOR);
+            HICON hIconBig = (HICON)LoadImage(GetModuleHandle(NULL), MAKEINTRESOURCE(101), IMAGE_ICON, GetSystemMetrics(SM_CXICON), GetSystemMetrics(SM_CYICON), LR_DEFAULTCOLOR);
+            
+            if (hIconSmall) SendMessage(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hIconSmall);
+            if (hIconBig) SendMessage(hwnd, WM_SETICON, ICON_BIG, (LPARAM)hIconBig);
             
             // Enable native dark mode title bar (Windows 10/11)
             // 20 is DWMWA_USE_IMMERSIVE_DARK_MODE in older SDKs, 19 in some. 

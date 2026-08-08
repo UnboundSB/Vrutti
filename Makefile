@@ -2,7 +2,7 @@
 # Works natively with MSYS2/MinGW, Linux (GCC/Clang), and macOS
 
 CXX = g++
-CXXFLAGS = -std=c++20 -Wall -Wextra -O2 -I./src
+CXXFLAGS = -std=c++20 -Wall -Wextra -O2 -I./src -I./build/_deps/webview2-src/build/native/include
 
 # Directories
 SRC_DIR = src
@@ -13,7 +13,7 @@ OS := $(shell uname -s 2>/dev/null || echo Windows_NT)
 
 ifeq ($(OS), Windows_NT)
 	TARGET = $(BIN_DIR)/vrutti_app.exe
-	LDFLAGS += -lole32 -lcomctl32 -loleaut32 -luuid -lgdi32 -lshlwapi -static
+	LDFLAGS += -lole32 -lcomctl32 -loleaut32 -luuid -lgdi32 -lshlwapi -lws2_32 -lkernel32 -ladvapi32 -lversion -static
 else ifeq ($(OS), Linux)
 	TARGET = $(BIN_DIR)/vrutti_app
 	CXXFLAGS += $(shell pkg-config --cflags gtk+-3.0 webkit2gtk-4.0)
@@ -24,7 +24,7 @@ else ifeq ($(OS), Darwin)
 else
 	# Fallback for MSYS/MinGW environments where uname -s might return something else
 	TARGET = $(BIN_DIR)/vrutti_app.exe
-	LDFLAGS += -lole32 -lcomctl32 -loleaut32 -luuid -lgdi32 -lshlwapi -static
+	LDFLAGS += -lole32 -lcomctl32 -loleaut32 -luuid -lgdi32 -lshlwapi -lws2_32 -lkernel32 -ladvapi32 -lversion -static
 endif
 
 # Source files

@@ -10,6 +10,7 @@ interface ExtensionResult {
     iconUrl: string;
     downloadUrl: string;
     publisherDisplayName: string;
+    isTheme?: boolean;
 }
 
 @customElement('vrutti-extensions')
@@ -20,9 +21,9 @@ export class VruttiExtensions extends LitElement {
             flex-direction: column;
             width: 100%;
             height: 100%;
-            color: #cccccc;
+            color: var(--vrutti-text, #cccccc);
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background: #252526;
+            background: var(--vrutti-surface, #252526);
             overflow: hidden;
         }
         
@@ -31,12 +32,12 @@ export class VruttiExtensions extends LitElement {
             font-size: 11px;
             text-transform: uppercase;
             letter-spacing: 1px;
-            color: #ffffff;
+            color: var(--vrutti-text-bright, #ffffff);
         }
 
         .search-container {
             padding: 10px 20px;
-            border-bottom: 1px solid #3c3c3c;
+            border-bottom: 1px solid var(--vrutti-surface-border, #3c3c3c);
             display: flex;
             align-items: center;
         }
@@ -44,22 +45,22 @@ export class VruttiExtensions extends LitElement {
         .search-box {
             flex: 1;
             padding: 6px 8px;
-            background: #3c3c3c;
+            background: var(--vrutti-surface-border, #3c3c3c);
             border: 1px solid transparent;
-            color: #cccccc;
+            color: var(--vrutti-text, #cccccc);
             border-radius: 2px;
             outline: none;
             box-sizing: border-box;
         }
         
         .search-box:focus {
-            border-color: #007fd4;
+            border-color: var(--vrutti-accent, #007fd4);
         }
 
         .clear-search-btn {
             background: transparent;
             border: none;
-            color: #cccccc;
+            color: var(--vrutti-text, #cccccc);
             cursor: pointer;
             padding: 4px;
             margin-left: 8px;
@@ -71,7 +72,7 @@ export class VruttiExtensions extends LitElement {
 
         .clear-search-btn:hover {
             background: rgba(255, 255, 255, 0.1);
-            color: #ffffff;
+            color: var(--vrutti-text-bright, #ffffff);
         }
 
         .results {
@@ -84,19 +85,19 @@ export class VruttiExtensions extends LitElement {
             display: flex;
             align-items: flex-start;
             padding: 10px 0;
-            border-bottom: 1px solid #3c3c3c;
+            border-bottom: 1px solid var(--vrutti-surface-border, #3c3c3c);
             cursor: pointer;
         }
 
         .extension-card:hover {
-            background-color: #2a2d2e;
+            background-color: rgba(255, 255, 255, 0.05);
         }
 
         .ext-icon {
             width: 42px;
             height: 42px;
             margin-right: 12px;
-            background: #333333;
+            background: var(--vrutti-surface-border, #333333);
             border-radius: 4px;
         }
 
@@ -109,19 +110,19 @@ export class VruttiExtensions extends LitElement {
         .ext-name {
             font-size: 13px;
             font-weight: 600;
-            color: #ffffff;
+            color: var(--vrutti-text-bright, #ffffff);
             margin-bottom: 2px;
         }
 
         .ext-publisher {
             font-size: 11px;
-            color: #cccccc;
+            color: var(--vrutti-text, #cccccc);
             margin-bottom: 6px;
         }
 
         .ext-desc {
             font-size: 12px;
-            color: #969696;
+            color: var(--vrutti-text, #969696);
             margin-bottom: 8px;
             display: -webkit-box;
             -webkit-line-clamp: 2;
@@ -130,7 +131,7 @@ export class VruttiExtensions extends LitElement {
         }
 
         .install-btn {
-            background: #0e639c;
+            background: var(--vrutti-accent, #0e639c);
             color: #ffffff;
             border: none;
             padding: 4px 12px;
@@ -142,7 +143,7 @@ export class VruttiExtensions extends LitElement {
         }
 
         .install-btn:hover {
-            background: #1177bb;
+            filter: brightness(1.2);
         }
         
         .loading {
@@ -289,6 +290,15 @@ export class VruttiExtensions extends LitElement {
         }
     }
 
+    private setTheme(ext: ExtensionResult, e: Event) {
+        e.stopPropagation();
+        console.log(`Setting theme for ${ext.name}`);
+
+        if ((window as any).sendIpcMessage) {
+            (window as any).sendIpcMessage(JSON.stringify(['theme/set', JSON.stringify({ name: ext.name })]));
+        }
+    }
+
     private selectExtension(ext: ExtensionResult) {
         this.dispatchEvent(new CustomEvent('extension-selected', {
             detail: ext,
@@ -329,12 +339,13 @@ export class VruttiExtensions extends LitElement {
                             
                             ${isInstalling ? html`
                                 <div style="width: 100%; height: 4px; background: #333; margin-top: 4px; border-radius: 2px; overflow: hidden;">
-                                    <div style="width: ${progress}%; height: 100%; background: #007fd4; transition: width 0.2s;"></div>
+                                    <div style="width: ${progress}%; height: 100%; background: var(--vrutti-accent, #007fd4); transition: width 0.2s;"></div>
                                 </div>
                             ` : (isInstalled ? html`
                                 <div style="display: flex; gap: 8px;">
-                                    <span style="font-size: 11px; color: #888; background: #333; padding: 2px 6px; border-radius: 4px; align-self: flex-start;">Installed</span>
+                                    <span style="font-size: 11px; color: var(--vrutti-text, #888); background: var(--vrutti-surface-border, #333); padding: 2px 6px; border-radius: 4px; align-self: flex-start;">Installed</span>
                                     ${!this.query ? html`<button class="install-btn" style="background: #e81123;" @click=${(e: Event) => this.uninstall(ext, e)}>Uninstall</button>` : ''}
+                                    ${!this.query && ext.isTheme ? html`<button class="install-btn" @click=${(e: Event) => this.setTheme(ext, e)}>Set Theme</button>` : ''}
                                 </div>
                             ` : html`
                                 <button class="install-btn" @click=${(e: Event) => this.install(ext, e)}>Install</button>
