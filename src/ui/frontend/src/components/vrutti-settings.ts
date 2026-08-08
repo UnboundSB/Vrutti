@@ -5,14 +5,12 @@ interface Config {
   'editor.fontSize': number;
   'editor.fontFamily': string;
   'editor.wordWrap': boolean;
-  'workbench.colorTheme': string;
 }
 
 const DEFAULT_CONFIG: Config = {
   'editor.fontSize': 14,
   'editor.fontFamily': "'Fira Code', monospace",
-  'editor.wordWrap': false,
-  'workbench.colorTheme': 'Default Dark'
+  'editor.wordWrap': false
 };
 
 import { globalHoverStyle } from '../shared-styles';
@@ -25,13 +23,69 @@ export class VruttiSettings extends LitElement {
   @state()
   private config: Config = { ...DEFAULT_CONFIG };
 
+  @state()
+  private availableThemes: { id: string, label: string }[] = [];
+
+  @state()
+  private appliedTheme: string = 'Default Dark';
+
+  @state()
+  private selectedTheme: string = 'Default Dark';
+
   private categories = ['General', 'Editor', 'Keybindings', 'Theme'];
   private saveTimeout: number | null = null;
 
   connectedCallback() {
     super.connectedCallback();
-    // In a real implementation, we'd fetch settings from IPC here
     console.log('[Settings] Loaded lazy component');
+    
+    // Load persisted theme state
+    try {
+      const applied = localStorage.getItem('vrutti-applied-theme');
+      if (applied) {
+        const t = JSON.parse(applied);
+        this.appliedTheme = t.id || t.name;
+        this.selectedTheme = this.appliedTheme;
+      }
+    } catch (e) {}
+
+    window.addEventListener('vrutti-ipc', this.handleIpc as EventListener);
+    // Request themes
+    if ((window as any).sendIpcMessage) {
+      (window as any).sendIpcMessage(JSON.stringify(['extensions/request_installed', null]));
+    }
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    window.removeEventListener('vrutti-ipc', this.handleIpc as EventListener);
+  }
+
+  private handleIpc = (e: Event) => {
+    const msg = (e as CustomEvent).detail;
+    if (msg && msg.method === 'themes/available' && msg.params) {
+      this.availableThemes = msg.params;
+    }
+  };
+
+  private requestClose() {
+    if (this.selectedTheme !== this.appliedTheme) {
+      if (!window.confirm("Do you want to exit without applying your changes?")) {
+        return; // Cancel the exit
+      }
+    }
+    // Revert selection
+    this.selectedTheme = this.appliedTheme;
+    this.dispatchEvent(new CustomEvent('close-settings', { bubbles: true, composed: true }));
+  }
+
+  private applyAndExit() {
+    this.appliedTheme = this.selectedTheme;
+    // Dispatch to core
+    if ((window as any).sendIpcMessage) {
+      (window as any).sendIpcMessage(JSON.stringify(['theme/set', JSON.stringify({ id: this.selectedTheme })]));
+    }
+    this.dispatchEvent(new CustomEvent('close-settings', { bubbles: true, composed: true }));
   }
 
   private handleSettingChange(key: keyof Config, value: any) {
@@ -180,13 +234,44 @@ export class VruttiSettings extends LitElement {
       height: 16px;
       cursor: pointer;
     }
+
+    .footer-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px solid var(--vrutti-surface-border, #23273b);
+    }
+
+    .btn {
+      background: var(--vrutti-surface-border, #23273b);
+      border: 1px solid transparent;
+      color: var(--vrutti-text-bright, #fff);
+      cursor: pointer;
+      padding: 6px 16px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .btn-primary {
+      background: var(--vrutti-accent, #0e639c);
+    }
+    .btn-primary:hover {
+      filter: brightness(1.2);
+      background: var(--vrutti-accent, #0e639c);
+    }
   `];
 
   render() {
     return html`
       <div class="header">
         <span>Settings</span>
-        <button class="close-btn" @click=${() => this.dispatchEvent(new CustomEvent('close-settings', { bubbles: true, composed: true }))}>✕</button>
+        <button class="close-btn" @click=${this.requestClose}>✕</button>
       </div>
       
       <div class="layout">
@@ -238,14 +323,16 @@ export class VruttiSettings extends LitElement {
         return html`
           <div class="setting-group">
             <div class="setting-title">Color Theme</div>
-            <div class="setting-desc">Select the active color theme for the workspace.</div>
-            <select class="input-field" .value=${this.config['workbench.colorTheme']}
-                    @change=${(e: any) => this.handleSettingChange('workbench.colorTheme', e.target.value)}>
-              <option value="Default Dark">Default Dark</option>
-              <option value="One Dark Pro">One Dark Pro</option>
-              <option value="Vrutti Glass">Vrutti Glass</option>
-              <option value="Light+">Light+</option>
+            <div class="setting-desc">Select the active color theme for the workspace. Applies upon clicking Apply and Exit.</div>
+            <select class="input-field" .value=${this.selectedTheme}
+                    @change=${(e: any) => this.selectedTheme = e.target.value}>
+              ${this.availableThemes.length === 0 ? html`<option value="${this.selectedTheme}">${this.selectedTheme} (Loading...)</option>` : ''}
+              ${this.availableThemes.map(t => html`<option value="${t.id}">${t.label}</option>`)}
             </select>
+          </div>
+          <div class="footer-actions">
+            <button class="btn" @click=${this.requestClose}>Cancel</button>
+            <button class="btn btn-primary" @click=${this.applyAndExit}>Apply and Exit</button>
           </div>
         `;
       case 'Keybindings':
