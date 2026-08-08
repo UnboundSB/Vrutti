@@ -208,61 +208,64 @@ async function main() {
             }
         });
 
-        ipcClient.on('editor/run', (payloadJson) => {
+        // Built-in runner extension
+        vruttiApi.commands.registerCommand('vrutti.action.run', async (file, mode, userParams) => {
+            const url = require('url');
+            if (file.startsWith('file://')) {
+                file = url.fileURLToPath(file);
+            }
+
+            const ext = path.extname(file);
+            const dir = path.dirname(file);
+            const baseName = path.basename(file, ext);
+            
+            let cmdString = '';
+            
+            if (ext === '.py') {
+                cmdString = `python "${file}"`;
+            } else if (ext === '.js') {
+                cmdString = mode === 'debug' ? `node --inspect "${file}"` : `node "${file}"`;
+            } else if (ext === '.ts') {
+                cmdString = mode === 'debug' ? `npx ts-node --inspect "${file}"` : `npx ts-node "${file}"`;
+            } else if (ext === '.cpp' || ext === '.c') {
+                const isWin = os.platform() === 'win32';
+                const exeName = isWin ? `${baseName}.exe` : baseName;
+                const outPath = path.join(dir, exeName);
+                const compiler = ext === '.cpp' ? 'g++' : 'gcc';
+                
+                cmdString = `${compiler} "${file}" -o "${outPath}" && "${outPath}"`;
+            } else if (ext === '.html' || ext === '.htm') {
+                const isWin = os.platform() === 'win32';
+                cmdString = isWin ? `start "" "${file}"` : (os.platform() === 'darwin' ? `open "${file}"` : `xdg-open "${file}"`);
+            } else {
+                ipcClient.sendNotification('run/output', { text: `Unsupported file extension: ${ext}\n` });
+                return;
+            }
+            
+            if (userParams) {
+                cmdString += ` ${userParams}`;
+            }
+            
+            ipcClient.sendNotification('terminal/runCommand', { command: cmdString });
+        });
+
+        ipcClient.on('editor/run', async (payloadJson) => {
             try {
-                // payloadJson is now properly forwarded by C++ as the exact JSON object 
-                // sent by the frontend, e.g., { file: "...", mode: "..." }
                 const req = typeof payloadJson === 'string' ? JSON.parse(payloadJson) : payloadJson;
                 if (!req || typeof req !== 'object') return;
                 
-                let file = req.file;
+                const file = req.file;
                 const mode = req.mode || 'run';
                 const userParams = req.params || '';
                 
                 if (!file) return;
 
-                if (file.startsWith('file://')) {
-                    const url = require('url');
-                    file = url.fileURLToPath(file);
-                }
-
-                const ext = path.extname(file);
-                const dir = path.dirname(file);
-                const baseName = path.basename(file, ext);
-                
-                let cmdString = '';
-                
-                if (ext === '.py') {
-                    cmdString = `python "${file}"`;
-                } else if (ext === '.js') {
-                    cmdString = mode === 'debug' ? `node --inspect "${file}"` : `node "${file}"`;
-                } else if (ext === '.ts') {
-                    cmdString = mode === 'debug' ? `npx ts-node --inspect "${file}"` : `npx ts-node "${file}"`;
-                } else if (ext === '.cpp' || ext === '.c') {
-                    const isWin = os.platform() === 'win32';
-                    const exeName = isWin ? `${baseName}.exe` : baseName;
-                    const outPath = path.join(dir, exeName);
-                    const compiler = ext === '.cpp' ? 'g++' : 'gcc';
-                    
-                    // Compile then run
-                    cmdString = `${compiler} "${file}" -o "${outPath}" && "${outPath}"`;
-                } else if (ext === '.html' || ext === '.htm') {
-                    const isWin = os.platform() === 'win32';
-                    cmdString = isWin ? `start "" "${file}"` : (os.platform() === 'darwin' ? `open "${file}"` : `xdg-open "${file}"`);
-                } else {
-                    ipcClient.sendNotification('run/output', { text: `Unsupported file extension: ${ext}\n` });
-                    return;
-                }
-                
-                if (userParams) {
-                    cmdString += ` ${userParams}`;
-                }
-                
-                // Route the command to the interactive terminal
-                ipcClient.sendNotification('terminal/runCommand', { command: cmdString });
+                // Dispatch to the extension command
+                await vruttiApi.commands.executeCommand('vrutti.action.run', file, mode, userParams);
 
             } catch (err) {
-                log(`Failed to parse editor/run request: ${err.message}`);
+                log(`Failed to execute run command: ${err.message}`);
+                ipcClient.sendNotification('run/output', { text: `Error: ${err.message}\n` });
             }
         });
         
