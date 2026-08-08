@@ -67,7 +67,12 @@ export class VruttiSettings extends LitElement {
   private handleIpc = (e: Event) => {
     const msg = (e as CustomEvent).detail;
     if (msg && msg.method === 'themes/available' && msg.params) {
-      this.availableThemes = msg.params;
+      const builtins = [
+        { id: 'Default Dark', label: 'Default Dark' },
+        { id: 'Light+', label: 'Light+' },
+        { id: 'Vrutti Glass', label: 'Vrutti Glass' }
+      ];
+      this.availableThemes = [...builtins, ...msg.params];
     }
   };
 
@@ -92,7 +97,7 @@ export class VruttiSettings extends LitElement {
   private apply() {
     this.appliedTheme = this.selectedTheme;
     if ((window as any).sendIpcMessage) {
-      (window as any).sendIpcMessage(JSON.stringify(['theme/set', JSON.stringify({ id: this.selectedTheme })]));
+      (window as any).sendIpcMessage(JSON.stringify(['theme/set', { id: this.selectedTheme }]));
     }
   }
 

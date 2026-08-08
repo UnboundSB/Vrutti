@@ -285,9 +285,21 @@ async function main() {
                 log(`Failed to install extension ${params.name}: ${err.message}\n${err.stack}`);
             }
         });
-        ipcClient.on('theme/set', (params) => {
-            const themeLabelOrExtName = params.name; // Could be extension name (from extensions list) or specific theme label
+        ipcClient.on('theme/set', (rawParams) => {
+            let params = rawParams;
+            if (typeof rawParams === 'string') {
+                try { params = JSON.parse(rawParams); } catch(e) {}
+            }
+            
+            const themeLabelOrExtName = params.name || params.id;
             log(`Setting theme to ${themeLabelOrExtName}`);
+            
+            // If it's a built-in theme, we just pass it along
+            if (['Default Dark', 'Light+', 'Vrutti Glass'].includes(params.id)) {
+                ipcClient.sendNotification('theme/load', { id: params.id, name: params.id, colors: {} });
+                return;
+            }
+
             try {
                 const themes = downloader.getAvailableThemes();
                 let targetTheme = themes.find(t => t.id === params.id) || 
