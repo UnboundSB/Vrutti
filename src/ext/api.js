@@ -22,6 +22,22 @@ class VruttiAPI {
                 return this.ipcClient.sendRequest('workspace/openTextDocument', { uri });
             }
         };
+
+        this._commandRegistry = new Map();
+        
+        this.commands = {
+            registerCommand: (commandId, callback) => {
+                this._commandRegistry.set(commandId, callback);
+                return { dispose: () => this._commandRegistry.delete(commandId) };
+            },
+            executeCommand: async (commandId, ...args) => {
+                const callback = this._commandRegistry.get(commandId);
+                if (!callback) {
+                    throw new Error(`Command '${commandId}' not found`);
+                }
+                return await callback(...args);
+            }
+        };
     }
 }
 
