@@ -92,7 +92,7 @@ export class VruttiSettings extends LitElement {
   private apply() {
     this.appliedTheme = this.selectedTheme;
     if ((window as any).sendIpcMessage) {
-      (window as any).sendIpcMessage(JSON.stringify(['theme/set', JSON.stringify({ id: this.selectedTheme })]));
+      (window as any).sendIpcMessage(JSON.stringify(['theme/set', { id: this.selectedTheme }]));
     }
   }
 
