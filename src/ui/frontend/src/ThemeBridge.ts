@@ -7,30 +7,19 @@
 
 class ThemeApplier {
   public static apply(themeData: any): void {
-    if (!themeData) return;
+    if (!themeData || !themeData.colors) return;
     const root = document.documentElement;
-    const colors = themeData.colors || {};
+    const colors = themeData.colors;
 
-    // If it's a built-in theme or empty, we reset inline variables to fallback to CSS defaults
-    if (themeData.id === 'Default Dark' || themeData.id === 'Vrutti Default Dark' || Object.keys(colors).length === 0) {
-      // Clear previously set vars
-      for (const key of Array.from(root.style)) {
-        if (key.startsWith('--vrutti-')) {
-          root.style.removeProperty(key);
-        }
-      }
-      document.body.style.backgroundColor = '';
-    } else {
-      for (const [key, value] of Object.entries(colors)) {
-        if (key.startsWith('--vrutti-')) {
-          root.style.setProperty(key, value as string);
-        }
-      }
-      if (colors['--vrutti-bg']) {
-        document.body.style.backgroundColor = colors['--vrutti-bg'];
+    for (const [key, value] of Object.entries(colors)) {
+      if (key.startsWith('--vrutti-')) {
+        root.style.setProperty(key, value as string);
       }
     }
 
+    if (colors['--vrutti-bg']) {
+      document.body.style.backgroundColor = colors['--vrutti-bg'];
+    }
 
     // Persist applied theme in localStorage
     try {
