@@ -1,0 +1,21 @@
+{
+  "name": "Vrutti Default Light",
+  "type": "light",
+  "colors": {
+    "editor.background": "#ffffff",
+    "sideBar.background": "#f3f3f3",
+    "activityBar.background": "#f3f3f3",
+    "editorGroupHeader.tabsBackground": "#f3f3f3",
+    "editor.foreground": "#333333",
+    "sideBarTitle.foreground": "#666666",
+    "tab.activeBackground": "#e4e6f1",
+    "button.background": "#007acc",
+    "focusBorder": "#007acc",
+    "editorLineNumber.foreground": "#999999",
+    "terminal.background": "#ffffff",
+    "gitDecoration.modifiedResourceForeground": "#007acc",
+    "gitDecoration.untrackedResourceForeground": "#238636",
+    "gitDecoration.deletedResourceForeground": "#d73a49"
+  },
+  "tokenColors": []
+}

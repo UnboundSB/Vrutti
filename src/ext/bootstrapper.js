@@ -133,30 +133,61 @@ async function main() {
             getAvailableThemes() {
                 if (this._cachedThemes) return this._cachedThemes;
                 const themes = [];
-                if (!fs.existsSync(this.extDirBase)) return themes;
-                
-                const dirs = fs.readdirSync(this.extDirBase);
-                for (const dir of dirs) {
-                    const extPath = path.join(this.extDirBase, dir);
-                    const pkgPath = path.join(extPath, 'extension', 'package.json');
-                    if (fs.existsSync(pkgPath)) {
-                        try {
-                            const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
-                            if (pkg.contributes && pkg.contributes.themes) {
-                                for (const theme of pkg.contributes.themes) {
-                                    const origPath = path.join(extPath, 'extension', theme.path);
-                                    const vruttiPath = origPath + '.vrutti.json';
-                                    this.translateThemeOnDisk(origPath, vruttiPath);
-                                    themes.push({
-                                        id: `${pkg.name}.${theme.id || theme.label}`,
-                                        label: theme.label || pkg.name,
-                                        uiTheme: theme.uiTheme || 'vs-dark',
-                                        extensionName: pkg.name,
-                                        themePath: fs.existsSync(vruttiPath) ? vruttiPath : origPath
-                                    });
+                const pathsToScan = [
+                    { dir: path.join(__dirname, 'builtin-themes'), isBuiltin: true },
+                    { dir: this.extDirBase, isBuiltin: false }
+                ];
+
+                for (const target of pathsToScan) {
+                    if (!fs.existsSync(target.dir)) continue;
+                    
+                    // For built-in themes, we don't have an outer folder per extension (well, we could, but let's just parse the package.json directly if it's there, or we can treat it as one extension)
+                    if (target.isBuiltin) {
+                        const pkgPath = path.join(target.dir, 'package.json');
+                        if (fs.existsSync(pkgPath)) {
+                            try {
+                                const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+                                if (pkg.contributes && pkg.contributes.themes) {
+                                    for (const theme of pkg.contributes.themes) {
+                                        const origPath = path.join(target.dir, theme.path);
+                                        const vruttiPath = origPath + '.vrutti.json';
+                                        this.translateThemeOnDisk(origPath, vruttiPath);
+                                        themes.push({
+                                            id: theme.id || theme.label, // built-ins get direct ID
+                                            label: theme.label || pkg.name,
+                                            uiTheme: theme.uiTheme || 'vs-dark',
+                                            extensionName: pkg.name,
+                                            themePath: fs.existsSync(vruttiPath) ? vruttiPath : origPath
+                                        });
+                                    }
                                 }
+                            } catch (e) {}
+                        }
+                    } else {
+                        const dirs = fs.readdirSync(target.dir);
+                        for (const dir of dirs) {
+                            const extPath = path.join(target.dir, dir);
+                            const pkgPath = path.join(extPath, 'extension', 'package.json');
+                            if (fs.existsSync(pkgPath)) {
+                                try {
+                                    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+                                    if (pkg.contributes && pkg.contributes.themes) {
+                                        for (const theme of pkg.contributes.themes) {
+                                            const origPath = path.join(extPath, 'extension', theme.path);
+                                            const vruttiPath = origPath + '.vrutti.json';
+                                            this.translateThemeOnDisk(origPath, vruttiPath);
+                                            themes.push({
+                                                id: `${pkg.name}.${theme.id || theme.label}`,
+                                                label: theme.label || pkg.name,
+                                                uiTheme: theme.uiTheme || 'vs-dark',
+                                                extensionName: pkg.name,
+                                                themePath: fs.existsSync(vruttiPath) ? vruttiPath : origPath
+                                            });
+                                        }
+                                    }
+                                } catch (e) {}
                             }
-                        } catch (e) {}
+                        }
                     }
                 }
                 this._cachedThemes = themes;

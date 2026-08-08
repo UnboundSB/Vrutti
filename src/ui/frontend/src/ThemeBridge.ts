@@ -11,6 +11,13 @@ class ThemeApplier {
     const root = document.documentElement;
     const colors = themeData.colors;
 
+    for (const key of Array.from(root.style)) {
+      if (key.startsWith('--vrutti-')) {
+        root.style.removeProperty(key);
+      }
+    }
+    document.body.style.backgroundColor = '';
+
     for (const [key, value] of Object.entries(colors)) {
       if (key.startsWith('--vrutti-')) {
         root.style.setProperty(key, value as string);
