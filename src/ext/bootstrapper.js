@@ -92,6 +92,34 @@ async function main() {
                 return installed;
             }
 
+            getAvailableThemes() {
+                const themes = [];
+                if (!fs.existsSync(this.extDirBase)) return themes;
+                
+                const dirs = fs.readdirSync(this.extDirBase);
+                for (const dir of dirs) {
+                    const extPath = path.join(this.extDirBase, dir);
+                    const pkgPath = path.join(extPath, 'extension', 'package.json');
+                    if (fs.existsSync(pkgPath)) {
+                        try {
+                            const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+                            if (pkg.contributes && pkg.contributes.themes) {
+                                for (const theme of pkg.contributes.themes) {
+                                    themes.push({
+                                        id: `${pkg.name}.${theme.id || theme.label}`,
+                                        label: theme.label || pkg.name,
+                                        uiTheme: theme.uiTheme || 'vs-dark',
+                                        extensionName: pkg.name,
+                                        themePath: path.join(extPath, 'extension', theme.path)
+                                    });
+                                }
+                            }
+                        } catch (e) {}
+                    }
+                }
+                return themes;
+            }
+
             async downloadExtension(url, name, progressCallback) {
                 const extDir = path.join(this.extDirBase, name);
                 if (!fs.existsSync(extDir)) fs.mkdirSync(extDir, { recursive: true });
@@ -178,6 +206,7 @@ async function main() {
         ipcClient.on('extensions/request_installed', () => {
             const installedExts = downloader.getInstalledExtensions();
             ipcClient.sendNotification('extensions/installed', installedExts);
+            ipcClient.sendNotification('themes/available', downloader.getAvailableThemes());
         });
 
         ipcClient.on('extensions/uninstall', (params) => {
@@ -188,6 +217,7 @@ async function main() {
                     fs.rmSync(extDir, { recursive: true, force: true });
                 }
                 ipcClient.sendNotification('extensions/installed', downloader.getInstalledExtensions());
+                ipcClient.sendNotification('themes/available', downloader.getAvailableThemes());
             } catch (err) {
                 log(`Failed to uninstall extension ${params.name}: ${err.message}`);
             }
@@ -203,37 +233,38 @@ async function main() {
                 ipcClient.sendNotification('extensions/progress', { name: params.name, percentage: 100 });
                 // Broadcast updated list
                 ipcClient.sendNotification('extensions/installed', downloader.getInstalledExtensions());
+                ipcClient.sendNotification('themes/available', downloader.getAvailableThemes());
             } catch (err) {
                 log(`Failed to install extension ${params.name}: ${err.message}\n${err.stack}`);
             }
         });
         ipcClient.on('theme/set', (params) => {
-            log(`Setting theme to ${params.name}`);
+            const themeLabelOrExtName = params.name; // Could be extension name (from extensions list) or specific theme label
+            log(`Setting theme to ${themeLabelOrExtName}`);
             try {
-                const extDir = path.join(downloader.extDirBase, params.name);
-                const pkgJsonPath = path.join(extDir, 'extension', 'package.json');
-                if (fs.existsSync(pkgJsonPath)) {
-                    const pkg = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
-                    if (pkg.contributes && pkg.contributes.themes) {
-                        for (const theme of pkg.contributes.themes) {
-                            const themePath = path.join(extDir, 'extension', theme.path);
-                            if (fs.existsSync(themePath)) {
-                                let themeRaw = fs.readFileSync(themePath, 'utf8');
-                                themeRaw = themeRaw.replace(/\/\*([\s\S]*?)\*\/|([^\\:]|^)\/\/.*$/gm, '$2');
-                                try {
-                                    const themeData = JSON.parse(themeRaw);
-                                    log(`Loading theme: ${theme.label}`);
-                                    ipcClient.sendNotification('theme/load', themeData);
-                                    break; // Load first theme
-                                } catch (e) {
-                                    console.error(`Failed to parse theme JSON: ${themePath}`);
-                                }
-                            }
-                        }
+                const themes = downloader.getAvailableThemes();
+                let targetTheme = themes.find(t => t.id === params.id) || 
+                                  themes.find(t => t.label === themeLabelOrExtName) || 
+                                  themes.find(t => t.extensionName === themeLabelOrExtName);
+                
+                if (targetTheme && fs.existsSync(targetTheme.themePath)) {
+                    let themeRaw = fs.readFileSync(targetTheme.themePath, 'utf8');
+                    themeRaw = themeRaw.replace(/\/\*([\s\S]*?)\*\/|([^\\:]|^)\/\/.*$/gm, '$2');
+                    try {
+                        const themeData = JSON.parse(themeRaw);
+                        log(`Loading theme: ${targetTheme.label}`);
+                        // Pass along the name so the UI knows which theme was loaded
+                        themeData.name = targetTheme.label;
+                        themeData.id = targetTheme.id;
+                        ipcClient.sendNotification('theme/load', themeData);
+                    } catch (e) {
+                        console.error(`Failed to parse theme JSON: ${targetTheme.themePath}`);
                     }
+                } else {
+                    log(`Theme not found or missing path for ${themeLabelOrExtName}`);
                 }
             } catch (err) {
-                log(`Failed to set theme ${params.name}: ${err.message}`);
+                log(`Failed to set theme ${themeLabelOrExtName}: ${err.message}`);
             }
         });
 
