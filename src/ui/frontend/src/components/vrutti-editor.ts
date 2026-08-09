@@ -147,7 +147,7 @@ export class VruttiEditor extends LitElement {
         } else if (detail.key === 'files.autoSave') {
             this._autoSave = detail.value;
         } else if (detail.key === 'editor.fontSize') {
-            this.style.setProperty('--vrutti-editor-font-size', \`\${detail.value}px\`);
+            this.style.setProperty('--vrutti-editor-font-size', `${detail.value}px`);
         } else if (detail.key === 'editor.fontFamily') {
             this.style.setProperty('--vrutti-editor-font', detail.value);
         }
