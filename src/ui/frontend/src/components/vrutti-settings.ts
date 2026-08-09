@@ -91,9 +91,8 @@ export class VruttiSettings extends LitElement {
 
   private apply() {
     this.appliedTheme = this.selectedTheme;
-    if ((window as any).sendIpcMessage) {
-      (window as any).sendIpcMessage(JSON.stringify(['theme/set', { id: this.selectedTheme }]));
-    }
+    // Broadcast setting-changed so it gets saved to backend and triggers ThemeBridge
+    this.handleSettingChange('workbench.colorTheme' as keyof Config, this.selectedTheme);
   }
 
   private applyAndExit() {
