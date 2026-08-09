@@ -363,6 +363,7 @@ async function main() {
             try {
                 const themes = manager.getAvailableThemes();
                 let targetTheme = themes.find(t => t.id === params.id) || 
+                                  themes.find(t => t.id === themeLabelOrExtName) ||
                                   themes.find(t => t.label === themeLabelOrExtName) || 
                                   themes.find(t => t.extensionName === themeLabelOrExtName);
                 
