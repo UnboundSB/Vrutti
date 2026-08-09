@@ -32,13 +32,13 @@ export class VruttiGitGraph extends LitElement {
             position: absolute;
             width: 800px;
             height: 600px;
-            background-color: rgba(26, 27, 38, 0.95);
+            background-color: var(--vrutti-surface);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
-            color: var(--vrutti-text, #c0caf5);
+            color: var(--vrutti-text);
             font-family: var(--vrutti-font, 'Segoe UI', sans-serif);
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            border: 1px solid var(--vrutti-surface-border, #2a2e42);
+            border: 1px solid var(--vrutti-surface-border);
             border-radius: 8px;
             overflow: hidden;
             z-index: 10000;
@@ -49,8 +49,8 @@ export class VruttiGitGraph extends LitElement {
             align-items: center;
             justify-content: space-between;
             padding: 12px 16px;
-            background: rgba(30, 30, 46, 0.8);
-            border-bottom: 1px solid var(--vrutti-surface-border, #2a2e42);
+            background: var(--vrutti-surface);
+            border-bottom: 1px solid var(--vrutti-surface-border);
             cursor: grab;
             user-select: none;
         }
@@ -62,7 +62,7 @@ export class VruttiGitGraph extends LitElement {
         .title {
             font-size: 14px;
             font-weight: 600;
-            color: #c0caf5;
+            color: var(--vrutti-text);
             display: flex;
             align-items: center;
             gap: 8px;
@@ -71,8 +71,8 @@ export class VruttiGitGraph extends LitElement {
         .search-bar {
             display: flex;
             align-items: center;
-            background: var(--vrutti-bg, #16161e);
-            border: 1px solid var(--vrutti-surface-border, #2a2e42);
+            background: var(--vrutti-bg);
+            border: 1px solid var(--vrutti-surface-border);
             border-radius: 4px;
             padding: 4px 8px;
             width: 300px;
@@ -81,7 +81,7 @@ export class VruttiGitGraph extends LitElement {
         .search-bar input {
             background: transparent;
             border: none;
-            color: #c0caf5;
+            color: var(--vrutti-text);
             outline: none;
             width: 100%;
             font-family: inherit;
@@ -96,7 +96,8 @@ export class VruttiGitGraph extends LitElement {
         .close-btn, .maximize-btn {
             background: transparent;
             border: none;
-            color: #565f89;
+            color: var(--vrutti-text);
+            opacity: 0.7;
             cursor: pointer;
             padding: 4px;
             display: flex;
@@ -108,8 +109,9 @@ export class VruttiGitGraph extends LitElement {
         }
 
         .close-btn:hover, .maximize-btn:hover {
-            background: rgba(255, 255, 255, 0.1);
-            color: #c0caf5;
+            background: var(--vrutti-surface-border);
+            color: var(--vrutti-text);
+            opacity: 1;
         }
 
         .close-btn:hover {
@@ -126,8 +128,8 @@ export class VruttiGitGraph extends LitElement {
         .canvas-scroll-view {
             flex: 1;
             overflow: auto;
-            background: #1a1b26;
-            border-top: 1px solid rgba(255,255,255,0.1);
+            background: var(--vrutti-bg);
+            border-top: 1px solid var(--vrutti-surface-border);
             position: relative;
             cursor: grab;
         }
@@ -161,20 +163,19 @@ export class VruttiGitGraph extends LitElement {
 
         .node-msg {
             font-size: 11px;
-            color: #c0caf5;
+            color: var(--vrutti-text);
             white-space: nowrap;
-            background: rgba(26, 27, 38, 0.8);
+            background: var(--vrutti-surface);
             padding: 2px 6px;
             border-radius: 4px;
-            border: 1px solid transparent;
+            border: 1px solid var(--vrutti-surface-border);
             pointer-events: auto;
             cursor: pointer;
         }
         
         .node-label.selected .node-msg {
-            border-color: #7aa2f7;
-            color: #7aa2f7;
-            background: rgba(26, 27, 38, 0.95);
+            border-color: var(--vrutti-accent);
+            color: var(--vrutti-accent);
         }
 
         .ref-tag {
@@ -189,7 +190,7 @@ export class VruttiGitGraph extends LitElement {
             white-space: nowrap;
         }
         
-        .ref-tag.head { background: rgba(122, 162, 247, 0.2); border-color: #7aa2f7; }
+        .ref-tag.head { background: rgba(122, 162, 247, 0.2); border-color: var(--vrutti-accent); color: var(--vrutti-accent); }
 
         .commit-node {
             transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -210,9 +211,9 @@ export class VruttiGitGraph extends LitElement {
         }
         
         .zoom-btn {
-            background: rgba(255,255,255,0.1);
-            border: 1px solid rgba(255,255,255,0.2);
-            color: white;
+            background: var(--vrutti-surface-border);
+            border: 1px solid var(--vrutti-surface-border);
+            color: var(--vrutti-text);
             border-radius: 4px;
             width: 24px;
             height: 24px;
@@ -223,7 +224,8 @@ export class VruttiGitGraph extends LitElement {
             font-size: 14px;
         }
         .zoom-btn:hover {
-            background: rgba(255,255,255,0.2);
+            background: var(--vrutti-accent);
+            color: white;
         }
 
         .detail-panel {
@@ -231,8 +233,8 @@ export class VruttiGitGraph extends LitElement {
             bottom: 24px;
             right: 24px;
             width: 350px;
-            background: rgba(22, 22, 30, 0.95);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: var(--vrutti-surface);
+            border: 1px solid var(--vrutti-surface-border);
             border-radius: 8px;
             padding: 16px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
@@ -247,12 +249,12 @@ export class VruttiGitGraph extends LitElement {
             right: 12px;
             background: transparent;
             border: none;
-            color: #565f89;
+            color: var(--vrutti-text);
             cursor: pointer;
             font-size: 16px;
         }
         .detail-close-btn:hover {
-            color: #f7768e;
+            color: var(--vrutti-accent);
         }
 
         .action-buttons {
@@ -263,9 +265,9 @@ export class VruttiGitGraph extends LitElement {
         }
         
         .action-btn {
-            background: #2d3748;
-            border: 1px solid #4a5568;
-            color: #e2e8f0;
+            background: var(--vrutti-surface-border);
+            border: 1px solid var(--vrutti-surface-border);
+            color: var(--vrutti-text);
             padding: 4px 8px;
             border-radius: 4px;
             cursor: pointer;
@@ -273,7 +275,8 @@ export class VruttiGitGraph extends LitElement {
         }
         
         .action-btn:hover {
-            background: #4a5568;
+            background: var(--vrutti-bg);
+            border-color: var(--vrutti-accent);
         }
 
         ::-webkit-scrollbar {
@@ -286,7 +289,7 @@ export class VruttiGitGraph extends LitElement {
             border-radius: 5px;
         }
         :hover::-webkit-scrollbar-thumb {
-            background-color: rgba(122, 162, 247, 0.4);
+            background-color: var(--vrutti-surface-border);
         }
     `];
 

@@ -98,7 +98,6 @@ export class VruttiSettings extends LitElement {
   private applyAndExit() {
     this.apply();
     this.dispatchEvent(new CustomEvent('close-settings', { bubbles: true, composed: true }));
-    location.reload();
   }
 
   private handleSettingChange(key: keyof Config, value: any) {
@@ -395,8 +394,8 @@ export class VruttiSettings extends LitElement {
           </div>
           <div class="footer-actions">
             <button class="btn" @click=${this.requestClose}>Exit</button>
-            <button class="btn" @click=${this.apply}>Apply</button>
-            <button class="btn btn-primary" @click=${this.applyAndExit}>Apply & Restart</button>
+            <button class="btn" @click=${this.applyAndExit}>OK</button>
+            <button class="btn btn-primary" @click=${this.apply}>Apply</button>
           </div>
         `;
       case 'Keybindings':

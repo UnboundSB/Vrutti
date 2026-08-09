@@ -25,8 +25,8 @@ export class VruttiScm extends LitElement {
             flex-direction: column;
             width: 100%;
             height: 100%;
-            background-color: var(--vrutti-bg, #1a1b26);
-            color: var(--vrutti-text, #c0caf5);
+            background-color: var(--vrutti-surface);
+            color: var(--vrutti-text);
             font-family: var(--vrutti-font, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif);
         }
 
@@ -39,7 +39,8 @@ export class VruttiScm extends LitElement {
             font-size: 11px;
             font-weight: 600;
             letter-spacing: 0.5px;
-            color: var(--vrutti-text-muted, #565f89);
+            color: var(--vrutti-text);
+            opacity: 0.7;
         }
 
         .actions {
@@ -55,12 +56,13 @@ export class VruttiScm extends LitElement {
             height: 24px;
             border-radius: 4px;
             cursor: pointer;
-            color: var(--vrutti-text-muted, #565f89);
+            color: var(--vrutti-text);
         }
 
         .icon-btn:hover {
-            background-color: var(--vrutti-surface-hover, #2a2e42);
-            color: var(--vrutti-text, #c0caf5);
+            background-color: var(--vrutti-surface-border);
+            color: var(--vrutti-text);
+            opacity: 1;
         }
 
         .commit-box {
@@ -68,15 +70,15 @@ export class VruttiScm extends LitElement {
             display: flex;
             flex-direction: column;
             gap: 8px;
-            border-bottom: 1px solid var(--vrutti-surface-border, #2a2e42);
+            border-bottom: 1px solid var(--vrutti-surface-border);
         }
 
         textarea {
             width: 100%;
             min-height: 60px;
-            background: var(--vrutti-input-bg, #1e1e2e);
-            border: 1px solid var(--vrutti-surface-border, #2a2e42);
-            color: var(--vrutti-text, #c0caf5);
+            background: var(--vrutti-bg);
+            border: 1px solid var(--vrutti-surface-border);
+            color: var(--vrutti-text);
             border-radius: 2px;
             padding: 6px;
             font-family: inherit;
@@ -85,13 +87,13 @@ export class VruttiScm extends LitElement {
         }
 
         textarea:focus {
-            outline: 1px solid var(--vrutti-accent, #7aa2f7);
+            outline: 1px solid var(--vrutti-accent);
             border-color: transparent;
         }
 
         button.primary {
-            background-color: var(--vrutti-accent, #7aa2f7);
-            color: #1a1b26;
+            background-color: var(--vrutti-accent);
+            color: white;
             border: none;
             padding: 6px 12px;
             border-radius: 2px;
@@ -125,11 +127,11 @@ export class VruttiScm extends LitElement {
             font-size: 11px;
             font-weight: 600;
             text-transform: uppercase;
-            color: var(--vrutti-text, #c0caf5);
+            color: var(--vrutti-text);
         }
 
         .section-header:hover {
-            background-color: var(--vrutti-surface-hover, #2a2e42);
+            background-color: var(--vrutti-surface-border);
         }
 
         .chevron {
@@ -142,8 +144,8 @@ export class VruttiScm extends LitElement {
         }
 
         .badge {
-            background-color: var(--vrutti-surface-border, #2a2e42);
-            color: var(--vrutti-text, #c0caf5);
+            background-color: var(--vrutti-surface-border);
+            color: var(--vrutti-text);
             border-radius: 10px;
             padding: 0 6px;
             font-size: 10px;
@@ -159,7 +161,7 @@ export class VruttiScm extends LitElement {
         }
 
         .file-item:hover {
-            background-color: var(--vrutti-surface-hover, #2a2e42);
+            background-color: var(--vrutti-surface-border);
         }
 
         .file-item .file-actions {
