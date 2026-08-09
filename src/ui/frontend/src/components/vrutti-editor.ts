@@ -153,10 +153,30 @@ export class VruttiEditor extends LitElement {
         }
     };
 
+    private _isDarkTheme: boolean = true;
+    
+    private _themeHandler = (e: Event) => {
+        const detail = (e as CustomEvent).detail;
+        if (this._isDarkTheme !== detail.isDark) {
+            this._isDarkTheme = detail.isDark;
+            if (this._editorView) {
+                this.initEditor();
+            }
+        }
+    };
+
     constructor() {
         super();
         window.addEventListener('setting-changed', this._settingsHandler as EventListener);
         window.addEventListener('editor-action', this._editorActionHandler as EventListener);
+        window.addEventListener('theme-loaded', this._themeHandler as EventListener);
+        try {
+            const applied = localStorage.getItem('vrutti-applied-theme');
+            if (applied) {
+                const t = JSON.parse(applied);
+                this._isDarkTheme = t.uiTheme === 'vs-dark';
+            }
+        } catch(e) {}
     }
 
     private _editorActionHandler = (e: Event) => {
@@ -401,7 +421,7 @@ export class VruttiEditor extends LitElement {
                 ...completionKeymap,
                 ...lintKeymap
             ]),
-            oneDark,
+            this._isDarkTheme ? oneDark : [],
             saveKeymap,
             updateListener,
             this.getLanguageExtension()
@@ -426,6 +446,7 @@ export class VruttiEditor extends LitElement {
         super.disconnectedCallback();
         window.removeEventListener('setting-changed', this._settingsHandler as EventListener);
         window.removeEventListener('editor-action', this._editorActionHandler as EventListener);
+        window.removeEventListener('theme-loaded', this._themeHandler as EventListener);
         if (this._editorView) {
             this._editorView.destroy();
         }
