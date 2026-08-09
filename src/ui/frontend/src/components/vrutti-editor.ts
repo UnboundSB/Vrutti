@@ -6,7 +6,8 @@ import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { searchKeymap, highlightSelectionMatches } from '@codemirror/search';
 import { autocompletion, completionKeymap, closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
 import { lintKeymap } from '@codemirror/lint';
-import { bracketMatching, foldGutter, foldKeymap, indentOnInput, syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language';
+import { bracketMatching, foldGutter, foldKeymap, indentOnInput, syntaxHighlighting, defaultHighlightStyle, HighlightStyle } from '@codemirror/language';
+import { tags as t } from '@lezer/highlight';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { javascript } from '@codemirror/lang-javascript';
 import { cpp } from '@codemirror/lang-cpp';
@@ -308,6 +309,71 @@ export class VruttiEditor extends LitElement {
         }
     }
 
+    private buildHighlightStyle(tokenColors: any[]) {
+        const specs: any[] = [];
+        let keywordColor, stringColor, functionColor, numberColor, commentColor, variableColor, typeColor, operatorColor;
+        
+        for (const rule of tokenColors) {
+            const scope = rule.scope;
+            const settings = rule.settings;
+            if (!settings || !settings.foreground) continue;
+            
+            const scopes = Array.isArray(scope) ? scope : (scope ? scope.split(',') : []);
+            for (let s of scopes) {
+                s = s.trim();
+                if (s.startsWith('keyword') || s.startsWith('storage')) keywordColor = keywordColor || settings.foreground;
+                if (s.startsWith('string')) stringColor = stringColor || settings.foreground;
+                if (s.startsWith('entity.name.function') || s.startsWith('support.function')) functionColor = functionColor || settings.foreground;
+                if (s.startsWith('constant.numeric')) numberColor = numberColor || settings.foreground;
+                if (s.startsWith('comment')) commentColor = commentColor || settings.foreground;
+                if (s.startsWith('variable') || s.startsWith('entity.name.variable')) variableColor = variableColor || settings.foreground;
+                if (s.startsWith('entity.name.type') || s.startsWith('support.type') || s.startsWith('entity.name.class') || s.startsWith('support.class')) typeColor = typeColor || settings.foreground;
+                if (s.startsWith('keyword.operator')) operatorColor = operatorColor || settings.foreground;
+            }
+        }
+        
+        if (keywordColor) specs.push({ tag: [t.keyword, t.modifier, t.controlKeyword, t.moduleKeyword], color: keywordColor });
+        if (stringColor) specs.push({ tag: [t.string, t.special(t.string)], color: stringColor });
+        if (functionColor) specs.push({ tag: [t.function(t.variableName), t.function(t.propertyName)], color: functionColor });
+        if (numberColor) specs.push({ tag: [t.number, t.bool, t.integer, t.float], color: numberColor });
+        if (commentColor) specs.push({ tag: [t.lineComment, t.blockComment, t.comment], color: commentColor, fontStyle: 'italic' });
+        if (variableColor) specs.push({ tag: [t.variableName, t.propertyName, t.name], color: variableColor });
+        if (typeColor) specs.push({ tag: [t.typeName, t.className, t.namespace], color: typeColor });
+        if (operatorColor) specs.push({ tag: [t.operator, t.arithmeticOperator, t.logicOperator], color: operatorColor });
+        
+        return HighlightStyle.define(specs);
+    }
+
+    private getThemeExtension() {
+        try {
+            const applied = localStorage.getItem('vrutti-applied-theme');
+            if (applied) {
+                const tTheme = JSON.parse(applied);
+                if (tTheme.tokenColors) {
+                    const style = this.buildHighlightStyle(tTheme.tokenColors);
+                    const bg = tTheme.colors?.['--vrutti-bg'] || (this._isDarkTheme ? '#1e1e1e' : '#ffffff');
+                    const fg = tTheme.colors?.['--vrutti-text-bright'] || tTheme.colors?.['--vrutti-text'] || (this._isDarkTheme ? '#d4d4d4' : '#333333');
+                    const selection = tTheme.colors?.['editor.selectionBackground'] || (this._isDarkTheme ? '#264f78' : '#add6ff');
+                    
+                    const baseTheme = EditorView.theme({
+                        "&": { color: fg, backgroundColor: bg },
+                        ".cm-content": { caretColor: fg },
+                        ".cm-cursor, .cm-dropCursor": { borderLeftColor: fg },
+                        "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection": { backgroundColor: selection },
+                        ".cm-activeLine": { backgroundColor: "transparent" },
+                        ".cm-gutters": { backgroundColor: bg, color: fg, borderRight: "none" }
+                    }, { dark: this._isDarkTheme });
+                    
+                    return [baseTheme, syntaxHighlighting(style)];
+                }
+            }
+        } catch(e) {
+            console.error('Error generating theme extension', e);
+        }
+        
+        return this._isDarkTheme ? oneDark : [];
+    }
+
     private async loadFile() {
         try {
             let actualPath = this.filePath;
@@ -421,7 +487,7 @@ export class VruttiEditor extends LitElement {
                 ...completionKeymap,
                 ...lintKeymap
             ]),
-            this._isDarkTheme ? oneDark : [],
+            this.getThemeExtension(),
             saveKeymap,
             updateListener,
             this.getLanguageExtension()
