@@ -7,14 +7,14 @@
   "contributes": {
     "themes": [
       {
-        "id": "vrutti dark",
-        "label": "vrutti dark",
+        "id": "vrutti default dark",
+        "label": "vrutti default dark",
         "uiTheme": "vs-dark",
         "path": "./default-dark.json"
       },
       {
-        "id": "vrutti light",
-        "label": "vrutti light",
+        "id": "vrutti default light",
+        "label": "vrutti default light",
         "uiTheme": "vs-light",
         "path": "./default-light.json"
       }
