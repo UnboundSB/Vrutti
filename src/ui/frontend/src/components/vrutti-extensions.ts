@@ -11,6 +11,7 @@ interface ExtensionResult {
     downloadUrl: string;
     publisherDisplayName: string;
     isTheme?: boolean;
+    id?: string;
 }
 
 @customElement('vrutti-extensions')
