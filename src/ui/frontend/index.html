@@ -10,7 +10,15 @@
         padding: 0;
         overflow: hidden;
         height: 100%;
-        background-color: #0f111a;
+        background-color: var(--vrutti-bg, #0f111a);
+      }
+      :root {
+        --vrutti-bg: hsl(230, 25%, 8%);
+        --vrutti-surface: hsla(230, 25%, 15%, 0.6);
+        --vrutti-surface-border: hsla(230, 25%, 25%, 0.4);
+        --vrutti-accent: hsl(210, 100%, 75%);
+        --vrutti-text: hsl(220, 25%, 75%);
+        --vrutti-text-bright: hsl(220, 25%, 95%);
       }
       ::-webkit-scrollbar {
         width: 12px;
