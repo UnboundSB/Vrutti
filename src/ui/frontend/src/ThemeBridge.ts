@@ -74,11 +74,22 @@ export class ThemeBridge {
     console.log('[ThemeBridge] Connecting to Extension Host via IPC...');
     ThemeApplier.loadStartupTheme();
     window.addEventListener('vrutti-ipc', this.handleIpc as EventListener);
+    window.addEventListener('setting-changed', this.handleSettingChanged as EventListener);
   }
 
   public disconnect(): void {
     window.removeEventListener('vrutti-ipc', this.handleIpc as EventListener);
+    window.removeEventListener('setting-changed', this.handleSettingChanged as EventListener);
   }
+
+  private handleSettingChanged = (e: Event) => {
+    const detail = (e as CustomEvent).detail;
+    if (detail && detail.key === 'workbench.colorTheme') {
+      if ((window as any).sendIpcMessage) {
+        (window as any).sendIpcMessage(JSON.stringify(['theme/set', { id: detail.value }]));
+      }
+    }
+  };
 
   private handleIpc = (e: Event) => {
     const msg = (e as CustomEvent).detail;
