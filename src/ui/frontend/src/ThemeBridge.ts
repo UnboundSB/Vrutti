@@ -31,12 +31,16 @@ class ThemeApplier {
     // Persist applied theme in localStorage
     try {
       localStorage.setItem('vrutti-theme-colors', JSON.stringify(colors));
-      // Save full theme data to restore selected dropdown state if needed
-      localStorage.setItem('vrutti-applied-theme', JSON.stringify({
-        id: themeData.id || themeData.name,
-        name: themeData.name,
-        uiTheme: themeData.uiTheme
-      }));
+      // Re-apply to all Lit elements
+      const elements = document.querySelectorAll('*');
+      elements.forEach(el => {
+        if ((el as any).requestUpdate) {
+          (el as any).requestUpdate();
+        }
+      });
+
+      localStorage.setItem('vrutti-applied-theme', JSON.stringify(themeData));
+      window.dispatchEvent(new CustomEvent('theme-loaded', { detail: { isDark: themeData.uiTheme === 'vs-dark' } }));
     } catch (e) {
       console.error('Failed to persist theme state', e);
     }
