@@ -295,7 +295,7 @@ export class VruttiExtensions extends LitElement {
         console.log(`Setting theme for ${ext.name}`);
 
         if ((window as any).sendIpcMessage) {
-            (window as any).sendIpcMessage(JSON.stringify(['theme/set', JSON.stringify({ name: ext.name })]));
+            (window as any).sendIpcMessage('theme/set', JSON.stringify({ name: ext.name }));
         }
     }
 
