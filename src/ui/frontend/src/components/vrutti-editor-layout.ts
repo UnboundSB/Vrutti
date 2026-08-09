@@ -108,7 +108,7 @@ export class VruttiEditorLayout extends LitElement {
             width: 100%;
             height: 100%;
             flex: 1 1 0%;
-            background: #1e1e1e;
+            background: var(--vrutti-bg);
             min-height: 0;
             min-width: 0;
             overflow: hidden;
@@ -116,10 +116,10 @@ export class VruttiEditorLayout extends LitElement {
 
         .tabs-header {
             display: flex;
-            background: #1a1b26;
+            background: var(--vrutti-surface);
             height: 35px;
             min-height: 35px;
-            border-bottom: 1px solid #2a2e42;
+            border-bottom: 1px solid var(--vrutti-surface-border);
             align-items: center;
             overflow-x: auto;
             overflow-y: hidden;
@@ -131,9 +131,9 @@ export class VruttiEditorLayout extends LitElement {
             height: 100%;
             padding: 0 12px;
             cursor: pointer;
-            border-right: 1px solid #2a2e42;
-            background: #1a1b26;
-            color: #a9b1d6;
+            border-right: 1px solid var(--vrutti-surface-border);
+            background: var(--vrutti-surface);
+            color: var(--vrutti-text);
             font-size: 13px;
             user-select: none;
             min-width: 80px;
@@ -142,13 +142,13 @@ export class VruttiEditorLayout extends LitElement {
         }
 
         .tab:hover {
-            background: #292e42;
+            background: var(--vrutti-surface-border);
         }
 
         .tab.active {
-            background: #1e1e1e;
-            color: #c0caf5;
-            border-top: 2px solid #7aa2f7;
+            background: var(--vrutti-bg);
+            color: var(--vrutti-text-bright);
+            border-top: 2px solid var(--vrutti-accent);
         }
 
         .tab-title {
@@ -187,7 +187,7 @@ export class VruttiEditorLayout extends LitElement {
         .pane-action {
             background: none;
             border: none;
-            color: #a9b1d6;
+            color: var(--vrutti-text);
             cursor: pointer;
             padding: 4px;
             margin-left: 4px;
@@ -198,8 +198,8 @@ export class VruttiEditorLayout extends LitElement {
         }
 
         .pane-action:hover {
-            background: #3b4261;
-            color: #c0caf5;
+            background: var(--vrutti-surface-border);
+            color: var(--vrutti-text-bright);
         }
 
         .editor-area {
@@ -216,7 +216,7 @@ export class VruttiEditorLayout extends LitElement {
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #565f89;
+            color: var(--vrutti-text);
             font-size: 14px;
             user-select: none;
         }
@@ -581,7 +581,7 @@ export class VruttiEditorLayout extends LitElement {
     private renderLeaf(leaf: LeafNode): TemplateResult {
         return html`
             <div class="leaf-container" @click=${() => { this.activePaneId = leaf.id; this.requestUpdate(); }}>
-                <div style="display: flex; background: #1a1b26; height: 35px; min-height: 35px; border-bottom: 1px solid #2a2e42;">
+                <div style="display: flex; background: var(--vrutti-surface); height: 35px; min-height: 35px; border-bottom: 1px solid var(--vrutti-surface-border);">
                     <div class="tabs-header" style="flex: 1; border-bottom: none; height: 100%; min-height: 100%;" @dragover=${(e: DragEvent) => e.preventDefault()} @drop=${(e: DragEvent) => this.onDrop(e, leaf.id)}>
                         ${leaf.tabs.map(tab => html`
                         <div class="tab ${leaf.activeTab === tab ? 'active' : ''}" 
@@ -595,7 +595,7 @@ export class VruttiEditorLayout extends LitElement {
                         </div>
                     `)}
                     </div>
-                    <div class="pane-actions" style="margin-left: auto; background: #1a1b26; z-index: 100;">
+                    <div class="pane-actions" style="margin-left: auto; background: var(--vrutti-surface); z-index: 100;">
                         ${leaf.activeTab ? html`
                             <div style="position: relative; display: flex;">
                                 <button class="pane-action" title="Run File" @click=${() => this.runFile(leaf.activeTab, 'run')}>
@@ -605,10 +605,10 @@ export class VruttiEditorLayout extends LitElement {
                                     <svg viewBox="0 0 16 16" width="10" height="10" fill="currentColor"><path d="M4 6h8l-4 5z"/></svg>
                                 </button>
                                 ${this.openRunDropdownId === leaf.id ? html`
-                                    <div style="position: absolute; top: 100%; right: 0; background: #1f2335; border: 1px solid #3b4261; border-radius: 4px; z-index: 1000; min-width: 150px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
-                                        <div style="padding: 6px 12px; cursor: pointer; font-size: 12px; color: #a9b1d6;" @click=${() => this.runFile(leaf.activeTab, 'run')} onmouseover="this.style.background='#292e42'" onmouseout="this.style.background='transparent'">Run File</div>
-                                        <div style="padding: 6px 12px; cursor: pointer; font-size: 12px; color: #a9b1d6;" @click=${() => this.runFile(leaf.activeTab, 'params')} onmouseover="this.style.background='#292e42'" onmouseout="this.style.background='transparent'">Run with params</div>
-                                        <div style="padding: 6px 12px; cursor: pointer; font-size: 12px; color: #a9b1d6;" @click=${() => this.runFile(leaf.activeTab, 'debug')} onmouseover="this.style.background='#292e42'" onmouseout="this.style.background='transparent'">Run and Debug</div>
+                                    <div style="position: absolute; top: 100%; right: 0; background: var(--vrutti-surface); border: 1px solid var(--vrutti-surface-border); border-radius: 4px; z-index: 1000; min-width: 150px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
+                                        <div style="padding: 6px 12px; cursor: pointer; font-size: 12px; color: var(--vrutti-text);" @click=${() => this.runFile(leaf.activeTab, 'run')} onmouseover="this.style.background='var(--vrutti-surface-border)'" onmouseout="this.style.background='transparent'">Run File</div>
+                                        <div style="padding: 6px 12px; cursor: pointer; font-size: 12px; color: var(--vrutti-text);" @click=${() => this.runFile(leaf.activeTab, 'params')} onmouseover="this.style.background='var(--vrutti-surface-border)'" onmouseout="this.style.background='transparent'">Run with params</div>
+                                        <div style="padding: 6px 12px; cursor: pointer; font-size: 12px; color: var(--vrutti-text);" @click=${() => this.runFile(leaf.activeTab, 'debug')} onmouseover="this.style.background='var(--vrutti-surface-border)'" onmouseout="this.style.background='transparent'">Run and Debug</div>
                                     </div>
                                 ` : ''}
                             </div>
@@ -626,7 +626,7 @@ export class VruttiEditorLayout extends LitElement {
                         ` : ''}
                     </div>
                 </div>
-                <div class="editor-area ${this.activePaneId === leaf.id ? 'active-pane' : ''}" style="${this.activePaneId === leaf.id ? 'box-shadow: inset 0 0 0 1px #3b4261;' : ''}">
+                <div class="editor-area ${this.activePaneId === leaf.id ? 'active-pane' : ''}" style="${this.activePaneId === leaf.id ? 'box-shadow: inset 0 0 0 1px var(--vrutti-surface-border);' : ''}">
                     ${leaf.activeTab ? html`
                         <vrutti-editor .filePath=${leaf.activeTab} style="flex: 1 1 0%;"></vrutti-editor>
                     ` : html`

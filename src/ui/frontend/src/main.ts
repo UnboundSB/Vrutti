@@ -585,8 +585,8 @@ export class VruttiApp extends LitElement {
     }
 
     .terminal-panel {
-      border-top: 1px solid #1f2335;
-      background: #1a1b26;
+      border-top: 1px solid var(--vrutti-surface-border);
+      background: var(--vrutti-surface);
       display: flex;
       flex-direction: column;
       position: relative;
@@ -604,13 +604,13 @@ export class VruttiApp extends LitElement {
       z-index: 100;
     }
     .terminal-resizer:hover {
-      background: #3b4261;
+      background: var(--vrutti-surface-border);
     }
     .terminal-body {
       display: flex;
       height: 100%;
       overflow: hidden;
-      background: var(--vscode-terminal-background, #1a1b26);
+      background: var(--vrutti-bg);
     }
     .terminal-instances {
       flex: 1;
@@ -618,21 +618,21 @@ export class VruttiApp extends LitElement {
     }
     .terminal-tabs-container {
       width: 150px;
-      border-left: 1px solid #1f2335;
+      border-left: 1px solid var(--vrutti-surface-border);
       display: flex;
       flex-direction: column;
-      background: #1a1b26;
+      background: var(--vrutti-surface);
     }
     .terminal-tabs-actions {
       display: flex;
       justify-content: flex-end;
       padding: 4px;
-      border-bottom: 1px solid #1f2335;
+      border-bottom: 1px solid var(--vrutti-surface-border);
     }
     .terminal-tabs-actions button {
       background: transparent;
       border: none;
-      color: #a9b1d6;
+      color: var(--vrutti-text);
       cursor: pointer;
       padding: 4px;
       border-radius: 4px;
@@ -641,8 +641,8 @@ export class VruttiApp extends LitElement {
       justify-content: center;
     }
     .terminal-tabs-actions button:hover {
-      background: #292e42;
-      color: #c0caf5;
+      background: var(--vrutti-surface-border);
+      color: var(--vrutti-text-bright);
     }
     .terminal-tabs-list {
       flex: 1;
@@ -655,17 +655,17 @@ export class VruttiApp extends LitElement {
       align-items: center;
       padding: 4px 10px;
       cursor: pointer;
-      color: #a9b1d6;
+      color: var(--vrutti-text);
       font-size: 11px;
       user-select: none;
     }
     .terminal-tab:hover {
-      background: #292e42;
+      background: var(--vrutti-surface-border);
     }
     .terminal-tab.active {
-      color: #c0caf5;
-      background: #292e42;
-      border-left: 2px solid #7aa2f7;
+      color: var(--vrutti-text-bright);
+      background: var(--vrutti-surface-border);
+      border-left: 2px solid var(--vrutti-accent);
     }
     .terminal-tab-icon {
       margin-right: 6px;
@@ -682,7 +682,7 @@ export class VruttiApp extends LitElement {
       display: none;
       padding: 2px;
       border-radius: 4px;
-      color: #a9b1d6;
+      color: var(--vrutti-text);
     }
     .terminal-tab:hover .terminal-tab-close {
       display: flex;
@@ -690,8 +690,8 @@ export class VruttiApp extends LitElement {
       justify-content: center;
     }
     .terminal-tab-close:hover {
-      background: #3b4261;
-      color: #c0caf5;
+      background: var(--vrutti-surface-border);
+      color: var(--vrutti-text-bright);
     }
     
     .splash-screen {

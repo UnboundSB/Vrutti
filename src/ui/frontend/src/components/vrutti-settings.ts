@@ -98,6 +98,7 @@ export class VruttiSettings extends LitElement {
   private applyAndExit() {
     this.apply();
     this.dispatchEvent(new CustomEvent('close-settings', { bubbles: true, composed: true }));
+    location.reload();
   }
 
   private handleSettingChange(key: keyof Config, value: any) {
@@ -387,16 +388,15 @@ export class VruttiSettings extends LitElement {
           <div class="setting-group">
             <div class="setting-title">Color Theme</div>
             <div class="setting-desc">Select the active color theme for the workspace. Applies upon clicking Apply and Exit.</div>
-            <select class="input-field" .value=${this.selectedTheme}
-                    @change=${(e: any) => this.selectedTheme = e.target.value}>
-              ${this.availableThemes.length === 0 ? html`<option value="${this.selectedTheme}">${this.selectedTheme}</option>` : ''}
-              ${this.availableThemes.map(t => html`<option value="${t.id}">${t.label}</option>`)}
+            <select class="input-field" @change=${(e: any) => this.selectedTheme = e.target.value}>
+              ${this.availableThemes.length === 0 ? html`<option value="${this.selectedTheme}" selected>${this.selectedTheme}</option>` : ''}
+              ${this.availableThemes.map(t => html`<option value="${t.id}" ?selected=${t.id === this.selectedTheme}>${t.label}</option>`)}
             </select>
           </div>
           <div class="footer-actions">
             <button class="btn" @click=${this.requestClose}>Exit</button>
             <button class="btn" @click=${this.apply}>Apply</button>
-            <button class="btn btn-primary" @click=${this.applyAndExit}>OK</button>
+            <button class="btn btn-primary" @click=${this.applyAndExit}>Apply & Restart</button>
           </div>
         `;
       case 'Keybindings':

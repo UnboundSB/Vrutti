@@ -36,7 +36,7 @@ export const globalHoverStyle = css`
   .file-item:hover,
   .folder-item:hover,
   .tree-node:hover {
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: var(--vrutti-surface-border, rgba(255, 255, 255, 0.1));
   }
 
   button:active:not(.close-btn), 
@@ -48,7 +48,8 @@ export const globalHoverStyle = css`
   .file-item:active,
   .folder-item:active,
   .tree-node:active {
-    background-color: rgba(255, 255, 255, 0.15);
+    background-color: var(--vrutti-surface-border, rgba(255, 255, 255, 0.15));
+    filter: brightness(1.2);
   }
 `;
 
