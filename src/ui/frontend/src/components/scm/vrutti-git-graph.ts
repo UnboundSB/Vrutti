@@ -1,5 +1,6 @@
 import { LitElement, html, css, svg } from 'lit';
 import { customElement, state, query } from 'lit/decorators.js';
+import { repeat } from 'lit/directives/repeat.js';
 import { globalHoverStyle } from '../../shared-styles';
 
 interface Commit {
@@ -492,49 +493,6 @@ export class VruttiGitGraph extends LitElement {
             nodePositions.set(row.commit.hash, {x, y});
         });
 
-        const edgeLines: any[] = [];
-        const nodeElements: any[] = [];
-        const htmlLabels: any[] = [];
-
-        this.graphRows.forEach((row) => {
-            const pos = nodePositions.get(row.commit.hash)!;
-            
-            row.commit.parents.forEach(pHash => {
-                const pPos = nodePositions.get(pHash);
-                if (pPos) {
-                        const color = this.getColor(row.colIndex);
-                        const match = isMatch(row.commit);
-                        const opacity = (this.searchQuery && !match) ? 0.2 : 1.0;
-                        edgeLines.push(svg`<path d="M ${pos.x} ${pos.y} C ${pos.x - 40} ${pos.y}, ${pPos.x + 40} ${pPos.y}, ${pPos.x} ${pPos.y}" fill="none" stroke="${color}" stroke-width="5" opacity="${opacity}" />`);
-                }
-            });
-
-            {
-                const color = this.getColor(row.colIndex);
-                const match = isMatch(row.commit);
-                const opacity = (this.searchQuery && !match) ? 0.2 : 1.0;
-                nodeElements.push(svg`<circle cx="${pos.x}" cy="${pos.y}" r="10" fill="#ffffff" stroke="${color}" stroke-width="5" opacity="${opacity}" class="commit-node" @click=${() => this.selectedCommit = row.commit} style="transform-origin: ${pos.x}px ${pos.y}px;" />`);
-                
-                const isSelected = this.selectedCommit === row.commit;
-                htmlLabels.push(html`
-                    <div class="node-label ${isSelected ? 'selected' : ''}" style="left: ${pos.x}px; top: ${pos.y + 15}px; opacity: ${opacity}; transform: translateX(-50%);">
-                        <div class="node-msg" @click=${() => this.selectedCommit = row.commit}>
-                            ${row.commit.subject.substring(0, 25)}${row.commit.subject.length > 25 ? '...' : ''}
-                        </div>
-                        ${row.commit.refs ? html`
-                            <div class="node-refs">
-                                ${row.commit.refs.split(',').map(ref => {
-                                    const cleanRef = ref.trim().replace(/[()]/g, '');
-                                    const isCurrent = cleanRef.includes(this.currentBranch);
-                                    return html`<span class="ref-tag ${isCurrent ? 'head' : ''}">${cleanRef}</span>`;
-                                })}
-                            </div>
-                        ` : ''}
-                    </div>
-                `);
-            }
-        });
-
         return html`
             <style>
                 :host {
@@ -577,8 +535,48 @@ export class VruttiGitGraph extends LitElement {
                     <div class="canvas-scroll-view" @wheel=${this.handleWheel} @mousedown=${this.handleMouseDown} @mousemove=${this.handleMouseMove} @mouseup=${this.handleMouseUp} @mouseleave=${this.handleMouseUp}>
                         <div class="canvas-container" style="width: ${svgWidth * this.zoom}px; height: ${svgHeight * this.zoom}px; position: relative; overflow: hidden;">
                             <div style="transform: scale(${this.zoom}); transform-origin: top left; position: absolute; top: 0; left: 0; width: ${svgWidth}px; height: ${svgHeight}px;">
-                                <svg width="${svgWidth}" height="${svgHeight}" style="position: absolute; top: 0; left: 0;">${edgeLines}${nodeElements}</svg>
-                                ${htmlLabels}
+                                <svg width="${svgWidth}" height="${svgHeight}" style="position: absolute; top: 0; left: 0;">
+                                    ${repeat(this.graphRows, row => row.commit.hash + '-edges', row => {
+                                        const pos = nodePositions.get(row.commit.hash)!;
+                                        return row.commit.parents.map(pHash => {
+                                            const pPos = nodePositions.get(pHash);
+                                            if (!pPos) return svg``;
+                                            const color = this.getColor(row.colIndex);
+                                            const match = isMatch(row.commit);
+                                            const opacity = (this.searchQuery && !match) ? 0.2 : 1.0;
+                                            return svg`<path d="M ${pos.x} ${pos.y} C ${pos.x - 40} ${pos.y}, ${pPos.x + 40} ${pPos.y}, ${pPos.x} ${pPos.y}" fill="none" stroke="${color}" stroke-width="5" opacity="${opacity}" />`;
+                                        });
+                                    })}
+                                    ${repeat(this.graphRows, row => row.commit.hash + '-node', row => {
+                                        const pos = nodePositions.get(row.commit.hash)!;
+                                        const color = this.getColor(row.colIndex);
+                                        const match = isMatch(row.commit);
+                                        const opacity = (this.searchQuery && !match) ? 0.2 : 1.0;
+                                        return svg`<circle cx="${pos.x}" cy="${pos.y}" r="10" fill="#ffffff" stroke="${color}" stroke-width="5" opacity="${opacity}" class="commit-node" @click=${() => this.selectedCommit = row.commit} style="transform-origin: ${pos.x}px ${pos.y}px;" />`;
+                                    })}
+                                </svg>
+                                ${repeat(this.graphRows, row => row.commit.hash + '-label', row => {
+                                    const pos = nodePositions.get(row.commit.hash)!;
+                                    const match = isMatch(row.commit);
+                                    const opacity = (this.searchQuery && !match) ? 0.2 : 1.0;
+                                    const isSelected = this.selectedCommit === row.commit;
+                                    return html`
+                                        <div class="node-label ${isSelected ? 'selected' : ''}" style="left: ${pos.x}px; top: ${pos.y + 15}px; opacity: ${opacity}; transform: translateX(-50%);">
+                                            <div class="node-msg" @click=${() => this.selectedCommit = row.commit}>
+                                                ${row.commit.subject.substring(0, 25)}${row.commit.subject.length > 25 ? '...' : ''}
+                                            </div>
+                                            ${row.commit.refs ? html`
+                                                <div class="node-refs">
+                                                    ${row.commit.refs.split(',').map(ref => {
+                                                        const cleanRef = ref.trim().replace(/[()]/g, '');
+                                                        const isCurrent = cleanRef.includes(this.currentBranch);
+                                                        return html`<span class="ref-tag ${isCurrent ? 'head' : ''}">${cleanRef}</span>`;
+                                                    })}
+                                                </div>
+                                            ` : ''}
+                                        </div>
+                                    `;
+                                })}
                             </div>
                         </div>
                     </div>
