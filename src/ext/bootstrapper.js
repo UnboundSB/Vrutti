@@ -39,9 +39,9 @@ class ExtensionManager {
         this.activeExtensions = new Set();
     }
 
-    indexExtensions() {
+    async indexExtensions() {
         this.commandIndex.clear();
-        const extensions = this.getInstalledExtensions();
+        const extensions = await this.getInstalledExtensions();
         
         for (const ext of extensions) {
             if (ext.main && ext.contributes && ext.contributes.commands) {
@@ -94,19 +94,20 @@ class ExtensionManager {
         }
     }
 
-    getInstalledExtensions() {
+    async getInstalledExtensions() {
         if (this._installedExtensionsCache) return this._installedExtensionsCache;
 
         const installed = [];
         if (!fs.existsSync(this.extDirBase)) return installed;
         
-        const dirs = fs.readdirSync(this.extDirBase);
+        const dirs = await fs.promises.readdir(this.extDirBase);
         for (const dir of dirs) {
             const extPath = path.join(this.extDirBase, dir);
             const pkgPath = path.join(extPath, 'extension', 'package.json');
             if (fs.existsSync(pkgPath)) {
                 try {
-                    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+                    const pkgRaw = await fs.promises.readFile(pkgPath, 'utf8');
+                    const pkg = JSON.parse(pkgRaw);
                     installed.push({
                         id: `${pkg.publisher || pkg.author || dir}.${pkg.name}`,
                         name: pkg.name,
@@ -129,7 +130,7 @@ class ExtensionManager {
         return installed;
     }
 
-    getAvailableThemes() {
+    async getAvailableThemes() {
         if (this._cachedThemes) return this._cachedThemes;
         const themes = [];
         const pathsToScan = [
@@ -144,7 +145,8 @@ class ExtensionManager {
                 const pkgPath = path.join(target.dir, 'package.json');
                 if (fs.existsSync(pkgPath)) {
                     try {
-                        const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+                        const pkgRaw = await fs.promises.readFile(pkgPath, 'utf8');
+                        const pkg = JSON.parse(pkgRaw);
                         if (pkg.contributes && pkg.contributes.themes) {
                             for (const theme of pkg.contributes.themes) {
                                 const origPath = path.join(target.dir, theme.path);
@@ -160,13 +162,14 @@ class ExtensionManager {
                     } catch (e) {}
                 }
             } else {
-                const dirs = fs.readdirSync(target.dir);
+                const dirs = await fs.promises.readdir(target.dir);
                 for (const dir of dirs) {
                     const extPath = path.join(target.dir, dir);
                     const pkgPath = path.join(extPath, 'extension', 'package.json');
                     if (fs.existsSync(pkgPath)) {
                         try {
-                            const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+                            const pkgRaw = await fs.promises.readFile(pkgPath, 'utf8');
+                            const pkg = JSON.parse(pkgRaw);
                             if (pkg.contributes && pkg.contributes.themes) {
                                 for (const theme of pkg.contributes.themes) {
                                     const origPath = path.join(extPath, 'extension', theme.path);
@@ -199,11 +202,15 @@ class ExtensionManager {
         log(`Extracting ${zipPath}...`);
         const AdmZip = require('adm-zip');
         const zip = new AdmZip(zipPath);
-        zip.extractAllTo(extDir, true);
+        await new Promise((resolve, reject) => {
+            zip.extractAllToAsync(extDir, true, false, (error) => {
+                if (error) reject(error); else resolve();
+            });
+        });
         
-        fs.unlinkSync(zipPath);
+        await fs.promises.unlink(zipPath);
         log(`Successfully installed extension ${name}`);
-        this.invalidateCache();
+        await this.invalidateCache();
     }
 
     _downloadFile(url, dest, progressCallback) {
@@ -243,10 +250,10 @@ class ExtensionManager {
         });
     }
 
-    invalidateCache() {
+    async invalidateCache() {
         this._cachedThemes = null;
         this._installedExtensionsCache = null;
-        this.indexExtensions();
+        await this.indexExtensions();
     }
 
     translateThemeColorsInMemory(themeJson) {
@@ -320,24 +327,24 @@ async function main() {
         log('Bootstrapper started');
 
         const manager = new ExtensionManager(ipcClient, vruttiApi);
-        manager.indexExtensions();
+        await manager.indexExtensions();
         
-        ipcClient.on('extensions/request_installed', () => {
-            const installedExts = manager.getInstalledExtensions();
+        ipcClient.on('extensions/request_installed', async () => {
+            const installedExts = await manager.getInstalledExtensions();
             ipcClient.sendNotification('extensions/installed', installedExts);
-            ipcClient.sendNotification('themes/available', manager.getAvailableThemes());
+            ipcClient.sendNotification('themes/available', await manager.getAvailableThemes());
         });
 
-        ipcClient.on('extensions/uninstall', (params) => {
+        ipcClient.on('extensions/uninstall', async (params) => {
             log(`Uninstalling extension ${params.name}`);
             try {
                 const extDir = path.join(manager.extDirBase, params.name);
                 if (fs.existsSync(extDir)) {
-                    fs.rmSync(extDir, { recursive: true, force: true });
+                    await fs.promises.rm(extDir, { recursive: true, force: true });
                 }
-                manager.invalidateCache();
-                ipcClient.sendNotification('extensions/installed', manager.getInstalledExtensions());
-                ipcClient.sendNotification('themes/available', manager.getAvailableThemes());
+                await manager.invalidateCache();
+                ipcClient.sendNotification('extensions/installed', await manager.getInstalledExtensions());
+                ipcClient.sendNotification('themes/available', await manager.getAvailableThemes());
             } catch (err) {
                 log(`Failed to uninstall extension ${params.name}: ${err.message}`);
             }
@@ -350,25 +357,25 @@ async function main() {
                     ipcClient.sendNotification('extensions/progress', { name: params.name, percentage });
                 });
                 ipcClient.sendNotification('extensions/progress', { name: params.name, percentage: 100 });
-                ipcClient.sendNotification('extensions/installed', manager.getInstalledExtensions());
-                ipcClient.sendNotification('themes/available', manager.getAvailableThemes());
+                ipcClient.sendNotification('extensions/installed', await manager.getInstalledExtensions());
+                ipcClient.sendNotification('themes/available', await manager.getAvailableThemes());
             } catch (err) {
                 log(`Failed to install extension ${params.name}: ${err.message}\n${err.stack}`);
             }
         });
 
-        ipcClient.on('theme/set', (params) => {
+        ipcClient.on('theme/set', async (params) => {
             const themeLabelOrExtName = params.name;
             log(`Setting theme to ${themeLabelOrExtName}`);
             try {
-                const themes = manager.getAvailableThemes();
+                const themes = await manager.getAvailableThemes();
                 let targetTheme = themes.find(t => t.id === params.id) || 
                                   themes.find(t => t.id === themeLabelOrExtName) ||
                                   themes.find(t => t.label === themeLabelOrExtName) || 
                                   themes.find(t => t.extensionName === themeLabelOrExtName);
                 
                 if (targetTheme && fs.existsSync(targetTheme.themePath)) {
-                    let themeRaw = fs.readFileSync(targetTheme.themePath, 'utf8');
+                    let themeRaw = await fs.promises.readFile(targetTheme.themePath, 'utf8');
                     themeRaw = themeRaw.replace(/\/\*([\s\S]*?)\*\/|([^\\:]|^)\/\/.*$/gm, '$2'); // strip comments
                     try {
                         const originalThemeData = JSON.parse(themeRaw);
