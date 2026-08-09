@@ -267,7 +267,7 @@ class ExtensionManager {
             'gitDecoration.deletedResourceForeground': '--vrutti-git-deleted'
         };
 
-        const result = { colors: {} };
+        const result = { colors: {}, tokenColors: themeJson.tokenColors || [] };
         if (themeJson.colors) {
             for (const [vsToken, colorValue] of Object.entries(themeJson.colors)) {
                 if (tokenMap[vsToken]) {
