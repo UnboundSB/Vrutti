@@ -62,6 +62,10 @@ export class VruttiSettings extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
     window.removeEventListener('vrutti-ipc', this.handleIpc as EventListener);
+    if (this.saveTimeout) {
+      window.clearTimeout(this.saveTimeout);
+      this.saveTimeout = null;
+    }
   }
 
   private handleIpc = (e: Event) => {
