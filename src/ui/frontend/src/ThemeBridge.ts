@@ -86,7 +86,7 @@ export class ThemeBridge {
     const detail = (e as CustomEvent).detail;
     if (detail && detail.key === 'workbench.colorTheme') {
       if ((window as any).sendIpcMessage) {
-        (window as any).sendIpcMessage(JSON.stringify(['theme/set', JSON.stringify({ name: detail.value })]));
+        (window as any).sendIpcMessage('theme/set', JSON.stringify({ name: detail.value }));
       }
     }
   };
