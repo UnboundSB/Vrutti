@@ -410,12 +410,6 @@ export class VruttiApp extends LitElement {
       width: 100vw;
       height: 100vh;
       overflow: hidden;
-      --vrutti-bg: hsl(230, 25%, 8%);
-      --vrutti-surface: hsla(230, 25%, 15%, 0.6);
-      --vrutti-surface-border: hsla(230, 25%, 25%, 0.4);
-      --vrutti-accent: hsl(210, 100%, 75%);
-      --vrutti-text: hsl(220, 25%, 75%);
-      --vrutti-text-bright: hsl(220, 25%, 95%);
       background-color: var(--vrutti-bg);
       color: var(--vrutti-text);
       font-family: 'Inter', -apple-system, sans-serif;
