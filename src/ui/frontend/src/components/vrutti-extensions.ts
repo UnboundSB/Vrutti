@@ -1,5 +1,6 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
+import { repeat } from 'lit/directives/repeat.js';
 
 interface ExtensionResult {
     namespace: string;
@@ -174,6 +175,10 @@ export class VruttiExtensions extends LitElement {
     disconnectedCallback() {
         super.disconnectedCallback();
         window.removeEventListener('vrutti-ipc', this.handleIpc as EventListener);
+        if (this.searchTimeout) {
+            clearTimeout(this.searchTimeout);
+            this.searchTimeout = null;
+        }
     }
 
     private handleIpc = (e: CustomEvent) => {
@@ -326,7 +331,7 @@ export class VruttiExtensions extends LitElement {
                 ${!this.isLoading && this.query && this.results.length === 0 ? html`<div class="loading">No extensions found.</div>` : ''}
                 ${!this.isLoading && !this.query && this.installed.length === 0 ? html`<div class="loading">No extensions installed.</div>` : ''}
                 
-                ${displayList.map(ext => {
+                ${repeat(displayList, ext => `${ext.namespace}.${ext.name}`, ext => {
                     const progress = this.progressMap.get(ext.name);
                     const isInstalling = progress !== undefined;
                     const isInstalled = this.installed.some(i => i.name === ext.name || i.id === `${ext.namespace}.${ext.name}`);
