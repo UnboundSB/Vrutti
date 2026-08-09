@@ -1,5 +1,6 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
+import { repeat } from 'lit/directives/repeat.js';
 import { globalHoverStyle } from '../../shared-styles';
 import { 
     icon_check, 
@@ -347,7 +348,7 @@ export class VruttiScm extends LitElement {
                     <div style="flex-grow: 1;"></div>
                     <div class="icon-btn" title="Unstage All" @click=${(e: Event) => { e.stopPropagation(); this.unstageAll(); }} .innerHTML=${icon_remove}></div>
                 </div>
-                ${this.stagedExpanded ? this.stagedFiles.map(f => html`
+                ${this.stagedExpanded ? repeat(this.stagedFiles, f => f.path, f => html`
                     <div class="file-item" @click=${() => this.openFile(f.path)}>
                         ${this.renderStatus(f.status)}
                         <span class="file-name" title="${f.path}">${f.path}</span>
@@ -365,7 +366,7 @@ export class VruttiScm extends LitElement {
                     <div style="flex-grow: 1;"></div>
                     <div class="icon-btn" title="Stage All" @click=${(e: Event) => { e.stopPropagation(); this.stageAll(); }} .innerHTML=${icon_add}></div>
                 </div>
-                ${this.unstagedExpanded ? this.unstagedFiles.map(f => html`
+                ${this.unstagedExpanded ? repeat(this.unstagedFiles, f => f.path, f => html`
                     <div class="file-item" @click=${() => this.openFile(f.path)}>
                         ${this.renderStatus(f.status)}
                         <span class="file-name" title="${f.path}">${f.path}</span>
