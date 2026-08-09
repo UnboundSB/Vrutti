@@ -55,7 +55,7 @@ export class VruttiSettings extends LitElement {
     window.addEventListener('vrutti-ipc', this.handleIpc as EventListener);
     // Request themes
     if ((window as any).sendIpcMessage) {
-      (window as any).sendIpcMessage(JSON.stringify(['extensions/request_installed', '{}']));
+      (window as any).sendIpcMessage('extensions/request_installed', '{}');
     }
   }
 
