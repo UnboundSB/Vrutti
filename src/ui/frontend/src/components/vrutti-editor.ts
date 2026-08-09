@@ -92,8 +92,8 @@ export class VruttiEditor extends LitElement {
         }
 
         .cm-scroller {
-            font-family: 'Consolas', 'Courier New', monospace;
-            font-size: 14px;
+            font-family: var(--vrutti-editor-font, 'Consolas', 'Courier New', monospace);
+            font-size: var(--vrutti-editor-font-size, 14px);
         }
         
         .cm-breakpoint-gutter {
@@ -146,6 +146,10 @@ export class VruttiEditor extends LitElement {
             }
         } else if (detail.key === 'files.autoSave') {
             this._autoSave = detail.value;
+        } else if (detail.key === 'editor.fontSize') {
+            this.style.setProperty('--vrutti-editor-font-size', \`\${detail.value}px\`);
+        } else if (detail.key === 'editor.fontFamily') {
+            this.style.setProperty('--vrutti-editor-font', detail.value);
         }
     };
 
