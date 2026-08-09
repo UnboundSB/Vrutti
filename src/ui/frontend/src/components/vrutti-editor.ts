@@ -513,6 +513,10 @@ export class VruttiEditor extends LitElement {
         window.removeEventListener('setting-changed', this._settingsHandler as EventListener);
         window.removeEventListener('editor-action', this._editorActionHandler as EventListener);
         window.removeEventListener('theme-loaded', this._themeHandler as EventListener);
+        if (this._saveTimeout) {
+            clearTimeout(this._saveTimeout);
+            this._saveTimeout = undefined;
+        }
         if (this._editorView) {
             this._editorView.destroy();
         }
