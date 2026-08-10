@@ -160,7 +160,6 @@ export class VruttiMenuBar extends LitElement {
       title: 'Terminal',
       items: [
         { label: 'New Terminal', action: 'toggleTerminal' },
-        { label: 'Split Terminal' },
         { separator: true, label: '' },
         { label: 'Run Task' },
         { label: 'Build Task' },

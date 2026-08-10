@@ -6,7 +6,9 @@ import './components/vrutti-menubar';
 import './components/vrutti-panel';
 import './components/vrutti-editor-layout';
 import './components/vrutti-quick-open';
+import './components/vrutti-task-picker';
 import './components/vrutti-extension-details';
+import { VruttiTaskManager } from './components/vrutti-task-manager';
 import { themeBridge } from './ThemeBridge';
 
 import { globalHoverStyle } from './shared-styles';
@@ -23,6 +25,8 @@ export class VruttiApp extends LitElement {
 
   @state() private showSettings = false;
   @state() private showGitGraph = false;
+  @state() private showTaskPicker = false;
+  @state() private taskPickerMode: 'run' | 'defaultBuild' | 'active' = 'run';
   @state() private showTerminal = false;
   @state() private showQuickOpen = false;
   @state() private terminalHeight = 300;
@@ -279,10 +283,30 @@ export class VruttiApp extends LitElement {
       window.alert('There are currently no updates available.');
     } else if (detail.action === 'Appearance' || detail.action === 'Editor Layout') {
       this.showSettings = true;
-    } else if (['New Terminal', 'Split Terminal'].includes(detail.action)) {
+    } else if (['New Terminal'].includes(detail.action)) {
       this.showTerminal = true;
-    } else if (['Run Task', 'Build Task', 'Active Tasks', 'Configure Tasks', 'Configure Default Build Task'].includes(detail.action)) {
-      window.alert('Task management is not yet implemented.');
+    } else if (detail.action === 'Run Task') {
+      this.taskPickerMode = 'run';
+      this.showTaskPicker = true;
+    } else if (detail.action === 'Active Tasks') {
+      this.taskPickerMode = 'active';
+      this.showTaskPicker = true;
+    } else if (detail.action === 'Configure Default Build Task') {
+      this.taskPickerMode = 'defaultBuild';
+      this.showTaskPicker = true;
+    } else if (detail.action === 'Configure Tasks') {
+      VruttiTaskManager.ensureTasksFileExists().then(path => {
+          if (path) {
+              window.dispatchEvent(new CustomEvent('open-file', { detail: { path: path, name: 'tasks.json' } }));
+          }
+      });
+    } else if (detail.action === 'Build Task') {
+      VruttiTaskManager.runDefaultBuildTask().then(ran => {
+          if (!ran) {
+              this.taskPickerMode = 'defaultBuild';
+              this.showTaskPicker = true;
+          }
+      });
     } else {
       const editorActions = [
         'Undo', 'Redo', 'Cut', 'Copy', 'Paste', 'Find', 'Replace', 'Select All',
@@ -803,8 +827,13 @@ export class VruttiApp extends LitElement {
             ` : ''}
           `}
           ${this.showGitGraph ? html`
-            <vrutti-git-graph></vrutti-git-graph>
+              <vrutti-git-graph @close-git-graph=${() => this.showGitGraph = false}></vrutti-git-graph>
           ` : ''}
+
+          ${this.showTaskPicker ? html`
+              <vrutti-task-picker .mode=${this.taskPickerMode} @close-task-picker=${() => this.showTaskPicker = false}></vrutti-task-picker>
+          ` : ''}
+
           ${this.showQuickOpen ? html`
             <vrutti-quick-open @close-quick-open=${() => this.showQuickOpen = false}></vrutti-quick-open>
           ` : ''}
