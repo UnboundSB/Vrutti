@@ -1,0 +1,15 @@
+{
+    "id": "vrutti glass dark",
+    "name": "vrutti-glass-dark",
+    "type": "dark",
+    "colors": {
+        "--vrutti-glass-bg": "radial-gradient(circle at 10% 20%, rgba(245, 192, 191, 0.15) 0%, transparent 40%), radial-gradient(circle at 90% 80%, rgba(198, 180, 216, 0.15) 0%, transparent 40%), #0D1117",
+        "--vrutti-bg": "rgba(13, 17, 23, 0.2)",
+        "--vrutti-surface": "rgba(22, 27, 34, 0.4)",
+        "--vrutti-surface-border": "rgba(255, 255, 255, 0.1)",
+        "--vrutti-text": "#FFFFFF",
+        "--vrutti-text-bright": "#FFFFFF",
+        "--vrutti-accent": "#0ea5e9",
+        "--vrutti-tree-active": "rgba(14, 165, 233, 0.2)"
+    }
+}

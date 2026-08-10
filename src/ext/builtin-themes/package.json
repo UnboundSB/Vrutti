@@ -8,21 +8,27 @@
     "themes": [
       {
         "id": "vrutti default dark",
-        "label": "vrutti default dark",
+        "label": "Vrutti Default Dark",
         "uiTheme": "vs-dark",
         "path": "./default-dark.json"
       },
       {
-        "id": "vrutti-glass",
-        "label": "vrutti glass",
-        "uiTheme": "vs-dark",
-        "path": "./vrutti-glass.json"
-      },
-      {
         "id": "vrutti default light",
-        "label": "vrutti default light",
+        "label": "Vrutti Default Light",
         "uiTheme": "vs-light",
         "path": "./default-light.json"
+      },
+      {
+        "id": "vrutti-glass-dark",
+        "label": "Vrutti Glass Dark",
+        "uiTheme": "vs-dark",
+        "path": "./vrutti-glass-dark.json"
+      },
+      {
+        "id": "vrutti-glass-light",
+        "label": "Vrutti Glass Light",
+        "uiTheme": "vs-light",
+        "path": "./vrutti-glass-light.json"
       }
     ]
   }

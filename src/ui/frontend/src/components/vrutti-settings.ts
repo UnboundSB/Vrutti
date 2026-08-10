@@ -353,8 +353,15 @@ export class VruttiSettings extends LitElement {
           `)}
         </div>
         
-        <div class="content">
-          ${this.renderCategoryContent()}
+        <div class="content" style="display: flex; flex-direction: column;">
+          <div style="flex: 1; overflow-y: auto;">
+            ${this.renderCategoryContent()}
+          </div>
+          <div class="footer-actions" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--vrutti-surface-border);">
+            <button class="btn" @click=${this.requestClose}>Exit</button>
+            <button class="btn" @click=${this.applyAndExit}>OK</button>
+            <button class="btn btn-primary" @click=${this.apply}>Apply</button>
+          </div>
         </div>
       </div>
     `;
@@ -397,11 +404,6 @@ export class VruttiSettings extends LitElement {
               ${this.availableThemes.length === 0 ? html`<option value="${this.selectedTheme}" selected>${this.selectedTheme}</option>` : ''}
               ${this.availableThemes.map(t => html`<option value="${t.id}" ?selected=${t.id === this.selectedTheme}>${t.label}</option>`)}
             </select>
-          </div>
-          <div class="footer-actions">
-            <button class="btn" @click=${this.requestClose}>Exit</button>
-            <button class="btn" @click=${this.applyAndExit}>OK</button>
-            <button class="btn btn-primary" @click=${this.apply}>Apply</button>
           </div>
         `;
       case 'Appearance':
