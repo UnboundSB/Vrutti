@@ -365,23 +365,27 @@ export class VruttiEditor extends LitElement {
             const applied = localStorage.getItem('vrutti-applied-theme');
             if (applied) {
                 const tTheme = JSON.parse(applied);
+                
+                const fg = tTheme.colors?.['--vrutti-text-bright'] || tTheme.colors?.['--vrutti-text'] || (this._isDarkTheme ? '#d4d4d4' : '#333333');
+                const selection = tTheme.colors?.['editor.selectionBackground'] || (this._isDarkTheme ? '#264f78' : '#add6ff');
+                
+                const baseTheme = EditorView.theme({
+                    "&": { color: fg, backgroundColor: "transparent" }, // use transparent so the container's glassmorphism works
+                    ".cm-content": { caretColor: fg },
+                    ".cm-cursor, .cm-dropCursor": { borderLeftColor: fg },
+                    "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection": { backgroundColor: selection },
+                    ".cm-activeLine": { backgroundColor: "transparent" },
+                    ".cm-gutters": { backgroundColor: "transparent", color: fg, borderRight: "none" }
+                }, { dark: this._isDarkTheme });
+
+                const extensions = [baseTheme];
+
                 if (tTheme.tokenColors) {
                     const style = this.buildHighlightStyle(tTheme.tokenColors);
-                    const bg = tTheme.colors?.['--vrutti-bg'] || (this._isDarkTheme ? '#1e1e1e' : '#ffffff');
-                    const fg = tTheme.colors?.['--vrutti-text-bright'] || tTheme.colors?.['--vrutti-text'] || (this._isDarkTheme ? '#d4d4d4' : '#333333');
-                    const selection = tTheme.colors?.['editor.selectionBackground'] || (this._isDarkTheme ? '#264f78' : '#add6ff');
-                    
-                    const baseTheme = EditorView.theme({
-                        "&": { color: fg, backgroundColor: bg },
-                        ".cm-content": { caretColor: fg },
-                        ".cm-cursor, .cm-dropCursor": { borderLeftColor: fg },
-                        "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection": { backgroundColor: selection },
-                        ".cm-activeLine": { backgroundColor: "transparent" },
-                        ".cm-gutters": { backgroundColor: bg, color: fg, borderRight: "none" }
-                    }, { dark: this._isDarkTheme });
-                    
-                    return [baseTheme, syntaxHighlighting(style)];
+                    extensions.push(syntaxHighlighting(style));
                 }
+
+                return extensions;
             }
         } catch(e) {
             console.error('Error generating theme extension', e);
