@@ -589,6 +589,8 @@ export class VruttiApp extends LitElement {
     .context-menu {
       position: fixed;
       background: var(--vrutti-surface);
+      backdrop-filter: var(--vrutti-backdrop-filter, none);
+      -webkit-backdrop-filter: var(--vrutti-backdrop-filter, none);
       border: 1px solid var(--vrutti-surface-border);
       border-radius: 6px;
       padding: 4px 0;
