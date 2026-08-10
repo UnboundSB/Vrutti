@@ -13,7 +13,7 @@
 *Experience buttery-smooth native performance combined with modern web aesthetics.*
 
 <!-- Replace with a real screenshot later -->
-<img src="logos/vrutti-logo.png" width="400" alt="Vrutti Logo">
+<img src="https://raw.githubusercontent.com/UnboundSB/Vrutti/main/logos/vrutti-logo.png" width="400" alt="Vrutti Logo">
 
 </div>
 
@@ -29,23 +29,27 @@
 
 ---
 
-## 🚀 Installation
+## 🚀 Download & Play (No Setup Required!)
 
-Vrutti is now available as a packaged application for Windows!
+Vrutti is pre-packaged and ready to go. **You do NOT need Docker, CMake, or any compilers to run Vrutti.** Just download and launch!
 
-### 📥 Download the Setup Installer
-*(Note: If you don't have the installer yet, see [Building the Installer](#building-the-installer) below)*
-
+### Option A: Windows Installer (Recommended)
 1. Go to the [Releases](https://github.com/UnboundSB/Vrutti/releases) page.
 2. Download the latest `Vrutti_Setup.exe`.
-3. Double click the installer and follow the prompt.
+3. Double click the installer to install it on your PC.
 4. Launch **Vrutti IDE** from your Desktop or Start Menu!
+
+### Option B: Portable ZIP
+1. Go to the [Releases](https://github.com/UnboundSB/Vrutti/releases) page.
+2. Download the latest `vrutti_early_release.zip`.
+3. Extract the folder anywhere on your computer.
+4. Double-click `vrutti.exe` inside the folder to run it instantly without installing.
 
 ---
 
-## 🛠 Developer Guide
+## 🛠 For Developers (Building from Source)
 
-### Building from Source
+**Only follow these steps if you want to modify Vrutti's source code.**
 
 To build the IDE locally:
 1. Ensure you have **Docker**, **CMake**, and a **C++ compiler** installed.
