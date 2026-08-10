@@ -30,7 +30,7 @@
 🧬 **Topological Git Visualizer**
 > Explore your commit history with a buttery-smooth, hardware-accelerated horizontal SVG canvas. Features drag-to-pan, interactive zooming, dynamic routing, reflog parsing, and direct git actions (Revert, Delete, Rename) right from the UI!
 
-🎨 **Sleek & Orgasmic Interface**
+🎨 **Sleek & Premium Interface**
 > Built with **Lit Web Components**, providing a modern, fast, and highly customizable user interface featuring beautiful pastel colors, sleek dark modes, and dynamic micro-animations that feel premium to the touch.
 
 🛠 **Integrated Power Tools**
