@@ -13,6 +13,12 @@
         "path": "./default-dark.json"
       },
       {
+        "id": "vrutti-glass",
+        "label": "vrutti glass",
+        "uiTheme": "vs-dark",
+        "path": "./vrutti-glass.json"
+      },
+      {
         "id": "vrutti default light",
         "label": "vrutti default light",
         "uiTheme": "vs-light",

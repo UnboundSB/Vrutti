@@ -1,0 +1,21 @@
+{
+  "name": "Vrutti Default Dark",
+  "type": "dark",
+  "colors": {
+    "editor.background": "#0f111a",
+    "sideBar.background": "#13151f",
+    "activityBar.background": "#13151f",
+    "editorGroupHeader.tabsBackground": "#13151f",
+    "editor.foreground": "#ffffff",
+    "sideBarTitle.foreground": "#a6accd",
+    "tab.activeBackground": "#23273b",
+    "button.background": "#0e639c",
+    "focusBorder": "#0e639c",
+    "editorLineNumber.foreground": "#a6accd",
+    "terminal.background": "#0f111a",
+    "gitDecoration.modifiedResourceForeground": "#82aaff",
+    "gitDecoration.untrackedResourceForeground": "#c3e88d",
+    "gitDecoration.deletedResourceForeground": "#f07178"
+  },
+  "tokenColors": []
+}

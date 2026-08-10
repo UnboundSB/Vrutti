@@ -1,0 +1,23 @@
+{
+  "name": "builtin-themes",
+  "displayName": "Vrutti Default Themes",
+  "description": "Default built-in themes for Vrutti IDE",
+  "version": "1.0.0",
+  "publisher": "vrutti",
+  "contributes": {
+    "themes": [
+      {
+        "id": "vrutti default dark",
+        "label": "vrutti default dark",
+        "uiTheme": "vs-dark",
+        "path": "./default-dark.json"
+      },
+      {
+        "id": "vrutti default light",
+        "label": "vrutti default light",
+        "uiTheme": "vs-light",
+        "path": "./default-light.json"
+      }
+    ]
+  }
+}

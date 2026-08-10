@@ -405,13 +405,22 @@ export class VruttiApp extends LitElement {
 
   private handleGlobalKeydown = (e: KeyboardEvent) => {
     if (e.key.toLowerCase() === 'p' && (e.ctrlKey || e.metaKey)) {
-        e.preventDefault();
-        this.showQuickOpen = true;
+      e.preventDefault();
+      this.showQuickOpen = true;
     }
   };
 
   private handleSettingChanged = async (e: Event) => {
     const detail = (e as CustomEvent).detail;
+    if (detail && detail.key === 'appearance.glassmorphism') {
+      if (detail.value) {
+        document.body.classList.add('glass-mode');
+        this.style.setProperty('--vrutti-backdrop-filter', 'blur(20px)');
+      } else {
+        document.body.classList.remove('glass-mode');
+        this.style.setProperty('--vrutti-backdrop-filter', 'none');
+      }
+    }
     console.log('[Main] Routing setting save to IPC:', detail.key, detail.value);
     
     if (detail.key === 'editor.fontFamily') {
@@ -435,7 +444,14 @@ export class VruttiApp extends LitElement {
       font-family: 'Inter', -apple-system, sans-serif;
     }
     
-    header {
+    :host {
+      display: block;
+      height: 100vh;
+      width: 100vw;
+      background: transparent !important;
+    }
+    
+    .header {
       height: 35px;
       background: var(--vrutti-surface);
       backdrop-filter: blur(10px);

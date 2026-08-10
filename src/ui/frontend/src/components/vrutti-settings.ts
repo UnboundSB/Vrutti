@@ -5,12 +5,14 @@ interface Config {
   'editor.fontSize': number;
   'editor.fontFamily': string;
   'editor.wordWrap': boolean;
+  'appearance.glassmorphism': boolean;
 }
 
 const DEFAULT_CONFIG: Config = {
   'editor.fontSize': 14,
   'editor.fontFamily': "'Fira Code', monospace",
-  'editor.wordWrap': false
+  'editor.wordWrap': false,
+  'appearance.glassmorphism': false
 };
 
 import { globalHoverStyle } from '../shared-styles';
@@ -35,7 +37,7 @@ export class VruttiSettings extends LitElement {
   @state()
   private showDirtyModal = false;
 
-  private categories = ['General', 'Editor', 'Keybindings', 'Theme'];
+  private categories = ['General', 'Editor', 'Keybindings', 'Theme', 'Appearance'];
   private saveTimeout: number | null = null;
 
   connectedCallback() {
@@ -343,7 +345,7 @@ export class VruttiSettings extends LitElement {
       
       <div class="layout">
         <div class="sidebar">
-          ${this.categories.map(c => html`
+            ${this.categories.map(c => html`
             <div class="category-item ${this.activeCategory === c ? 'active' : ''}"
                  @click=${() => this.activeCategory = c}>
               ${c}
@@ -400,6 +402,18 @@ export class VruttiSettings extends LitElement {
             <button class="btn" @click=${this.requestClose}>Exit</button>
             <button class="btn" @click=${this.applyAndExit}>OK</button>
             <button class="btn btn-primary" @click=${this.apply}>Apply</button>
+          </div>
+        `;
+      case 'Appearance':
+        return html`
+          <div class="setting-group">
+            <div class="setting-title">Enable Glassmorphism</div>
+            <div class="setting-desc">Apply premium frosted glass transparency to UI panels. (Recommended with Vrutti Glass theme)</div>
+            <div class="toggle-container">
+              <input type="checkbox" class="checkbox" .checked=${this.config['appearance.glassmorphism']} 
+                     @change=${(e: any) => this.handleSettingChange('appearance.glassmorphism', e.target.checked)} />
+              <span>Glassmorphism Enabled</span>
+            </div>
           </div>
         `;
       case 'Keybindings':
