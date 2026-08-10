@@ -260,6 +260,22 @@ export class VruttiEditor extends LitElement {
                 // Generic duplicate line/selection fallback if exact command missing
                 import('@codemirror/commands').then(m => { if(m.copyLineDown) m.copyLineDown(view); });
                 break;
+            case 'Go to Line/Column':
+                import('@codemirror/search').then(m => { if(m.gotoLine) m.gotoLine(view); });
+                break;
+            case 'Go to Definition':
+            case 'Go to Declaration':
+            case 'Go to Type Definition':
+            case 'Go to Implementations':
+            case 'Go to References':
+                window.alert(`Language server required for ${detail.action}`);
+                break;
+            case 'Next Problem':
+                import('@codemirror/lint').then(m => { if(m.nextDiagnostic) m.nextDiagnostic(view); });
+                break;
+            case 'Previous Problem':
+                import('@codemirror/lint').then(m => { if(m.previousDiagnostic) m.previousDiagnostic(view); });
+                break;
             case 'Save':
                 this.saveFile();
                 break;

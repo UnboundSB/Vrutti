@@ -31,12 +31,7 @@ export class VruttiMenuBar extends LitElement {
         { separator: true, label: '' },
         { label: 'Open File' },
         { label: 'Open Folder...', action: 'openFolder' },
-        { label: 'Open Workspace from File' },
         { label: 'Open Recent' },
-        { separator: true, label: '' },
-        { label: 'Add Folder to Workspace' },
-        { label: 'Save Workspace As' },
-        { label: 'Duplicate Workspace' },
         { separator: true, label: '' },
         { label: 'Save' },
         { label: 'Save As' },
@@ -45,7 +40,6 @@ export class VruttiMenuBar extends LitElement {
         { label: 'Auto Save' },
         { label: 'Preferences' },
         { separator: true, label: '' },
-        { label: 'Revert File' },
         { label: 'Close Editor' },
         { label: 'Close Folder' },
         { label: 'Close Window' },
@@ -70,8 +64,7 @@ export class VruttiMenuBar extends LitElement {
         { label: 'Replace in Files' },
         { separator: true, label: '' },
         { label: 'Toggle Line Comment' },
-        { label: 'Toggle Block Comment' },
-        { label: 'Emmet: Expand Abbreviation' }
+        { label: 'Toggle Block Comment' }
       ]
     },
     {
@@ -117,7 +110,6 @@ export class VruttiMenuBar extends LitElement {
         { label: 'Output' },
         { label: 'Debug Console' },
         { label: 'Terminal', action: 'toggleTerminal' },
-        { label: 'Agent MCP Instance' },
         { separator: true, label: '' },
         { label: 'Word Wrap' }
       ]
@@ -199,7 +191,6 @@ export class VruttiMenuBar extends LitElement {
         { label: 'Privacy Statement' },
         { separator: true, label: '' },
         { label: 'Toggle Developer Tools' },
-        { label: 'Open Process Explorer' },
         { separator: true, label: '' },
         { label: 'Check for Updates' },
         { label: 'About' }
