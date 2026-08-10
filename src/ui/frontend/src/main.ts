@@ -451,7 +451,7 @@ export class VruttiApp extends LitElement {
       background: transparent !important;
     }
     
-    .header {
+    header {
       height: 35px;
       background: var(--vrutti-surface);
       backdrop-filter: blur(10px);
