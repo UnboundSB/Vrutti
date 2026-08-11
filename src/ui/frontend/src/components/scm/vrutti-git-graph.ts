@@ -302,6 +302,10 @@ export class VruttiGitGraph extends LitElement {
     @state() private errorMsg: string = '';
     @state() private currentBranch: string = '';
     @state() private isMaximized: boolean = false;
+    @state() private offset: number = 0;
+    @state() private chunkSize: number = 50;
+    @state() private isLoading: boolean = false;
+    @state() private hasMore: boolean = true;
 
     @state() private pos = { x: 100, y: 100 };
     @state() private zoom = 1.0;
@@ -342,13 +346,23 @@ export class VruttiGitGraph extends LitElement {
             // Need to wait a tick for the DOM to fully render the SVG dimensions
             setTimeout(() => {
                 if (this.scrollView) {
-                    this.scrollView.scrollLeft = this.scrollView.scrollWidth;
-                    this.scrollView.scrollTop = this.scrollView.scrollHeight;
+                    if (!this.hasScrolled) {
+                        this.scrollView.scrollLeft = this.scrollView.scrollWidth;
+                        this.scrollView.scrollTop = this.scrollView.scrollHeight;
+                        this.hasScrolled = true;
+                    }
                 }
             }, 10);
-            this.hasScrolled = true;
         }
     }
+
+    private handleScroll = (e: Event) => {
+        const target = e.target as HTMLElement;
+        // Older commits are drawn on the left (scrollLeft approaches 0).
+        if (target.scrollLeft < 500 && !this.isLoading && this.hasMore) {
+            this.loadHistory(true);
+        }
+    };
 
     private startDrag = (e: MouseEvent) => {
         if (this.isMaximized) return;
@@ -400,16 +414,26 @@ export class VruttiGitGraph extends LitElement {
         }
     }
 
-    private async loadHistory() {
+    private async loadHistory(append: boolean = false) {
+        if (this.isLoading || (!this.hasMore && append)) return;
+        this.isLoading = true;
+        if (!append) {
+            this.offset = 0;
+            this.hasMore = true;
+            this.commits = [];
+            this.hasScrolled = false;
+        }
+
         this.errorMsg = 'Loading...';
         const branchRes = await this.runGit('rev-parse --abbrev-ref HEAD');
         if (branchRes.exitCode === 0) {
             this.currentBranch = branchRes.stdout.trim();
         }
 
-        const res = await this.runGit('log --all --reflog --date-order --format="%H@@@%P@@@%d@@@%s@@@%cd@@@%an" --date=short');
+        const res = await this.runGit(`log --all --reflog --date-order --format="%H@@@%P@@@%d@@@%s@@@%cd@@@%an" --date=short -n ${this.chunkSize} --skip=${this.offset}`);
         if (res.exitCode !== 0) {
             this.errorMsg = `Git Error (Code ${res.exitCode}): ${res.stdout}`;
+            this.isLoading = false;
             return;
         }
 
@@ -430,9 +454,31 @@ export class VruttiGitGraph extends LitElement {
                 });
             }
         }
+        
+        if (parsed.length < this.chunkSize) {
+            this.hasMore = false;
+        }
+        this.offset += parsed.length;
+
         this.errorMsg = '';
-        this.commits = parsed;
+        
+        const oldScrollWidth = this.scrollView ? this.scrollView.scrollWidth : 0;
+        
+        if (append) {
+            this.commits = [...this.commits, ...parsed];
+        } else {
+            this.commits = parsed;
+        }
         this.computeGraph();
+        
+        await this.updateComplete;
+        
+        if (append && this.scrollView) {
+            const newScrollWidth = this.scrollView.scrollWidth;
+            this.scrollView.scrollLeft += (newScrollWidth - oldScrollWidth);
+        }
+        
+        this.isLoading = false;
     }
 
     private computeGraph() {
@@ -471,7 +517,7 @@ export class VruttiGitGraph extends LitElement {
 
     private closeWindow() { this.dispatchEvent(new CustomEvent('close-git-graph', { bubbles: true, composed: true })); }
 
-    async firstUpdated() { await this.loadHistory(); }
+    async firstUpdated() { await this.loadHistory(false); }
 
     render() {
         this.style.left = `${this.pos.x}px`;
@@ -528,11 +574,11 @@ export class VruttiGitGraph extends LitElement {
             </div>
             <div class="content">
                 ${this.errorMsg ? html`
-                    <div style="padding: 16px; color: #f7768e; white-space: pre-wrap; font-family: monospace; overflow-y: auto; flex: 1;">
+                    <div style="padding: 16px; color: var(--vrutti-error, #f7768e); white-space: pre-wrap; font-family: monospace; overflow-y: auto; flex: 1;">
                         ${this.errorMsg}
                     </div>
                 ` : html`
-                    <div class="canvas-scroll-view" @wheel=${this.handleWheel} @mousedown=${this.handleMouseDown} @mousemove=${this.handleMouseMove} @mouseup=${this.handleMouseUp} @mouseleave=${this.handleMouseUp}>
+                    <div class="canvas-scroll-view" @scroll=${this.handleScroll} @wheel=${this.handleWheel} @mousedown=${this.handleMouseDown} @mousemove=${this.handleMouseMove} @mouseup=${this.handleMouseUp} @mouseleave=${this.handleMouseUp}>
                         <div class="canvas-container" style="width: ${svgWidth * this.zoom}px; height: ${svgHeight * this.zoom}px; position: relative; overflow: hidden;">
                             <div style="transform: scale(${this.zoom}); transform-origin: top left; position: absolute; top: 0; left: 0; width: ${svgWidth}px; height: ${svgHeight}px;">
                                 <svg width="${svgWidth}" height="${svgHeight}" style="position: absolute; top: 0; left: 0;">
@@ -552,7 +598,7 @@ export class VruttiGitGraph extends LitElement {
                                         const color = this.getColor(row.colIndex);
                                         const match = isMatch(row.commit);
                                         const opacity = (this.searchQuery && !match) ? 0.2 : 1.0;
-                                        return svg`<circle cx="${pos.x}" cy="${pos.y}" r="10" fill="#ffffff" stroke="${color}" stroke-width="5" opacity="${opacity}" class="commit-node" @click=${() => this.selectedCommit = row.commit} style="transform-origin: ${pos.x}px ${pos.y}px;" />`;
+                                        return svg`<circle cx="${pos.x}" cy="${pos.y}" r="10" fill="var(--vrutti-surface, #ffffff)" stroke="${color}" stroke-width="5" opacity="${opacity}" class="commit-node" @click=${() => this.selectedCommit = row.commit} style="transform-origin: ${pos.x}px ${pos.y}px;" />`;
                                     })}
                                 </svg>
                                 ${repeat(this.graphRows, row => row.commit.hash + '-label', row => {
@@ -593,7 +639,14 @@ export class VruttiGitGraph extends LitElement {
                         
                         <div class="action-buttons">
                             <button class="action-btn" @click=${() => this.executeGitAction(`revert --no-commit ${this.selectedCommit?.hash}`)}>Revert to Here</button>
-                            ${this.selectedCommit.refs ? this.selectedCommit.refs.split(',').map(r => r.trim().replace(/[()]/g, '')).filter(r => r && r !== 'HEAD' && !r.includes('HEAD ->')).map(ref => html`
+                            <button class="action-btn" @click=${() => this.executeGitAction(`checkout ${this.selectedCommit?.hash}`)}>Checkout Commit</button>
+                            <button class="action-btn" @click=${() => this.executeGitAction(`cherry-pick ${this.selectedCommit?.hash}`)}>Cherry-Pick</button>
+                            <button class="action-btn" @click=${() => this.executeGitAction(`merge ${this.selectedCommit?.hash}`)}>Merge into Current</button>
+                            <button class="action-btn" @click=${() => this.executeGitAction(`reset --soft ${this.selectedCommit?.hash}`)}>Soft Reset</button>
+                            <button class="action-btn" @click=${() => this.executeGitAction(`reset --hard ${this.selectedCommit?.hash}`)}>Hard Reset</button>
+                            ${this.selectedCommit.refs ? this.selectedCommit.refs.split(',').map(r => r.trim().replace(/[()]/g, '')).filter(r => r && r !== 'HEAD' && !r.includes('HEAD ->') && !r.includes('origin/')).map(ref => html`
+                                <button class="action-btn" @click=${() => this.executeGitAction(`checkout ${ref}`)}>Checkout ${ref}</button>
+                                <button class="action-btn" @click=${() => this.executeGitAction(`push origin ${ref}`)}>Push ${ref}</button>
                                 <button class="action-btn" @click=${() => this.executeGitAction(`branch -D ${ref}`)}>Delete ${ref}</button>
                                 <button class="action-btn" @click=${() => this.executeGitAction(`branch -m ${ref} ${ref}-renamed`)}>Rename ${ref}</button>
                             `) : ''}
