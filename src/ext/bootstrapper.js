@@ -375,27 +375,10 @@ async function main() {
                                   themes.find(t => t.extensionName === themeLabelOrExtName);
                 
                 if (targetTheme && fs.existsSync(targetTheme.themePath)) {
-                    async function loadThemeRecursive(themePath) {
-                        let themeRaw = await fs.promises.readFile(themePath, 'utf8');
-                        themeRaw = themeRaw.replace(/\/\*([\s\S]*?)\*\/|([^\\:]|^)\/\/.*$/gm, '$2'); // strip comments
-                        let themeObj = JSON.parse(themeRaw);
-                        
-                        if (themeObj.include) {
-                            const includePath = path.resolve(path.dirname(themePath), themeObj.include);
-                            if (fs.existsSync(includePath)) {
-                                const baseTheme = await loadThemeRecursive(includePath);
-                                const mergedColors = Object.assign({}, baseTheme.colors || {}, themeObj.colors || {});
-                                const mergedTokenColors = (baseTheme.tokenColors || []).concat(themeObj.tokenColors || []);
-                                themeObj = Object.assign({}, baseTheme, themeObj);
-                                themeObj.colors = mergedColors;
-                                themeObj.tokenColors = mergedTokenColors;
-                            }
-                        }
-                        return themeObj;
-                    }
-                    
+                    let themeRaw = await fs.promises.readFile(targetTheme.themePath, 'utf8');
+                    themeRaw = themeRaw.replace(/\/\*([\s\S]*?)\*\/|([^\\:]|^)\/\/.*$/gm, '$2'); // strip comments
                     try {
-                        const originalThemeData = await loadThemeRecursive(targetTheme.themePath);
+                        const originalThemeData = JSON.parse(themeRaw);
                         const translatedThemeData = manager.translateThemeColorsInMemory(originalThemeData);
                         
                         log(`Loading theme: ${targetTheme.label}`);
@@ -405,7 +388,7 @@ async function main() {
                         
                         ipcClient.sendNotification('theme/load', translatedThemeData);
                     } catch (e) {
-                        console.error(`Failed to parse theme JSON: ${targetTheme.themePath}`, e);
+                        console.error(`Failed to parse theme JSON: ${targetTheme.themePath}`);
                     }
                 } else {
                     log(`Theme not found or missing path for ${themeLabelOrExtName}`);
