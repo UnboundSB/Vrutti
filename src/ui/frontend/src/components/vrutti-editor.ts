@@ -325,37 +325,81 @@ export class VruttiEditor extends LitElement {
         }
     }
 
-    private buildHighlightStyle(tokenColors: any[]) {
+    private buildHighlightStyle(tokenColors: any[], fallbackColors: any) {
         const specs: any[] = [];
-        let keywordColor, stringColor, functionColor, numberColor, commentColor, variableColor, typeColor, operatorColor;
         
-        for (const rule of tokenColors) {
-            const scope = rule.scope;
-            const settings = rule.settings;
-            if (!settings || !settings.foreground) continue;
+        const tagMap: { prefix: string, tags: any[] }[] = [
+            { prefix: 'comment', tags: [t.comment] },
+            { prefix: 'string', tags: [t.string] },
+            { prefix: 'constant.numeric', tags: [t.number] },
+            { prefix: 'constant.language', tags: [t.bool, t.null, t.atom] },
+            { prefix: 'constant.character', tags: [t.character] },
+            { prefix: 'constant', tags: [t.constant(t.name)] },
+            { prefix: 'keyword.control', tags: [t.controlKeyword] },
+            { prefix: 'keyword', tags: [t.keyword, t.moduleKeyword] },
+            { prefix: 'storage.type', tags: [t.typeName] },
+            { prefix: 'storage', tags: [t.modifier] },
+            { prefix: 'entity.name.function', tags: [t.function(t.variableName), t.function(t.propertyName)] },
+            { prefix: 'support.function', tags: [t.function(t.variableName)] },
+            { prefix: 'entity.name.class', tags: [t.className] },
+            { prefix: 'entity.name.type', tags: [t.typeName] },
+            { prefix: 'support.type', tags: [t.typeName] },
+            { prefix: 'support.class', tags: [t.className] },
+            { prefix: 'variable.parameter', tags: [t.propertyName] },
+            { prefix: 'variable.language', tags: [t.self, t.keyword] },
+            { prefix: 'variable', tags: [t.variableName, t.name] },
+            { prefix: 'entity.name.tag', tags: [t.tagName] },
+            { prefix: 'entity.other.attribute-name', tags: [t.attributeName] },
+            { prefix: 'punctuation', tags: [t.punctuation] },
+            { prefix: 'keyword.operator', tags: [t.operator] },
+            { prefix: 'markup.heading', tags: [t.heading] },
+            { prefix: 'markup.bold', tags: [t.strong] },
+            { prefix: 'markup.italic', tags: [t.emphasis] },
+            { prefix: 'invalid', tags: [t.invalid] },
+            { prefix: 'meta.property', tags: [t.propertyName] }
+        ];
+
+        for (let i = 0; i < tokenColors.length; i++) {
+            const rule = tokenColors[i];
+            if (!rule.scope || !rule.settings) continue;
             
-            const scopes = Array.isArray(scope) ? scope : (scope ? scope.split(',') : []);
-            for (let s of scopes) {
-                s = s.trim();
-                if (s.startsWith('keyword') || s.startsWith('storage')) keywordColor = keywordColor || settings.foreground;
-                if (s.startsWith('string')) stringColor = stringColor || settings.foreground;
-                if (s.startsWith('entity.name.function') || s.startsWith('support.function')) functionColor = functionColor || settings.foreground;
-                if (s.startsWith('constant.numeric')) numberColor = numberColor || settings.foreground;
-                if (s.startsWith('comment')) commentColor = commentColor || settings.foreground;
-                if (s.startsWith('variable') || s.startsWith('entity.name.variable')) variableColor = variableColor || settings.foreground;
-                if (s.startsWith('entity.name.type') || s.startsWith('support.type') || s.startsWith('entity.name.class') || s.startsWith('support.class')) typeColor = typeColor || settings.foreground;
-                if (s.startsWith('keyword.operator')) operatorColor = operatorColor || settings.foreground;
+            const scopes = Array.isArray(rule.scope) ? rule.scope : (typeof rule.scope === 'string' ? rule.scope.split(',') : []);
+            
+            for (let j = 0; j < scopes.length; j++) {
+                const s = scopes[j].trim();
+                
+                let matchedTags: any[] | null = null;
+                for (let k = 0; k < tagMap.length; k++) {
+                    if (s.startsWith(tagMap[k].prefix)) {
+                        matchedTags = tagMap[k].tags;
+                        break;
+                    }
+                }
+                
+                if (matchedTags) {
+                    const styleObj: any = { tag: matchedTags };
+                    if (rule.settings.foreground) styleObj.color = rule.settings.foreground;
+                    if (rule.settings.background) styleObj.backgroundColor = rule.settings.background;
+                    if (rule.settings.fontStyle) {
+                        if (rule.settings.fontStyle.includes('italic')) styleObj.fontStyle = 'italic';
+                        if (rule.settings.fontStyle.includes('bold')) styleObj.fontWeight = 'bold';
+                        if (rule.settings.fontStyle.includes('underline')) styleObj.textDecoration = 'underline';
+                    }
+                    if (styleObj.color || styleObj.backgroundColor || styleObj.fontStyle || styleObj.fontWeight) {
+                        specs.push(styleObj);
+                    }
+                }
             }
         }
         
-        if (keywordColor) specs.push({ tag: [t.keyword, t.modifier, t.controlKeyword, t.moduleKeyword], color: keywordColor });
-        if (stringColor) specs.push({ tag: [t.string, t.special(t.string)], color: stringColor });
-        if (functionColor) specs.push({ tag: [t.function(t.variableName), t.function(t.propertyName)], color: functionColor });
-        if (numberColor) specs.push({ tag: [t.number, t.bool, t.integer, t.float], color: numberColor });
-        if (commentColor) specs.push({ tag: [t.lineComment, t.blockComment, t.comment], color: commentColor, fontStyle: 'italic' });
-        if (variableColor) specs.push({ tag: [t.variableName, t.propertyName, t.name], color: variableColor });
-        if (typeColor) specs.push({ tag: [t.typeName, t.className, t.namespace], color: typeColor });
-        if (operatorColor) specs.push({ tag: [t.operator, t.arithmeticOperator, t.logicOperator], color: operatorColor });
+        const fg = fallbackColors['--vrutti-text-bright'] || fallbackColors['editor.foreground'] || (this._isDarkTheme ? '#cccccc' : '#333333');
+        const accent = fallbackColors['--vrutti-accent'] || fallbackColors['button.background'] || '#007acc';
+        const commentFallback = fallbackColors['--vrutti-text'] || fallbackColors['sideBarTitle.foreground'] || '#888888';
+        
+        specs.push({ tag: [t.comment], color: commentFallback, fontStyle: 'italic' });
+        specs.push({ tag: [t.keyword, t.modifier], color: accent });
+        specs.push({ tag: [t.string, t.number], color: accent });
+        specs.push({ tag: [t.variableName, t.name, t.propertyName, t.operator, t.punctuation], color: fg });
         
         return HighlightStyle.define(specs);
     }
@@ -370,7 +414,7 @@ export class VruttiEditor extends LitElement {
                 const selection = tTheme.colors?.['editor.selectionBackground'] || (this._isDarkTheme ? '#264f78' : '#add6ff');
                 
                 const baseTheme = EditorView.theme({
-                    "&": { color: fg, backgroundColor: "transparent" }, // use transparent so the container's glassmorphism works
+                    "&": { color: fg, backgroundColor: "transparent" },
                     ".cm-content": { caretColor: fg },
                     ".cm-cursor, .cm-dropCursor": { borderLeftColor: fg },
                     "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection": { backgroundColor: selection },
@@ -378,12 +422,14 @@ export class VruttiEditor extends LitElement {
                     ".cm-gutters": { backgroundColor: "transparent", color: fg, borderRight: "none" }
                 }, { dark: this._isDarkTheme });
 
-                const extensions = [baseTheme];
-
+                const extensions = [];
+                
                 if (tTheme.tokenColors) {
-                    const style = this.buildHighlightStyle(tTheme.tokenColors);
+                    const style = this.buildHighlightStyle(tTheme.tokenColors, tTheme.colors || {});
                     extensions.push(syntaxHighlighting(style));
                 }
+
+                extensions.push(baseTheme);
 
                 return extensions;
             }
@@ -391,7 +437,7 @@ export class VruttiEditor extends LitElement {
             console.error('Error generating theme extension', e);
         }
         
-        return this._isDarkTheme ? oneDark : [];
+        return [];
     }
 
     private async loadFile() {
