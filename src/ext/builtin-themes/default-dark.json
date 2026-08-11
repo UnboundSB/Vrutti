@@ -18,13 +18,15 @@
     "gitDecoration.deletedResourceForeground": "#f07178"
   },
   "tokenColors": [
-    { "scope": ["keyword", "storage", "storage.type", "keyword.control"], "settings": { "foreground": "#C586C0" } },
-    { "scope": ["string", "string.quoted"], "settings": { "foreground": "#CE9178" } },
-    { "scope": ["entity.name.function", "support.function"], "settings": { "foreground": "#DCDCAA" } },
-    { "scope": ["constant.numeric"], "settings": { "foreground": "#B5CEA8" } },
-    { "scope": ["comment"], "settings": { "foreground": "#6A9955", "fontStyle": "italic" } },
-    { "scope": ["variable", "entity.name.variable", "variable.parameter"], "settings": { "foreground": "#9CDCFE" } },
-    { "scope": ["entity.name.type", "entity.name.class", "support.class"], "settings": { "foreground": "#4EC9B0" } },
-    { "scope": ["keyword.operator"], "settings": { "foreground": "#D4D4D4" } }
+    { "scope": ["comment", "punctuation.definition.comment"], "settings": { "foreground": "#94a3b8", "fontStyle": "italic" } },
+    { "scope": ["keyword", "storage.type", "storage.modifier", "keyword.control"], "settings": { "foreground": "#7dd3fc" } },
+    { "scope": ["string", "punctuation.definition.string", "string.quoted"], "settings": { "foreground": "#34d399" } },
+    { "scope": ["entity.name.function", "support.function", "meta.function-call"], "settings": { "foreground": "#fbbf24" } },
+    { "scope": ["constant.numeric", "constant.language", "constant.character"], "settings": { "foreground": "#c084fc" } },
+    { "scope": ["variable", "entity.name.variable", "variable.parameter", "variable.other"], "settings": { "foreground": "#e2e8f0" } },
+    { "scope": ["entity.name.type", "entity.name.class", "support.class", "support.type"], "settings": { "foreground": "#f472b6" } },
+    { "scope": ["keyword.operator", "punctuation.separator", "punctuation.terminator"], "settings": { "foreground": "#ffffff" } },
+    { "scope": ["entity.other.attribute-name", "meta.attribute"], "settings": { "foreground": "#a78bfa" } },
+    { "scope": ["entity.name.tag", "meta.tag"], "settings": { "foreground": "#38bdf8" } }
   ]
 }
