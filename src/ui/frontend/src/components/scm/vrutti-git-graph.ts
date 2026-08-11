@@ -422,9 +422,9 @@ export class VruttiGitGraph extends LitElement {
             this.hasMore = true;
             this.commits = [];
             this.hasScrolled = false;
+            this.errorMsg = 'Loading...';
         }
 
-        this.errorMsg = 'Loading...';
         const branchRes = await this.runGit('rev-parse --abbrev-ref HEAD');
         if (branchRes.exitCode === 0) {
             this.currentBranch = branchRes.stdout.trim();
