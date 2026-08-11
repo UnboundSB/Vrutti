@@ -11,5 +11,15 @@
         "--vrutti-text-bright": "#ffffff",
         "--vrutti-accent": "#0ea5e9",
         "--vrutti-tree-active": "rgba(14, 165, 233, 0.2)"
-    }
+    },
+    "tokenColors": [
+        { "scope": ["keyword", "storage", "storage.type", "keyword.control"], "settings": { "foreground": "#C586C0" } },
+        { "scope": ["string", "string.quoted"], "settings": { "foreground": "#CE9178" } },
+        { "scope": ["entity.name.function", "support.function"], "settings": { "foreground": "#DCDCAA" } },
+        { "scope": ["constant.numeric"], "settings": { "foreground": "#B5CEA8" } },
+        { "scope": ["comment"], "settings": { "foreground": "#6A9955", "fontStyle": "italic" } },
+        { "scope": ["variable", "entity.name.variable", "variable.parameter"], "settings": { "foreground": "#9CDCFE" } },
+        { "scope": ["entity.name.type", "entity.name.class", "support.class"], "settings": { "foreground": "#4EC9B0" } },
+        { "scope": ["keyword.operator"], "settings": { "foreground": "#D4D4D4" } }
+    ]
 }
