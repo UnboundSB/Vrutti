@@ -564,42 +564,6 @@ namespace vrutti::ui {
             return "{}";
         });
 
-        w->bind("vruttiSearch", [this](const std::string& req) -> std::string {
-            auto parsedReq = vrutti::core::utils::JsonParser::parse(req);
-            std::string payload = "{}";
-            if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
-                payload = vrutti::core::utils::JsonSerializer::stringify(parsedReq->arrayElements[0], 0, false);
-            }
-            
-            vrutti::core::plugins::PluginLoader loader;
-            std::string dllPath = "vrutti_search.dll";
-#ifndef _WIN32
-            dllPath = "libvrutti_search.so";
-#endif
-            
-            // Try in current directory
-            auto plugin = loader.loadPlugin(dllPath);
-            if (!plugin) {
-                plugin = loader.loadPlugin("lib" + dllPath);
-            }
-            if (!plugin) {
-                // Try with explicit path if not in current directory
-                plugin = loader.loadPlugin(std::string("./") + dllPath);
-            }
-            if (!plugin) {
-                plugin = loader.loadPlugin(std::string("./lib") + dllPath);
-            }
-            
-            std::string result = "[]";
-            if (plugin) {
-                result = plugin->executeCommand("search", payload);
-                loader.unloadPlugin(plugin->getName());
-            } else {
-                std::cerr << "[UI] Failed to load search plugin DLL dynamically." << std::endl;
-            }
-            return result;
-        });
-
         w->bind("vruttiGitCommand", [this](const std::string& req) -> std::string {
             auto parsedReq = vrutti::core::utils::JsonParser::parse(req);
             std::string stdoutStr = "";

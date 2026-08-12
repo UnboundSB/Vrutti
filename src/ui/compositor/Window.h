@@ -5,6 +5,8 @@
 #include "../../core/terminal/ReplProcess.h"
 #include <memory>
 #include <unordered_map>
+#include "../../core/plugins/PluginLoader.h"
+
 namespace vrutti::ui {
     class Window {
     public:
@@ -26,5 +28,6 @@ namespace vrutti::ui {
         vrutti::core::ipc::IPCClient* m_ipc;
         std::unordered_map<std::string, std::unique_ptr<vrutti::core::terminal::TerminalProcess>> m_terminals;
         std::unique_ptr<vrutti::core::terminal::ReplProcess> m_repl;
+        
     };
 }
