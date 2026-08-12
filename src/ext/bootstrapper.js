@@ -121,6 +121,11 @@ class ExtensionManager {
                         contributes: pkg.contributes,
                         activationEvents: pkg.activationEvents
                     });
+                    
+                    // Register TextMate grammars
+                    const { registerGrammars } = require('./textmate-engine');
+                    registerGrammars(extPath, pkg.contributes);
+                    
                 } catch (e) {
                     console.error(`Failed to read package.json for ${dir}`);
                 }
@@ -375,10 +380,9 @@ async function main() {
                                   themes.find(t => t.extensionName === themeLabelOrExtName);
                 
                 if (targetTheme && fs.existsSync(targetTheme.themePath)) {
-                    let themeRaw = await fs.promises.readFile(targetTheme.themePath, 'utf8');
-                    themeRaw = themeRaw.replace(/\/\*([\s\S]*?)\*\/|([^\\:]|^)\/\/.*$/gm, '$2'); // strip comments
                     try {
-                        const originalThemeData = JSON.parse(themeRaw);
+                        const { loadThemeRecursive } = require('./theme-resolver');
+                        const originalThemeData = await loadThemeRecursive(targetTheme.themePath);
                         const translatedThemeData = manager.translateThemeColorsInMemory(originalThemeData);
                         
                         log(`Loading theme: ${targetTheme.label}`);
@@ -388,7 +392,7 @@ async function main() {
                         
                         ipcClient.sendNotification('theme/load', translatedThemeData);
                     } catch (e) {
-                        console.error(`Failed to parse theme JSON: ${targetTheme.themePath}`);
+                        console.error(`Failed to parse theme JSON: ${targetTheme.themePath}`, e);
                     }
                 } else {
                     log(`Theme not found or missing path for ${themeLabelOrExtName}`);
@@ -452,6 +456,21 @@ async function main() {
             }
         });
         
+        ipcClient.on('editor/tokenize', async (payloadJson) => {
+            try {
+                const req = typeof payloadJson === 'string' ? JSON.parse(payloadJson) : payloadJson;
+                const { textmateEngine } = require('./textmate-engine'); // lazy load
+                // wait, I exported it directly
+                const { tokenizeDocument } = require('./textmate-engine');
+                const tokens = await tokenizeDocument(req.languageId, req.text);
+                if (tokens) {
+                    ipcClient.sendNotification('editor/tokens', { fileId: req.fileId, tokens });
+                }
+            } catch (e) {
+                log(`Tokenization error: ${e.message}`);
+            }
+        });
+        
         // Intercept generic command execution from UI
         ipcClient.on('command/execute', async (payload) => {
             try {
@@ -463,6 +482,81 @@ async function main() {
                 await vruttiApi.commands.executeCommand(commandId, ...args);
             } catch (err) {
                 log(`Command execution failed: ${err.message}`);
+            }
+        });
+        
+        let searchCache = [];
+        let searchCurrentDir = '';
+        let isIndexing = false;
+        
+        const fuzzyMatch = (query, target) => {
+            if (!query) return true;
+            const q = query.toLowerCase();
+            const t = target.toLowerCase();
+            let qIdx = 0;
+            for (let i = 0; i < t.length; i++) {
+                if (t[i] === q[qIdx]) {
+                    qIdx++;
+                    if (qIdx === q.length) return true;
+                }
+            }
+            return false;
+        };
+
+        ipcClient.on('search/query', (payload) => {
+            try {
+                const req = typeof payload === 'string' ? JSON.parse(payload) : payload;
+                if (!req || typeof req !== 'object') return;
+                
+                let dir = req.directory || '';
+                if (dir.startsWith('file:///')) dir = dir.substring(8);
+                else if (dir.startsWith('file://')) dir = dir.substring(7);
+                
+                const query = req.query || '';
+                
+                if (dir !== searchCurrentDir && !isIndexing) {
+                    searchCurrentDir = dir;
+                    searchCache = [];
+                    isIndexing = true;
+                    
+                    const { exec } = require('child_process');
+                    const isWin = os.platform() === 'win32';
+                    const cmd = isWin ? `dir /S /B /A-D "${dir}"` : `find "${dir}" -type f`;
+                    
+                    log(`Starting OS background search index: ${cmd}`);
+                    exec(cmd, { maxBuffer: 1024 * 1024 * 50 }, (error, stdout) => {
+                        if (error && error.code !== 1) { // code 1 can just mean some files weren't found on windows sometimes, or grep fails
+                            log(`Search indexing error: ${error.message}`);
+                        }
+                        if (stdout) {
+                            searchCache = stdout.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+                            log(`Background indexing complete for ${dir}. Found ${searchCache.length} items.`);
+                        }
+                        isIndexing = false;
+                    });
+                }
+                
+                const response = {
+                    fileMatches: [],
+                    folderMatches: [],
+                    wordMatches: []
+                };
+                
+                if (query) {
+                    let count = 0;
+                    for (const filePath of searchCache) {
+                        if (count >= 2000) break;
+                        const name = path.basename(filePath);
+                        if (fuzzyMatch(query, name)) {
+                            response.fileMatches.push(filePath);
+                            count++;
+                        }
+                    }
+                }
+                
+                ipcClient.sendNotification('search/results', response);
+            } catch (e) {
+                log(`Search error: ${e.message}`);
             }
         });
         
