@@ -5,14 +5,15 @@ interface Config {
   'editor.fontSize': number;
   'editor.fontFamily': string;
   'editor.wordWrap': boolean;
-  'appearance.glassmorphism': boolean;
+  'appearance.transparencyEffects': boolean;
+  'workbench.colorTheme'?: string;
 }
 
 const DEFAULT_CONFIG: Config = {
   'editor.fontSize': 14,
   'editor.fontFamily': "'Fira Code', monospace",
   'editor.wordWrap': false,
-  'appearance.glassmorphism': false
+  'appearance.transparencyEffects': false
 };
 
 import { globalHoverStyle } from '../shared-styles';
@@ -29,10 +30,10 @@ export class VruttiSettings extends LitElement {
   private availableThemes: { id: string, label: string }[] = [];
 
   @state()
-  private appliedTheme: string = 'vrutti default dark';
+  private appliedTheme: string = '';
 
   @state()
-  private selectedTheme: string = 'vrutti default dark';
+  private selectedTheme: string = '';
 
   @state()
   private showDirtyModal = false;
@@ -109,6 +110,11 @@ export class VruttiSettings extends LitElement {
   private handleSettingChange(key: keyof Config, value: any) {
     this.config = { ...this.config, [key]: value };
     
+    if (key === 'workbench.colorTheme') {
+      this.appliedTheme = value;
+      this.selectedTheme = value;
+    }
+
     // Debounce the save event
     if (this.saveTimeout) {
       window.clearTimeout(this.saveTimeout);
@@ -197,6 +203,13 @@ export class VruttiSettings extends LitElement {
 
     .content {
       flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .settings-scroll {
+      flex: 1;
       padding: 24px 40px;
       overflow-y: auto;
     }
@@ -257,8 +270,8 @@ export class VruttiSettings extends LitElement {
       display: flex;
       justify-content: flex-end;
       gap: 12px;
-      margin-top: 24px;
-      padding-top: 24px;
+      padding: 16px 24px;
+      background: var(--vrutti-surface, #13151f);
       border-top: 1px solid var(--vrutti-surface-border, #23273b);
     }
 
@@ -353,12 +366,12 @@ export class VruttiSettings extends LitElement {
           `)}
         </div>
         
-        <div class="content" style="display: flex; flex-direction: column;">
-          <div style="flex: 1; overflow-y: auto;">
+        <div class="content">
+          <div class="settings-scroll">
             ${this.renderCategoryContent()}
           </div>
-          <div class="footer-actions" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--vrutti-surface-border);">
-            <button class="btn" @click=${this.requestClose}>Exit</button>
+          <div class="footer-actions">
+            <button class="btn" @click=${this.requestClose}>Cancel</button>
             <button class="btn" @click=${this.applyAndExit}>OK</button>
             <button class="btn btn-primary" @click=${this.apply}>Apply</button>
           </div>
@@ -409,12 +422,12 @@ export class VruttiSettings extends LitElement {
       case 'Appearance':
         return html`
           <div class="setting-group">
-            <div class="setting-title">Enable Glassmorphism</div>
+            <div class="setting-title">Enable Transparency Effects</div>
             <div class="setting-desc">Apply premium frosted glass transparency to UI panels. (Recommended with Vrutti Glass theme)</div>
             <div class="toggle-container">
-              <input type="checkbox" class="checkbox" .checked=${this.config['appearance.glassmorphism']} 
-                     @change=${(e: any) => this.handleSettingChange('appearance.glassmorphism', e.target.checked)} />
-              <span>Glassmorphism Enabled</span>
+              <input type="checkbox" class="checkbox" .checked=${this.config['appearance.transparencyEffects']} 
+                     @change=${(e: any) => this.handleSettingChange('appearance.transparencyEffects', e.target.checked)} />
+              <span>Transparency Effects Enabled</span>
             </div>
           </div>
         `;

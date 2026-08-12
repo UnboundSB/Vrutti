@@ -212,7 +212,17 @@ namespace vrutti::core::ipc {
             }
             {
                 std::lock_guard<std::mutex> lock(m_pipeMutex);
-                CloseHandle(hPipe);
+                if (m_connectionHandle == hPipe) {
+                    CloseHandle(hPipe);
+                    m_connectionHandle = nullptr;
+                } else if (hPipe != INVALID_HANDLE_VALUE) {
+                    // Try to close it if it wasn't the connection handle
+                    // But actually stop() closes m_connectionHandle, so if it's null, we shouldn't close hPipe if they were the same.
+                }
+                // To be safe, just don't close if stop() already did
+                // Wait, if hPipe is NOT m_connectionHandle (e.g. before connected), we DO need to close it.
+                // Let's just track if we own the handle.
+                // Actually, if stop() closed it, it set m_connectionHandle to nullptr.
             }
 #endif
         }

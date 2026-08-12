@@ -40,7 +40,9 @@
         background: transparent;
       }
       body.glass-mode {
-        background: var(--vrutti-glass-bg);
+        background: var(--vrutti-glass-bg, transparent);
+        backdrop-filter: var(--vrutti-backdrop-filter, blur(20px));
+        -webkit-backdrop-filter: var(--vrutti-backdrop-filter, blur(20px));
       }
     </style>
   </head>

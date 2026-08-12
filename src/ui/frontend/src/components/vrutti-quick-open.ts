@@ -131,7 +131,7 @@ export class VruttiQuickOpen extends LitElement {
 
             if ((window as any).vruttiSearch) {
                 const req = { directory: actualDir };
-                const resStr = await (window as any).vruttiSearch([{ command: "find_files", ...req }]);
+                const resStr = await (window as any).vruttiSearch({ command: "find_files", ...req });
                 // Fallback in case search plugin doesn't route properly
                 let parsed = JSON.parse(resStr);
                 

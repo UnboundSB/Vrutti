@@ -42,16 +42,39 @@ export class VruttiPanel extends LitElement {
   private nextGroupId = 2;
   private nextTerminalId = 2;
 
+  private terminalReadyStatus: Record<string, boolean> = {};
+  private terminalInputQueues: Record<string, string[]> = {};
+
   connectedCallback() {
     super.connectedCallback();
     window.addEventListener('vrutti-output-write', this.handleOutputWrite);
     window.addEventListener('vrutti-ipc', this.handleIpc as EventListener);
+    window.addEventListener('terminal-ready', this.handleTerminalReady as EventListener);
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     window.removeEventListener('vrutti-output-write', this.handleOutputWrite);
     window.removeEventListener('vrutti-ipc', this.handleIpc as EventListener);
+    window.removeEventListener('terminal-ready', this.handleTerminalReady as EventListener);
+  }
+
+  private handleTerminalReady = (e: Event) => {
+    const termId = (e as CustomEvent).detail?.id;
+    if (termId) {
+      this.terminalReadyStatus[termId] = true;
+      if (this.terminalInputQueues[termId]) {
+        this.terminalInputQueues[termId].forEach(cmd => this.sendTerminalInput(termId, cmd));
+        this.terminalInputQueues[termId] = [];
+      }
+    }
+  };
+
+  private sendTerminalInput(termId: string, cmd: string) {
+    if ((window as any).vruttiTerminalInput) {
+      const b64 = btoa(new TextEncoder().encode(cmd).reduce((data, byte) => data + String.fromCharCode(byte), ''));
+      (window as any).vruttiTerminalInput(termId, b64);
+    }
   }
 
   private handleIpc = (e: Event) => {
@@ -64,10 +87,13 @@ export class VruttiPanel extends LitElement {
       const activeGroup = this.terminalGroups.find(g => g.id === this.activeGroupId);
       if (activeGroup && activeGroup.activeTerminalId) {
         const cmd = msg.params.command + "\r";
-        if ((window as any).vruttiTerminalInput) {
-          // Use safe base64 encoding for unicode support
-          const b64 = btoa(new TextEncoder().encode(cmd).reduce((data, byte) => data + String.fromCharCode(byte), ''));
-          (window as any).vruttiTerminalInput(activeGroup.activeTerminalId, b64);
+        const termId = activeGroup.activeTerminalId;
+        
+        if (this.terminalReadyStatus[termId]) {
+          this.sendTerminalInput(termId, cmd);
+        } else {
+          if (!this.terminalInputQueues[termId]) this.terminalInputQueues[termId] = [];
+          this.terminalInputQueues[termId].push(cmd);
         }
       }
     }

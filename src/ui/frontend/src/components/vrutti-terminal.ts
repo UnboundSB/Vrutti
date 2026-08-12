@@ -237,7 +237,9 @@ export class VruttiTerminal extends LitElement {
       if (cwd.startsWith('file:///')) cwd = cwd.substring(8);
       else if (cwd.startsWith('file://')) cwd = cwd.substring(7);
       
-      (window as any).vruttiTerminalInit(this.terminalId, cwd).catch(console.error);
+      (window as any).vruttiTerminalInit(this.terminalId, cwd).then(() => {
+        this.dispatchEvent(new CustomEvent('terminal-ready', { detail: { id: this.terminalId }, bubbles: true, composed: true }));
+      }).catch(console.error);
     }
   }
 

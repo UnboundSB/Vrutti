@@ -149,9 +149,9 @@ export class VruttiApp extends LitElement {
     
     // Fetch initial settings from native
     if ((window as any).vruttiGetSettings) {
-      (window as any).vruttiGetSettings().then((jsonStr: string) => {
+      (window as any).vruttiGetSettings().then((payload: any) => {
         try {
-          const settings = JSON.parse(jsonStr);
+          const settings = typeof payload === 'string' ? JSON.parse(payload) : payload;
           this.globalSettings = settings;
           
           // Broadcast them to components
@@ -412,7 +412,7 @@ export class VruttiApp extends LitElement {
 
   private handleSettingChanged = async (e: Event) => {
     const detail = (e as CustomEvent).detail;
-    if (detail && detail.key === 'appearance.glassmorphism') {
+    if (detail && detail.key === 'appearance.transparencyEffects') {
       if (detail.value) {
         document.body.classList.add('glass-mode');
         this.style.setProperty('--vrutti-backdrop-filter', 'blur(20px)');
@@ -623,6 +623,7 @@ export class VruttiApp extends LitElement {
       position: relative;
       min-width: 0;
       overflow: hidden;
+      z-index: 10000;
     }
     .terminal-resizer {
       height: 4px;
@@ -632,7 +633,7 @@ export class VruttiApp extends LitElement {
       top: -2px;
       left: 0;
       right: 0;
-      z-index: 100;
+      z-index: 10000;
     }
     .terminal-resizer:hover {
       background: var(--vrutti-surface-border);
@@ -826,7 +827,7 @@ export class VruttiApp extends LitElement {
           ${this.showSettings ? html`
             <vrutti-settings style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 500;"></vrutti-settings>
           ` : html`
-            <div style="flex: 1; display: flex; flex-direction: column; position: relative;">
+            <div style="flex: 1; display: flex; flex-direction: column; position: relative; min-height: 0; overflow: hidden;">
               ${this.activeExtension ? html`<vrutti-extension-details .extension=${this.activeExtension} style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 40;"></vrutti-extension-details>` : ''}
               <vrutti-editor-layout id="main-layout"></vrutti-editor-layout>
             </div>

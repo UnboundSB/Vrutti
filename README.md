@@ -18,6 +18,23 @@
 
 <br/>
 
+<h3>🚀 <b>Download & Play (No Setup Required!)</b></h3>
+
+Vrutti is pre-packaged and ready to go. You do NOT need Docker, CMake, or any compilers to run Vrutti. Just click one of the buttons below to download and launch!
+
+<br/>
+
+<a href="https://github.com/UnboundSB/Vrutti/releases/latest/download/Vrutti_Setup.exe">
+  <img src="https://img.shields.io/badge/Download-EXE_Installer-blue?style=for-the-badge&logo=windows&logoColor=white&scale=1.5" alt="Download EXE" height="40">
+</a>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<a href="https://github.com/UnboundSB/Vrutti/releases/latest/download/vrutti_early_release.zip">
+  <img src="https://img.shields.io/badge/Download-Portable_ZIP-ff69b4?style=for-the-badge&logo=files&logoColor=white&scale=1.5" alt="Download ZIP" height="40">
+</a>
+
+<br/>
+<br/>
+
 </div>
 
 ---
@@ -25,34 +42,20 @@
 ## ✨ Features That Wow
 
 🚀 **Lightning Fast Engine**
-> Robust C++ native backend communicating with a nimble Node.js/Lit frontend via IPC, keeping memory footprint low and UI responsiveness incredibly high.
+<br/>
+Robust C++ native backend communicating with a nimble Node.js/Lit frontend via IPC, keeping memory footprint low and UI responsiveness incredibly high.
 
 🧬 **Topological Git Visualizer**
-> Explore your commit history with a buttery-smooth, hardware-accelerated horizontal SVG canvas. Features drag-to-pan, interactive zooming, dynamic routing, reflog parsing, and direct git actions (Revert, Delete, Rename) right from the UI!
+<br/>
+Explore your commit history with a buttery-smooth, hardware-accelerated horizontal SVG canvas. Features drag-to-pan, interactive zooming, dynamic routing, reflog parsing, and direct git actions (Revert, Delete, Rename) right from the UI!
 
 🎨 **Sleek & Premium Interface**
-> Built with **Lit Web Components**, providing a modern, fast, and highly customizable user interface featuring beautiful pastel colors, sleek dark modes, and dynamic micro-animations that feel premium to the touch.
+<br/>
+Built with **Lit Web Components**, providing a modern, fast, and highly customizable user interface featuring beautiful pastel colors, sleek dark modes, and dynamic micro-animations that feel premium to the touch.
 
 🛠 **Integrated Power Tools**
-> Built-in task runner supporting custom `tasks.json` configuration natively tied to the embedded terminal, plus out-of-the-box syntax highlighting powered by CodeMirror.
-
----
-
-## 🚀 Download & Play (No Setup Required!)
-
-Vrutti is pre-packaged and ready to go. **You do NOT need Docker, CMake, or any compilers to run Vrutti.** Just download and launch!
-
-### 🎯 Option A: Windows Installer (Recommended)
-1. Go to the [Releases](https://github.com/UnboundSB/Vrutti/releases) page.
-2. Download the latest `Vrutti_Setup.exe`.
-3. Double click the installer to install it on your PC.
-4. Launch **Vrutti IDE** from your Desktop or Start Menu!
-
-### 📦 Option B: Portable ZIP
-1. Go to the [Releases](https://github.com/UnboundSB/Vrutti/releases) page.
-2. Download the latest `vrutti_early_release.zip`.
-3. Extract the folder anywhere on your computer.
-4. Double-click `vrutti.exe` inside the folder to run it instantly without installing.
+<br/>
+Built-in task runner supporting custom `tasks.json` configuration natively tied to the embedded terminal, plus out-of-the-box syntax highlighting powered by CodeMirror.
 
 ---
 
@@ -68,15 +71,19 @@ To build the IDE locally:
 4. Build the backend C++ application using CMake.
 5. Run the generated `build/vrutti_app.exe`!
 
-### Building the Setup Installer
-Want to package the installer yourself?
-1. Ensure you have [Inno Setup 6](https://jrsoftware.org/isdl.php) installed on your Windows machine.
+### Building the Release & Setup Installer
+Want to package the `.zip` or installer yourself?
+1. Ensure you have [Inno Setup 6](https://jrsoftware.org/isdl.php) installed on your Windows machine for EXE packaging.
 2. Build the C++ backend and the frontend via Docker.
-3. Run the packaging script:
+3. Run the packaging scripts:
    ```powershell
+   # To build the portable ZIP:
+   .\package_release.ps1
+
+   # To build the EXE Installer (requires Inno Setup):
    .\build_installer.ps1
    ```
-4. The script will generate `Vrutti_Setup.exe` in the root folder.
+4. The scripts will generate `vrutti_early_release.zip` and `Vrutti_Setup.exe` in the root folder.
 
 ---
 
@@ -84,5 +91,6 @@ Want to package the installer yourself?
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 <div align="center">
+  <br/>
   <h3>Built with ❤️ and ☕ for modern developers.</h3>
 </div>

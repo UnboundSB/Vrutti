@@ -1,7 +1,7 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property, query, state } from 'lit/decorators.js';
-import { EditorState, StateField, StateEffect, RangeSet } from '@codemirror/state';
-import { EditorView, keymap, lineNumbers, highlightActiveLineGutter, highlightSpecialChars, drawSelection, dropCursor, rectangularSelection, crosshairCursor, highlightActiveLine, gutter, GutterMarker } from '@codemirror/view';
+import { EditorState, StateField, StateEffect, RangeSet, RangeSetBuilder } from '@codemirror/state';
+import { EditorView, keymap, lineNumbers, highlightActiveLineGutter, highlightSpecialChars, drawSelection, dropCursor, rectangularSelection, crosshairCursor, highlightActiveLine, gutter, GutterMarker, Decoration, DecorationSet } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { searchKeymap, highlightSelectionMatches } from '@codemirror/search';
 import { autocompletion, completionKeymap, closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
@@ -65,6 +65,60 @@ const breakpointGutter = [
         }
     })
 ];
+
+export const setTokensEffect = StateEffect.define<any[]>();
+
+export const textmateTokensField = StateField.define<DecorationSet>({
+    create() { return Decoration.none; },
+    update(decorations, tr) {
+        let newDecorations = decorations.map(tr.changes);
+        for (let e of tr.effects) {
+            if (e.is(setTokensEffect)) {
+                const tokensArray = e.value;
+                const builder = new RangeSetBuilder<Decoration>();
+                const doc = tr.state.doc;
+                const tokenColors = (window as any).vruttiActiveThemeTokenColors || [];
+                
+                for (let i = 0; i < tokensArray.length; i++) {
+                    if (i >= doc.lines) break;
+                    const line = doc.line(i + 1);
+                    const lineTokens = tokensArray[i];
+                    for (const t of lineTokens) {
+                        if (t.startIndex === t.endIndex) continue;
+                        
+                        let color = null;
+                        for (let j = t.scopes.length - 1; j >= 0; j--) {
+                            const scope = t.scopes[j];
+                            for (const rule of tokenColors) {
+                                if (!rule.scope) continue;
+                                const ruleScopes = Array.isArray(rule.scope) ? rule.scope : rule.scope.split(',').map((s: string) => s.trim());
+                                for (const rs of ruleScopes) {
+                                    if (scope === rs || scope.startsWith(rs + '.')) {
+                                        if (rule.settings && rule.settings.foreground) {
+                                            color = rule.settings.foreground;
+                                            break;
+                                        }
+                                    }
+                                }
+                                if (color) break;
+                            }
+                            if (color) break;
+                        }
+                        
+                        if (color) {
+                            builder.add(line.from + t.startIndex, line.from + t.endIndex, Decoration.mark({
+                                attributes: { style: `color: ${color}` }
+                            }));
+                        }
+                    }
+                }
+                newDecorations = builder.finish();
+            }
+        }
+        return newDecorations;
+    },
+    provide: f => EditorView.decorations.from(f)
+});
 
 @customElement('vrutti-editor')
 export class VruttiEditor extends LitElement {
@@ -162,15 +216,48 @@ export class VruttiEditor extends LitElement {
             this._isDarkTheme = detail.isDark;
             if (this._editorView) {
                 this.initEditor();
+                this.requestTokens();
             }
         }
     };
+    
+    private _ipcHandler = (e: Event) => {
+        const msg = (e as CustomEvent).detail;
+        if (msg.method === 'editor/tokens' && msg.params && msg.params.fileId === this.filePath) {
+            if (this._editorView) {
+                this._editorView.dispatch({
+                    effects: setTokensEffect.of(msg.params.tokens)
+                });
+            }
+        }
+    };
+
+    private requestTokens() {
+        if (!this.filePath || !this._fileContent) return;
+        const ext = this.filePath.split('.').pop()?.toLowerCase();
+        let langId = 'plaintext';
+        if (ext === 'js' || ext === 'ts') langId = 'javascript'; // roughly map
+        else if (ext === 'cpp' || ext === 'h') langId = 'cpp';
+        else if (ext === 'py') langId = 'python';
+        else if (ext === 'json') langId = 'json';
+        else langId = ext || 'plaintext';
+        
+        window.dispatchEvent(new CustomEvent('vrutti-ipc', {
+            detail: {
+                method: 'editor/tokenize',
+                languageId: langId,
+                fileId: this.filePath,
+                text: this._fileContent
+            }
+        }));
+    }
 
     constructor() {
         super();
         window.addEventListener('setting-changed', this._settingsHandler as EventListener);
         window.addEventListener('editor-action', this._editorActionHandler as EventListener);
         window.addEventListener('theme-loaded', this._themeHandler as EventListener);
+        window.addEventListener('vrutti-ipc', this._ipcHandler as EventListener);
         try {
             const applied = localStorage.getItem('vrutti-applied-theme');
             if (applied) {
@@ -297,13 +384,17 @@ export class VruttiEditor extends LitElement {
                         this._editorView.dispatch({
                             changes: { from: 0, to: this._editorView.state.doc.length, insert: this._fileContent }
                         });
+                        this.requestTokens();
                     } else {
                         this.initEditor();
+                        this.requestTokens();
                     }
                 });
             }
         }
     }
+
+
 
     private getLanguageExtension() {
         const ext = this.filePath.split('.').pop()?.toLowerCase();
@@ -365,23 +456,24 @@ export class VruttiEditor extends LitElement {
             const applied = localStorage.getItem('vrutti-applied-theme');
             if (applied) {
                 const tTheme = JSON.parse(applied);
-                if (tTheme.tokenColors) {
-                    const style = this.buildHighlightStyle(tTheme.tokenColors);
-                    const bg = tTheme.colors?.['--vrutti-bg'] || (this._isDarkTheme ? '#1e1e1e' : '#ffffff');
-                    const fg = tTheme.colors?.['--vrutti-text-bright'] || tTheme.colors?.['--vrutti-text'] || (this._isDarkTheme ? '#d4d4d4' : '#333333');
-                    const selection = tTheme.colors?.['editor.selectionBackground'] || (this._isDarkTheme ? '#264f78' : '#add6ff');
-                    
-                    const baseTheme = EditorView.theme({
-                        "&": { color: fg, backgroundColor: bg },
-                        ".cm-content": { caretColor: fg },
-                        ".cm-cursor, .cm-dropCursor": { borderLeftColor: fg },
-                        "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection": { backgroundColor: selection },
-                        ".cm-activeLine": { backgroundColor: "transparent" },
-                        ".cm-gutters": { backgroundColor: bg, color: fg, borderRight: "none" }
-                    }, { dark: this._isDarkTheme });
-                    
-                    return [baseTheme, syntaxHighlighting(style)];
-                }
+                    if (tTheme.tokenColors) {
+                        (window as any).vruttiActiveThemeTokenColors = tTheme.tokenColors;
+                        const style = this.buildHighlightStyle(tTheme.tokenColors);
+                        const bg = tTheme.colors?.['--vrutti-bg'] || (this._isDarkTheme ? '#1e1e1e' : '#ffffff');
+                        const fg = tTheme.colors?.['--vrutti-text-bright'] || tTheme.colors?.['--vrutti-text'] || (this._isDarkTheme ? '#d4d4d4' : '#333333');
+                        const selection = tTheme.colors?.['editor.selectionBackground'] || (this._isDarkTheme ? '#264f78' : '#add6ff');
+                        
+                        const baseTheme = EditorView.theme({
+                            "&": { color: fg, backgroundColor: bg },
+                            ".cm-content": { caretColor: fg },
+                            ".cm-cursor, .cm-dropCursor": { borderLeftColor: fg },
+                            "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection": { backgroundColor: selection },
+                            ".cm-activeLine": { backgroundColor: "transparent" },
+                            ".cm-gutters": { backgroundColor: bg, color: fg, borderRight: "none" }
+                        }, { dark: this._isDarkTheme });
+                        
+                        return [baseTheme, syntaxHighlighting(style), textmateTokensField];
+                    }
             }
         } catch(e) {
             console.error('Error generating theme extension', e);
@@ -457,6 +549,12 @@ export class VruttiEditor extends LitElement {
                 }));
             }
             if (update.docChanged) {
+                this._fileContent = update.state.doc.toString();
+                if ((this as any)._tokenTimeout) clearTimeout((this as any)._tokenTimeout);
+                (this as any)._tokenTimeout = setTimeout(() => {
+                    this.requestTokens();
+                }, 200); // Debounce tokenization
+
                 if (this._saveTimeout) {
                     clearTimeout(this._saveTimeout);
                 }
@@ -529,6 +627,7 @@ export class VruttiEditor extends LitElement {
         window.removeEventListener('setting-changed', this._settingsHandler as EventListener);
         window.removeEventListener('editor-action', this._editorActionHandler as EventListener);
         window.removeEventListener('theme-loaded', this._themeHandler as EventListener);
+        window.removeEventListener('vrutti-ipc', this._ipcHandler as EventListener);
         if (this._saveTimeout) {
             clearTimeout(this._saveTimeout);
             this._saveTimeout = undefined;

@@ -44,7 +44,7 @@ namespace vrutti::core::config {
 
         if (!std::filesystem::exists(filePath)) {
             // Default config
-            cachedSource_ = "{\n  \"workbench.colorTheme\": \"vrutti default dark\",\n  \"editor.fontSize\": 14,\n  \"editor.fontFamily\": \"'Fira Code', monospace\",\n  \"editor.wordWrap\": false\n}";
+            cachedSource_ = "{}";
             root_ = utils::JsonParser::parse(cachedSource_);
             saveAsync(); // Write defaults to disk
             return;

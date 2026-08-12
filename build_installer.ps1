@@ -14,6 +14,9 @@ New-Item -ItemType Directory -Force -Path "$ReleaseDir\src\ui\frontend\dist" | O
 Write-Host "Copying Vrutti executable..."
 if (Test-Path "build\vrutti_app.exe") {
     Copy-Item "build\vrutti_app.exe" "$ReleaseDir\vrutti.exe"
+    if (Test-Path "build\libvrutti_search.dll") {
+        Copy-Item "build\libvrutti_search.dll" "$ReleaseDir\"
+    }
 } else {
     Write-Host "ERROR: build\vrutti_app.exe not found! Compile the project first."
     exit 1

@@ -121,6 +121,11 @@ class ExtensionManager {
                         contributes: pkg.contributes,
                         activationEvents: pkg.activationEvents
                     });
+                    
+                    // Register TextMate grammars
+                    const { registerGrammars } = require('./textmate-engine');
+                    registerGrammars(extPath, pkg.contributes);
+                    
                 } catch (e) {
                     console.error(`Failed to read package.json for ${dir}`);
                 }
@@ -375,10 +380,9 @@ async function main() {
                                   themes.find(t => t.extensionName === themeLabelOrExtName);
                 
                 if (targetTheme && fs.existsSync(targetTheme.themePath)) {
-                    let themeRaw = await fs.promises.readFile(targetTheme.themePath, 'utf8');
-                    themeRaw = themeRaw.replace(/\/\*([\s\S]*?)\*\/|([^\\:]|^)\/\/.*$/gm, '$2'); // strip comments
                     try {
-                        const originalThemeData = JSON.parse(themeRaw);
+                        const { loadThemeRecursive } = require('./theme-resolver');
+                        const originalThemeData = await loadThemeRecursive(targetTheme.themePath);
                         const translatedThemeData = manager.translateThemeColorsInMemory(originalThemeData);
                         
                         log(`Loading theme: ${targetTheme.label}`);
@@ -388,7 +392,7 @@ async function main() {
                         
                         ipcClient.sendNotification('theme/load', translatedThemeData);
                     } catch (e) {
-                        console.error(`Failed to parse theme JSON: ${targetTheme.themePath}`);
+                        console.error(`Failed to parse theme JSON: ${targetTheme.themePath}`, e);
                     }
                 } else {
                     log(`Theme not found or missing path for ${themeLabelOrExtName}`);
@@ -449,6 +453,21 @@ async function main() {
             } catch (err) {
                 log(`Failed to execute run command: ${err.message}`);
                 ipcClient.sendNotification('run/output', { text: `Error: ${err.message}\n` });
+            }
+        });
+        
+        ipcClient.on('editor/tokenize', async (payloadJson) => {
+            try {
+                const req = typeof payloadJson === 'string' ? JSON.parse(payloadJson) : payloadJson;
+                const { textmateEngine } = require('./textmate-engine'); // lazy load
+                // wait, I exported it directly
+                const { tokenizeDocument } = require('./textmate-engine');
+                const tokens = await tokenizeDocument(req.languageId, req.text);
+                if (tokens) {
+                    ipcClient.sendNotification('editor/tokens', { fileId: req.fileId, tokens });
+                }
+            } catch (e) {
+                log(`Tokenization error: ${e.message}`);
             }
         });
         

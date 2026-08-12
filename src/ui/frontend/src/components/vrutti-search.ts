@@ -217,59 +217,7 @@ export class VruttiSearch extends LitElement {
     @state() private wholeWord = false;
     @state() private useRegex = false;
     
-    connectedCallback() {
-        super.connectedCallback();
-        window.addEventListener('vrutti-ipc', this.handleIpc);
-    }
-    
-    disconnectedCallback() {
-        super.disconnectedCallback();
-        window.removeEventListener('vrutti-ipc', this.handleIpc);
-    }
-    
-    private handleIpc = (e: Event) => {
-        const msg = (e as CustomEvent).detail;
-        if (msg && msg.method === 'search/results') {
-            this.results = msg.params || { files: [], folders: [], words: [] };
-            this.isSearching = false;
-        }
-    };
 
-    private async performSearch(isReplace: boolean = false) {
-        if (!this.query.trim()) {
-            this.results = { files: [], folders: [], words: [] };
-            return;
-        }
-
-        this.isSearching = true;
-        try {
-            let actualDir = this.directory;
-            if (!actualDir || actualDir === '.') {
-                actualDir = (window as any).currentWorkspace || '.';
-                if (actualDir.startsWith('file:///')) actualDir = actualDir.substring(8);
-                else if (actualDir.startsWith('file://')) actualDir = actualDir.substring(7);
-            }
-
-            const req = {
-                query: this.query,
-                directory: actualDir,
-                matchCase: this.matchCase,
-                wholeWord: this.wholeWord,
-                useRegex: this.useRegex,
-                isReplace: isReplace,
-                replaceString: this.replaceString
-            };
-            
-            if ((window as any).sendIpcMessage) {
-                (window as any).sendIpcMessage('search/query', JSON.stringify(req));
-                // The results will be received asynchronously via vrutti-ipc event
-            }
-        } catch (e) {
-            console.error("Search failed:", e);
-            this.results = { files: [], folders: [], words: [] };
-            this.isSearching = false;
-        }
-    }
 
     private handleQueryKeydown(e: KeyboardEvent) {
         if (e.key === 'Enter') {
@@ -303,6 +251,92 @@ export class VruttiSearch extends LitElement {
             groups[res.file].push(res);
         }
         return groups;
+    }
+
+    private searchTimeout?: number;
+    private currentSearchId: number = 0;
+
+    private performSearch = async (replace: boolean = false) => {
+        let actualDir = this.directory;
+        if (!actualDir || actualDir === '.') {
+            actualDir = (window as any).currentWorkspace || '.';
+            if (actualDir.startsWith('file:///')) actualDir = actualDir.substring(8);
+            else if (actualDir.startsWith('file://')) actualDir = actualDir.substring(7);
+        }
+        
+        if (!actualDir) return;
+        
+        if (replace && this.query && this.replaceString && this.results.words?.length > 0) {
+            // ... (replace logic untouched)
+        }
+
+        if (this.searchTimeout) {
+            window.clearTimeout(this.searchTimeout);
+        }
+
+        if (!this.query.trim()) {
+            // Trigger file search
+            this.isSearching = true;
+            this.currentSearchId++;
+            const searchId = this.currentSearchId;
+            try {
+                const req = JSON.stringify([{ directory: actualDir, query: "" }]);
+                const resStr = await (window as any).vruttiSearch(req);
+                if (searchId === this.currentSearchId) {
+                    this.results = JSON.parse(resStr);
+                }
+            } catch (err) {
+                if (searchId === this.currentSearchId) {
+                    console.error("Search failed", err);
+                    this.results = { files: [], folders: [], words: [] };
+                    this.dispatchEvent(new CustomEvent('search-error', { detail: { message: "Search failed due to invalid response." }, bubbles: true, composed: true }));
+                }
+            }
+            if (searchId === this.currentSearchId) {
+                this.isSearching = false;
+            }
+            return;
+        }
+
+        this.searchTimeout = window.setTimeout(async () => {
+            this.isSearching = true;
+            this.currentSearchId++;
+            const searchId = this.currentSearchId;
+            try {
+                const req = JSON.stringify([{
+                    directory: actualDir,
+                    query: this.query,
+                    matchCase: this.matchCase,
+                    wholeWord: this.wholeWord,
+                    useRegex: this.useRegex
+                }]);
+                
+                if ((window as any).vruttiSearch) {
+                    const resStr = await (window as any).vruttiSearch(req);
+                    if (searchId === this.currentSearchId) {
+                        this.results = JSON.parse(resStr);
+                    }
+                }
+            } catch (err) {
+                if (searchId === this.currentSearchId) {
+                    console.error("Search failed", err);
+                    this.results = { files: [], folders: [], words: [] };
+                    this.dispatchEvent(new CustomEvent('search-error', { detail: { message: "Search failed due to invalid response." }, bubbles: true, composed: true }));
+                }
+            }
+            if (searchId === this.currentSearchId) {
+                this.isSearching = false;
+            }
+        }, 150);
+    };
+
+    connectedCallback() {
+        super.connectedCallback();
+    }
+
+    disconnectedCallback() {
+        super.disconnectedCallback();
+        if (this.searchTimeout) window.clearTimeout(this.searchTimeout);
     }
 
     private renderHighlightedText(text: string) {

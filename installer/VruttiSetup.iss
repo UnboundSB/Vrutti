@@ -20,6 +20,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 [Files]
 ; The main executable
 Source: "..\Vrutti_Release\vrutti.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\Vrutti_Release\*.dll"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 
 ; The extension host dependencies
 Source: "..\Vrutti_Release\src\ext\*"; DestDir: "{app}\src\ext"; Flags: ignoreversion recursesubdirs createallsubdirs
