@@ -21,7 +21,67 @@ extern "C" {
     }
 }
 
+#include <cctype>
+#include <thread>
+#include <mutex>
+#include <atomic>
+#include <vector>
+
 namespace vrutti::plugins::search {
+
+    struct CacheEntry {
+        std::string path;
+        std::string name;
+        bool isDirectory;
+    };
+
+    static std::vector<CacheEntry> g_cache;
+    static std::string g_currentDir = "";
+    static std::mutex g_cacheMutex;
+    static std::atomic<bool> g_isIndexing = false;
+
+    static void buildIndexAsync(std::string dir) {
+        g_isIndexing = true;
+        std::vector<CacheEntry> localCache;
+        try {
+            auto it = std::filesystem::recursive_directory_iterator(dir, std::filesystem::directory_options::skip_permission_denied);
+            auto end = std::filesystem::recursive_directory_iterator();
+            for (; it != end; ++it) {
+                const auto& entry = *it;
+                std::string name = entry.path().filename().string();
+                if (entry.is_directory()) {
+                    if (name == ".git" || name == "build" || name == "build-linux" || name == "node_modules" || name == "dist" || name == "out" || name == ".vscode" || name == ".idea") {
+                        it.disable_recursion_pending();
+                    }
+                    localCache.push_back({entry.path().string(), name, true});
+                } else if (entry.is_regular_file()) {
+                    localCache.push_back({entry.path().string(), name, false});
+                }
+            }
+        } catch (...) {
+        }
+        
+        {
+            std::lock_guard<std::mutex> lock(g_cacheMutex);
+            g_cache = std::move(localCache);
+            g_currentDir = dir;
+        }
+        g_isIndexing = false;
+        std::cout << "[SearchPlugin] Background indexing complete for " << dir << ". Found " << g_cache.size() << " items.\n";
+    }
+
+    static bool fuzzyMatch(const std::string& query, const std::string& target, bool matchCase = false) {
+        if (query.empty()) return true;
+        size_t qIndex = 0;
+        for (char c : target) {
+            bool matches = matchCase ? (c == query[qIndex]) : (std::tolower(static_cast<unsigned char>(c)) == std::tolower(static_cast<unsigned char>(query[qIndex])));
+            if (matches) {
+                qIndex++;
+                if (qIndex == query.length()) return true;
+            }
+        }
+        return false;
+    }
 
     SearchPlugin::SearchPlugin() {
         std::cout << "[SearchPlugin] Constructor called.\n";
@@ -63,7 +123,7 @@ namespace vrutti::plugins::search {
                     std::string json = "[";
                     for (size_t i = 0; i < files.size(); ++i) {
                         if (i > 0) json += ",";
-                        json += "\"" + vrutti::core::utils::JsonSerializer::escapeString(files[i]) + "\"";
+                        json += vrutti::core::utils::JsonSerializer::escapeString(files[i]);
                     }
                     json += "]";
                     return json;
@@ -107,26 +167,56 @@ namespace vrutti::plugins::search {
             }
             
             if (query.empty() || dir.empty()) return "[]";
+
+            {
+                std::lock_guard<std::mutex> lock(g_cacheMutex);
+                if (g_currentDir != dir && !g_isIndexing) {
+                    g_currentDir = dir;
+                    g_cache.clear();
+                    std::thread(buildIndexAsync, dir).detach();
+                }
+            }
             
             auto results = performSearch(query, dir, options);
             
-            std::string json = "[";
-            for (size_t i = 0; i < results.size(); ++i) {
+            std::string json = "{";
+            
+            // Serialize files
+            json += "\"files\":[";
+            for (size_t i = 0; i < results.fileMatches.size(); ++i) {
+                if (i > 0) json += ",";
+                json += vrutti::core::utils::JsonSerializer::escapeString(results.fileMatches[i]);
+            }
+            json += "],";
+            
+            // Serialize folders
+            json += "\"folders\":[";
+            for (size_t i = 0; i < results.folderMatches.size(); ++i) {
+                if (i > 0) json += ",";
+                json += vrutti::core::utils::JsonSerializer::escapeString(results.folderMatches[i]);
+            }
+            json += "],";
+            
+            // Serialize words
+            json += "\"words\":[";
+            for (size_t i = 0; i < results.wordMatches.size(); ++i) {
                 if (i > 0) json += ",";
                 json += "{";
-                json += "\"file\":\"" + vrutti::core::utils::JsonSerializer::escapeString(results[i].file) + "\",";
-                json += "\"line\":" + std::to_string(results[i].line) + ",";
-                json += "\"text\":\"" + vrutti::core::utils::JsonSerializer::escapeString(results[i].text) + "\"";
+                json += "\"file\":" + vrutti::core::utils::JsonSerializer::escapeString(results.wordMatches[i].file) + ",";
+                json += "\"line\":" + std::to_string(results.wordMatches[i].line) + ",";
+                json += "\"text\":" + vrutti::core::utils::JsonSerializer::escapeString(results.wordMatches[i].text);
                 json += "}";
             }
             json += "]";
+            
+            json += "}";
             return json;
         }
         return "{}";
     }
 
-    std::vector<SearchResult> SearchPlugin::performSearch(const std::string& query, const std::string& directory, const SearchOptions& options) {
-        std::vector<SearchResult> results;
+    SearchResponse SearchPlugin::performSearch(const std::string& query, const std::string& directory, const SearchOptions& options) {
+        SearchResponse response;
         std::cout << "[SearchPlugin] Searching for '" << query << "' in " << directory << "...\n";
         
         std::string searchPattern = query;
@@ -157,30 +247,130 @@ namespace vrutti::plugins::search {
                 re = std::regex(searchPattern, regexFlags);
             } catch (const std::regex_error& e) {
                 std::cerr << "[SearchPlugin] Invalid regex pattern: " << e.what() << "\n";
-                return results;
+                return response;
+            }
+        }
+        
+        bool isFuzzy = !options.useRegex && !options.wholeWord;
+        
+        std::vector<CacheEntry> localCache;
+        bool useCache = false;
+        {
+            std::lock_guard<std::mutex> lock(g_cacheMutex);
+            if (g_currentDir == directory && !g_cache.empty()) {
+                localCache = g_cache;
+                useCache = true;
             }
         }
         
         try {
-            auto it = std::filesystem::recursive_directory_iterator(directory, std::filesystem::directory_options::skip_permission_denied);
-            auto end = std::filesystem::recursive_directory_iterator();
-            for (; it != end; ++it) {
-                const auto& entry = *it;
+            size_t resultCount = 0;
+            
+            auto processEntry = [&](const std::string& path, const std::string& name, bool isDir) {
+                if (resultCount >= 2000 && !options.isReplace) return false;
                 
-                if (entry.is_directory()) {
-                    std::string name = entry.path().filename().string();
-                    if (name == ".git" || name == "build" || name == "build-linux" || name == "node_modules") {
-                        it.disable_recursion_pending();
+                if (isDir) {
+                    if (isFuzzy) {
+                        if (fuzzyMatch(query, name, options.matchCase)) response.folderMatches.push_back(path);
+                    } else {
+                        if (std::regex_search(name, re)) response.folderMatches.push_back(path);
                     }
-                    continue;
+                    return true;
                 }
                 
-                if (!entry.is_regular_file()) continue;
+                if (isFuzzy) {
+                    if (fuzzyMatch(query, name, options.matchCase)) response.fileMatches.push_back(path);
+                } else {
+                    if (std::regex_search(name, re)) response.fileMatches.push_back(path);
+                }
                 
-                std::string path = entry.path().string();
-                
-                std::ifstream file(path);
+                return true;
+            };
+
+            if (useCache) {
+                for (const auto& entry : localCache) {
+                    if (!processEntry(entry.path, entry.name, entry.isDirectory)) break;
+                    
+                    if (entry.isDirectory) continue;
+                    
+                    std::error_code ec;
+                    auto fsize = std::filesystem::file_size(entry.path, ec);
+                    if (!ec && fsize > 2 * 1024 * 1024) continue;
+                    
+                    std::ifstream file(entry.path);
+                    if (!file.is_open()) continue;
+                    
+                    char firstBytes[1024];
+                    file.read(firstBytes, sizeof(firstBytes));
+                    std::streamsize bytesRead = file.gcount();
+                    bool isBinary = false;
+                    for (std::streamsize i = 0; i < bytesRead; ++i) {
+                        if (firstBytes[i] == '\0') {
+                            isBinary = true;
+                            break;
+                        }
+                    }
+                    if (isBinary) continue;
+                    
+                    file.clear();
+                    file.seekg(0, std::ios::beg);
+                    
+                    std::string line;
+                    int lineNumber = 1;
+                    while (std::getline(file, line)) {
+                        if (useRegexEngine) {
+                            if (std::regex_search(line, re)) {
+                                response.wordMatches.push_back({entry.path, lineNumber, line});
+                                resultCount++;
+                            }
+                        } else {
+                            if (fuzzyMatch(query, line, options.matchCase)) {
+                                response.wordMatches.push_back({entry.path, lineNumber, line});
+                                resultCount++;
+                            }
+                        }
+                        lineNumber++;
+                    }
+                }
+            } else {
+                auto it = std::filesystem::recursive_directory_iterator(directory, std::filesystem::directory_options::skip_permission_denied);
+                auto end = std::filesystem::recursive_directory_iterator();
+                for (; it != end; ++it) {
+                    const auto& entry = *it;
+                    std::string name = entry.path().filename().string();
+                    std::string path = entry.path().string();
+                    bool isDir = entry.is_directory();
+                    
+                    if (isDir) {
+                        if (name == ".git" || name == "build" || name == "build-linux" || name == "node_modules" || name == "dist" || name == "out" || name == ".vscode" || name == ".idea") {
+                            it.disable_recursion_pending();
+                        }
+                    }
+                    
+                    if (!processEntry(path, name, isDir)) break;
+                    if (isDir || !entry.is_regular_file()) continue;
+                    
+                    std::error_code ec;
+                    auto fsize = std::filesystem::file_size(entry, ec);
+                    if (!ec && fsize > 2 * 1024 * 1024) continue;
+                    
+                    std::ifstream file(path);
                 if (!file.is_open()) continue;
+                
+                char firstBytes[1024];
+                file.read(firstBytes, sizeof(firstBytes));
+                std::streamsize bytesRead = file.gcount();
+                bool isBinary = false;
+                for (std::streamsize i = 0; i < bytesRead; ++i) {
+                    if (firstBytes[i] == '\0') {
+                        isBinary = true;
+                        break;
+                    }
+                }
+                if (isBinary) continue;
+                
+                file.clear();
+                file.seekg(0, std::ios::beg);
                 
                 std::string line;
                 int lineNumber = 1;
@@ -214,7 +404,23 @@ namespace vrutti::plugins::search {
                     }
                     
                     if (matched) {
-                        results.push_back({path, lineNumber, line});
+                        std::string snippet = line;
+                        if (snippet.length() > 200) {
+                            size_t qPos = snippet.find(query);
+                            if (useRegexEngine && qPos == std::string::npos) {
+                                std::smatch m;
+                                if (std::regex_search(snippet, m, re)) qPos = m.position();
+                            }
+                            if (qPos != std::string::npos) {
+                                size_t start = (qPos > 50) ? (qPos - 50) : 0;
+                                snippet = (start > 0 ? "..." : "") + snippet.substr(start, 200) + (start + 200 < snippet.length() ? "..." : "");
+                            } else {
+                                snippet = snippet.substr(0, 200) + "...";
+                            }
+                        }
+                        response.wordMatches.push_back({path, lineNumber, snippet});
+                        resultCount++;
+                        if (resultCount >= 2000 && !options.isReplace) break;
                     }
                     
                     if (options.isReplace) {
@@ -232,12 +438,13 @@ namespace vrutti::plugins::search {
                         if (i < newLines.size() - 1) out << "\n";
                     }
                 }
-            }
+            } // end for loop
+        } // end else block
         } catch (const std::exception& e) {
             std::cerr << "[SearchPlugin] Exception: " << e.what() << "\n";
         }
         
-        return results;
+        return response;
     }
 
     std::vector<std::string> SearchPlugin::findFiles(const std::string& directory) {
@@ -251,7 +458,7 @@ namespace vrutti::plugins::search {
                 
                 if (entry.is_directory()) {
                     std::string name = entry.path().filename().string();
-                    if (name == ".git" || name == "build" || name == "build-linux" || name == "node_modules") {
+                    if (name == ".git" || name == "build" || name == "build-linux" || name == "node_modules" || name == "dist" || name == "out" || name == ".vscode" || name == ".idea") {
                         it.disable_recursion_pending();
                     }
                     continue;
