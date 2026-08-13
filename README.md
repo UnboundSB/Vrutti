@@ -3,7 +3,7 @@
 # 🌌 **V R U T T I &nbsp;&nbsp;I D E** 🌌
 
 **A next-generation, high-performance development environment built from the ground up.**
-
+**We are open for contribution if you want to make the ide better please feel free to make it we will merge it and add your name to contributor's list**
 <img src="https://raw.githubusercontent.com/UnboundSB/Vrutti/main/logos/logo-512x512.png" width="350" alt="Vrutti Logo">
 
 <br/>
