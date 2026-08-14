@@ -1,10 +1,16 @@
 <div align="center">
-  
-# 🌌 **V R U T T I &nbsp;&nbsp;I D E** 🌌
 
-**A next-generation, high-performance development environment built from the ground up.**
-**We are open for contribution if you want to make the ide better please feel free to make it we will merge it and add your name to contributor's list**
-<img src="https://raw.githubusercontent.com/UnboundSB/Vrutti/main/logos/logo-512x512.png" width="350" alt="Vrutti Logo">
+<img src="https://raw.githubusercontent.com/UnboundSB/Vrutti/main/logos/logo-512x512.png" width="180" alt="Vrutti Logo">
+
+<h1>🌌 V R U T T I &nbsp; I D E 🌌</h1>
+
+<a href="https://github.com/UnboundSB/Vrutti">
+  <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=26&duration=2500&pause=800&color=8A5CFF&center=true&vCenter=true&width=600&lines=A+next-gen+development+environment;Native+C%2B%2B+speed.+Modern+web+UI.;No+Docker.+No+CMake.+Just+download+%26+code." alt="Typing SVG" />
+</a>
+
+<br/>
+
+![Vrutti Banner](https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=6,11,20&height=180&section=header&text=&fontSize=0)
 
 <br/>
 
@@ -14,65 +20,169 @@
 [![Tech: C++](https://img.shields.io/badge/Engine-C++-00599C?style=for-the-badge&logo=c%2B%2B)](#)
 [![Tech: Lit](https://img.shields.io/badge/UI-Lit%20Web%20Components-324FFF?style=for-the-badge&logo=lit)](#)
 
-*Experience buttery-smooth native performance combined with modern web aesthetics.*
+![Visitors](https://api.visitorbadge.io/api/visitors?path=UnboundSB%2FVrutti&label=Visitors&countColor=%238A5CFF&style=for-the-badge)
+![GitHub stars](https://img.shields.io/github/stars/UnboundSB/Vrutti?style=for-the-badge&color=gold&label=Stargazers)
+![GitHub forks](https://img.shields.io/github/forks/UnboundSB/Vrutti?style=for-the-badge&color=orange)
+![GitHub last commit](https://img.shields.io/github/last-commit/UnboundSB/Vrutti?style=for-the-badge&color=blueviolet)
 
-<br/>
-
-<h3>🚀 <b>Download & Play (No Setup Required!)</b></h3>
-
-Vrutti is pre-packaged and ready to go. You do NOT need Docker, CMake, or any compilers to run Vrutti. Just click one of the buttons below to download and launch!
-
-<br/>
-
-<a href="https://github.com/UnboundSB/Vrutti/releases/latest/download/Vrutti_Setup.exe">
-  <img src="https://img.shields.io/badge/Download-EXE_Installer-blue?style=for-the-badge&logo=windows&logoColor=white&scale=1.5" alt="Download EXE" height="40">
-</a>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-<a href="https://github.com/UnboundSB/Vrutti/releases/latest/download/vrutti_early_release.zip">
-  <img src="https://img.shields.io/badge/Download-Portable_ZIP-ff69b4?style=for-the-badge&logo=files&logoColor=white&scale=1.5" alt="Download ZIP" height="40">
-</a>
-
-<br/>
-<br/>
+*Buttery-smooth native performance meets modern web aesthetics.*
 
 </div>
 
 ---
 
-## ✨ Features That Wow
+<div align="center">
 
-🚀 **Lightning Fast Engine**
-<br/>
-Robust C++ native backend communicating with a nimble Node.js/Lit frontend via IPC, keeping memory footprint low and UI responsiveness incredibly high.
+## 🚀 Download & Play — Zero Setup Required
 
-🧬 **Topological Git Visualizer**
-<br/>
-Explore your commit history with a buttery-smooth, hardware-accelerated horizontal SVG canvas. Features drag-to-pan, interactive zooming, dynamic routing, reflog parsing, and direct git actions (Revert, Delete, Rename) right from the UI!
+</div>
 
-🎨 **Sleek & Premium Interface**
-<br/>
-Built with **Lit Web Components**, providing a modern, fast, and highly customizable user interface featuring beautiful pastel colors, sleek dark modes, and dynamic micro-animations that feel premium to the touch.
+> [!TIP]
+> Vrutti is **pre-packaged and ready to go**. No Docker. No CMake. No compilers. Pick a download below and you're coding in under a minute.
 
-🛠 **Integrated Power Tools**
+<div align="center">
+
+<table>
+<tr>
+<td align="center" width="50%">
+
+### 🪟 Windows Installer
+**Recommended for most users**
+
+<a href="https://github.com/UnboundSB/Vrutti/releases/latest/download/Vrutti_Setup.exe">
+  <img src="https://img.shields.io/badge/⬇_DOWNLOAD-Vrutti__Setup.exe-8A5CFF?style=for-the-badge&logo=windows11&logoColor=white&labelColor=1a1a2e" alt="Download EXE" height="55">
+</a>
+
+*One-click install • Auto shortcuts • Auto-updater*
+
+</td>
+<td align="center" width="50%">
+
+### 📦 Portable ZIP
+**No install, no admin rights needed**
+
+<a href="https://github.com/UnboundSB/Vrutti/releases/latest/download/vrutti_early_release.zip">
+  <img src="https://img.shields.io/badge/⬇_DOWNLOAD-Portable.zip-ff69b4?style=for-the-badge&logo=files&logoColor=white&labelColor=1a1a2e" alt="Download ZIP" height="55">
+</a>
+
+*Extract & run • Fully self-contained • USB friendly*
+
+</td>
+</tr>
+</table>
+
 <br/>
-Built-in task runner supporting custom `tasks.json` configuration natively tied to the embedded terminal, plus out-of-the-box syntax highlighting powered by CodeMirror.
+
+![Downloads](https://img.shields.io/github/downloads/UnboundSB/Vrutti/total?style=for-the-badge&color=success&label=Total%20Downloads&logo=download)
+
+<sub>Prefer to browse first? See all versions on the <a href="https://github.com/UnboundSB/Vrutti/releases">Releases page</a> →</sub>
+
+</div>
 
 ---
 
-## 🛠 For Developers (Building from Source)
+<div align="center">
 
-**Only follow these steps if you want to modify Vrutti's source code.**
+## ✨ Features That Wow
+
+<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=500&size=18&duration=3000&pause=1000&color=6FE3FF&center=true&vCenter=true&width=650&lines=Native+C%2B%2B+Core+%2B+Lit+Web+UI;Topological+Git+Visualizer;Task+Runner+%2B+CodeMirror+Highlighting;Dark+Mode.+Pastel+Mode.+Your+Mode." alt="Features Typing SVG" />
+
+</div>
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+### 🚀 Lightning Fast Engine
+Robust **C++ native backend** communicating with a nimble **Node.js/Lit** frontend via IPC — low memory footprint, incredibly high UI responsiveness.
+
+</td>
+<td width="50%" valign="top">
+
+### 🧬 Topological Git Visualizer
+A buttery-smooth, hardware-accelerated horizontal SVG canvas for your commit history. Drag-to-pan, interactive zoom, dynamic routing, reflog parsing, and direct git actions (Revert, Delete, Rename) — right from the UI.
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+### 🎨 Sleek & Premium Interface
+Built with **Lit Web Components** for a modern, fast, highly customizable UI — pastel colors, sleek dark modes, and dynamic micro-animations that feel premium to the touch.
+
+</td>
+<td width="50%" valign="top">
+
+### 🛠 Integrated Power Tools
+Built-in task runner with native `tasks.json` support tied to the embedded terminal, plus out-of-the-box syntax highlighting powered by **CodeMirror**.
+
+</td>
+</tr>
+</table>
+
+---
+
+<div align="center">
+
+## 📸 See It In Action
+
+<img src="https://raw.githubusercontent.com/UnboundSB/Vrutti/main/logos/logo-512x512.png" width="80">
+
+*(Drop screenshots/GIFs of the IDE and Git Visualizer here — animated GIFs render natively and really sell the "buttery smooth" feel.)*
+
+</div>
+
+---
+
+<div align="center">
+
+## ⚡ Quick Start
+
+</div>
+
+```mermaid
+flowchart LR
+    A[⬇️ Download] --> B[📂 Install / Extract]
+    B --> C[🚀 Launch Vrutti]
+    C --> D[💻 Start Coding]
+```
+
+<div align="center">
+
+| Step | Action |
+|:---:|:---|
+| **1** | Click a download button above |
+| **2** | Run the installer *(or unzip the portable build)* |
+| **3** | Launch `vrutti_app.exe` |
+| **4** | Open a folder, start coding — no config required |
+
+</div>
+
+---
+
+<details>
+<summary><h2>🛠 For Developers — Building from Source (click to expand)</h2></summary>
+
+> Only follow these steps if you want to modify Vrutti's source code. Everyone else — just use the downloads above! 👆
 
 ### Building the Core
-To build the IDE locally:
+
 1. Ensure you have **Docker**, **CMake**, and a **C++ compiler** installed.
-2. Clone the repository: `git clone https://github.com/UnboundSB/Vrutti.git`
-3. Build the frontend via Docker: `docker compose -f docker-compose.frontend.yml up`
+2. Clone the repository:
+   ```bash
+   git clone https://github.com/UnboundSB/Vrutti.git
+   ```
+3. Build the frontend via Docker:
+   ```bash
+   docker compose -f docker-compose.frontend.yml up
+   ```
 4. Build the backend C++ application using CMake.
 5. Run the generated `build/vrutti_app.exe`!
 
 ### Building the Release & Setup Installer
+
 Want to package the `.zip` or installer yourself?
+
 1. Ensure you have [Inno Setup 6](https://jrsoftware.org/isdl.php) installed on your Windows machine for EXE packaging.
 2. Build the C++ backend and the frontend via Docker.
 3. Run the packaging scripts:
@@ -85,12 +195,55 @@ Want to package the `.zip` or installer yourself?
    ```
 4. The scripts will generate `vrutti_early_release.zip` and `Vrutti_Setup.exe` in the root folder.
 
+</details>
+
 ---
 
-## 📜 License
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+<div align="center">
+
+## 🤝 Contributing
+
+</div>
+
+> [!NOTE]
+> **We are open for contributions!** Want to make the IDE better? Fork it, build it, and open a PR — we'll merge it and add your name to the contributors list. 🎉
 
 <div align="center">
-  <br/>
-  <h3>Built with ❤️ and ☕ for modern developers.</h3>
+
+<a href="https://github.com/UnboundSB/Vrutti/fork">
+  <img src="https://img.shields.io/badge/🍴_Fork_This_Repo-24292e?style=for-the-badge&logo=github&logoColor=white" alt="Fork">
+</a>
+<a href="https://github.com/UnboundSB/Vrutti/issues">
+  <img src="https://img.shields.io/badge/🐛_Report_a_Bug-24292e?style=for-the-badge&logo=github&logoColor=white" alt="Issues">
+</a>
+<a href="https://github.com/UnboundSB/Vrutti/pulls">
+  <img src="https://img.shields.io/badge/🔀_Open_a_PR-24292e?style=for-the-badge&logo=github&logoColor=white" alt="PRs">
+</a>
+
+<br/><br/>
+
+<img src="https://contrib.rocks/image?repo=UnboundSB/Vrutti" alt="Contributors">
+
+</div>
+
+---
+
+<div align="center">
+
+## 📜 License
+
+This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for details.
+
+<br/>
+
+![Snake animation](https://raw.githubusercontent.com/platane/platane/output/github-contribution-grid-snake.svg)
+
+<br/>
+
+### Built with ❤️ and ☕ for modern developers.
+
+<sub>⭐ If Vrutti saved you from setup hell, consider starring the repo — it really helps!</sub>
+
+![Wave Footer](https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=6,11,20&height=100&section=footer)
+
 </div>
