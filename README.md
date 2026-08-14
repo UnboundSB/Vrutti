@@ -1,112 +1,133 @@
 <div align="center">
-
-<img src="https://raw.githubusercontent.com/UnboundSB/Vrutti/main/logos/logo-512x512.png" width="120" alt="Vrutti Logo">
+<img src="https://raw.githubusercontent.com/UnboundSB/Vrutti/main/logos/logo-512x512.png" width="100" alt="Vrutti Logo">
 
 # Vrutti IDE
 
-**A next-generation, high-performance development environment built from the ground up.**
+A next-generation, high-performance development environment built from the ground up.
 
-| | | | |
-|:---:|:---:|:---:|:---:|
-| [![Status](https://img.shields.io/badge/Status-Active-success)](#) | [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE) | [![Platform](https://img.shields.io/badge/Platform-Windows-blue)](#) | [![Engine](https://img.shields.io/badge/Engine-C%2B%2B-00599C)](#) |
+`Status: Active` &nbsp;·&nbsp; `License: MIT` &nbsp;·&nbsp; `Platform: Windows` &nbsp;·&nbsp; `Engine: C++`
 
 </div>
 
----
+<br>
 
 ## Downloads
 
-| Package | Best For | Requirements | Link |
-|---|---|---|---|
-| **Vrutti_Setup.exe** | Most users — installs shortcuts, registers file associations, auto-updates | Windows 10/11, Admin rights | [Download](https://github.com/UnboundSB/Vrutti/releases/latest/download/Vrutti_Setup.exe) |
-| **vrutti_early_release.zip** | Portable use, USB drives, no-admin environments | Windows 10/11 | [Download](https://github.com/UnboundSB/Vrutti/releases/latest/download/vrutti_early_release.zip) |
+<div align="center">
 
-No Docker, CMake, or compilers are required to run Vrutti — both packages are pre-built and ready to launch. Older versions are available on the [Releases page](https://github.com/UnboundSB/Vrutti/releases).
+| | Installer | Portable |
+|---|:---:|:---:|
+| **File** | `Vrutti_Setup.exe` | `vrutti_early_release.zip` |
+| **Best for** | Most users | No-admin / USB use |
+| **Setup** | One-click, auto shortcuts, auto-update | Extract and run |
+| **Requires** | Windows 10/11, admin rights | Windows 10/11 |
+| **Get it** | [Download →](https://github.com/UnboundSB/Vrutti/releases/latest/download/Vrutti_Setup.exe) | [Download →](https://github.com/UnboundSB/Vrutti/releases/latest/download/vrutti_early_release.zip) |
 
----
+</div>
 
-## At a Glance
+<sub>Pre-built and ready to run — no Docker, CMake, or compiler required. Older builds live on the [Releases page](https://github.com/UnboundSB/Vrutti/releases).</sub>
 
-| Category | Detail |
-|---|---|
-| Backend | Native C++ core |
-| Frontend | Node.js + Lit Web Components |
-| Communication | IPC between backend and frontend |
-| Syntax Highlighting | CodeMirror |
-| Task Running | Native `tasks.json` support |
-| Version Control | Built-in topological Git visualizer |
-| Supported OS | Windows 10 / 11 |
-| License | MIT |
+<br>
 
----
+## Overview
+
+<table>
+<tr><td width="33%" valign="top">
+
+**Architecture**
+
+Backend&nbsp;&nbsp;&nbsp;C++ (native)
+Frontend&nbsp;&nbsp;&nbsp;Node.js + Lit
+Bridge&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;IPC
+
+</td><td width="33%" valign="top">
+
+**Editor**
+
+Highlighting&nbsp;&nbsp;CodeMirror
+Tasks&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`tasks.json`
+Themes&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Dark / Pastel
+
+</td><td width="33%" valign="top">
+
+**Project**
+
+Git&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Built-in visualizer
+License&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;MIT
+OS&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Windows 10/11
+
+</td></tr>
+</table>
+
+<br>
 
 ## Features
 
-| Feature | Description |
-|---|---|
-| **Lightning Fast Engine** | Native C++ backend communicates with the Lit/Node.js frontend over IPC, keeping memory footprint low and UI responsiveness high. |
-| **Topological Git Visualizer** | Hardware-accelerated horizontal SVG canvas for commit history. Drag-to-pan, interactive zoom, dynamic routing, reflog parsing, and direct git actions (revert, delete, rename) from the UI. |
-| **Sleek Interface** | Lit Web Components power a modern, customizable UI with pastel and dark themes plus subtle micro-animations. |
-| **Integrated Task Runner** | Native `tasks.json` configuration tied directly to the embedded terminal. |
-| **Syntax Highlighting** | Powered by CodeMirror out of the box. |
+| | Feature | Details |
+|:---:|---|---|
+| ⚡ | **Lightning Fast Engine** | Native C++ backend talks to the Lit/Node.js frontend over IPC — low memory footprint, high UI responsiveness. |
+| 🧬 | **Topological Git Visualizer** | Hardware-accelerated horizontal SVG canvas with drag-to-pan, interactive zoom, dynamic routing, reflog parsing, and direct git actions (revert, delete, rename). |
+| 🎨 | **Sleek Interface** | Lit Web Components, dark and pastel themes, subtle micro-animations throughout. |
+| 🛠 | **Integrated Task Runner** | Native `tasks.json` support wired directly into the embedded terminal. |
+| ✍️ | **Syntax Highlighting** | Powered by CodeMirror out of the box. |
 
----
+<br>
 
 ## Quick Start
 
-| Step | Action |
-|:---:|---|
-| 1 | Download the installer or portable ZIP from the table above |
-| 2 | Run the installer, or extract the ZIP to a folder of your choice |
-| 3 | Launch `vrutti_app.exe` |
-| 4 | Open a project folder and start working — no configuration required |
+<table>
+<tr><td width="8%" align="center"><b>1</b></td><td>Download the installer or ZIP from the table above</td></tr>
+<tr><td align="center"><b>2</b></td><td>Run the installer, or extract the ZIP anywhere</td></tr>
+<tr><td align="center"><b>3</b></td><td>Launch <code>vrutti_app.exe</code></td></tr>
+<tr><td align="center"><b>4</b></td><td>Open a project folder — no configuration required</td></tr>
+</table>
 
----
+<br>
 
 ## Building From Source
 
-The pre-built downloads above are all most users need. The steps below are only for contributors modifying Vrutti's source.
+<sub>Only needed if you're modifying Vrutti itself — everyone else should use the downloads above.</sub>
 
-### Build the Core
+<table>
+<tr><th width="50%" align="left">Build the core</th><th width="50%" align="left">Package a release</th></tr>
+<tr valign="top"><td>
 
-| Step | Command / Action |
-|:---:|---|
-| 1 | Install **Docker**, **CMake**, and a C++ compiler |
-| 2 | `git clone https://github.com/UnboundSB/Vrutti.git` |
-| 3 | `docker compose -f docker-compose.frontend.yml up` (builds frontend) |
-| 4 | Build the backend C++ application using CMake |
-| 5 | Run `build/vrutti_app.exe` |
+1. Install Docker, CMake, and a C++ compiler
+2. `git clone https://github.com/UnboundSB/Vrutti.git`
+3. `docker compose -f docker-compose.frontend.yml up`
+4. Build the backend with CMake
+5. Run `build/vrutti_app.exe`
 
-### Build a Release Package
+</td><td>
 
-| Step | Command / Action |
-|:---:|---|
-| 1 | Install [Inno Setup 6](https://jrsoftware.org/isdl.php) (required for EXE packaging) |
-| 2 | Build the C++ backend and frontend (see steps above) |
-| 3 | `.\package_release.ps1` → produces the portable ZIP |
-| 4 | `.\build_installer.ps1` → produces `Vrutti_Setup.exe` |
+1. Install [Inno Setup 6](https://jrsoftware.org/isdl.php)
+2. Build the backend and frontend (steps at left)
+3. `.\package_release.ps1` → portable ZIP
+4. `.\build_installer.ps1` → `Vrutti_Setup.exe`
 
-Both scripts output their artifacts to the project root.
+</td></tr>
+</table>
 
----
+<br>
 
 ## Contributing
 
-| | |
-|---|---|
-| **Status** | Open for contributions |
-| **Process** | Fork → build → submit a pull request |
-| **Recognition** | Merged contributions are added to the contributors list |
-| **Links** | [Fork](https://github.com/UnboundSB/Vrutti/fork) · [Issues](https://github.com/UnboundSB/Vrutti/issues) · [Pull Requests](https://github.com/UnboundSB/Vrutti/pulls) |
+<div align="center">
 
----
+| Fork | Build | Submit | Get Credited |
+|:---:|:---:|:---:|:---:|
+| [Fork the repo](https://github.com/UnboundSB/Vrutti/fork) | Build & test locally | [Open a PR](https://github.com/UnboundSB/Vrutti/pulls) | Added to the contributors list |
+
+</div>
+
+Found a bug? [Open an issue](https://github.com/UnboundSB/Vrutti/issues) — contributions of any size are welcome.
+
+<br>
 
 ## License
 
-Licensed under the MIT License. See [LICENSE](LICENSE) for full details.
+Licensed under the MIT License — see [LICENSE](LICENSE) for full terms.
 
 <div align="center">
-
-Built for developers who want a fast, modern editor without the setup overhead.
-
+<sub>Built for developers who want a fast, modern editor without the setup overhead.</sub>
 </div>
