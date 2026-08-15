@@ -218,6 +218,24 @@ export class VruttiSearch extends LitElement {
     @state() private useRegex = false;
     
 
+    private handleIpc = (e: CustomEvent) => {
+        if (e.detail && e.detail.method === 'search/results') {
+            const params = e.detail.params;
+            if (params && params.searchId === this.currentSearchId) {
+                this.results = params.results;
+                this.isSearching = false;
+            }
+        } else if (e.detail && e.detail.method === 'search/results/partial') {
+            const params = e.detail.params;
+            if (params && params.searchId === this.currentSearchId) {
+                this.results = {
+                    files: [...(this.results.files || []), ...(params.results.files || [])],
+                    folders: [...(this.results.folders || []), ...(params.results.folders || [])],
+                    words: [...(this.results.words || []), ...(params.results.words || [])]
+                };
+            }
+        }
+    };
 
     private handleQueryKeydown(e: KeyboardEvent) {
         if (e.key === 'Enter') {
@@ -278,22 +296,20 @@ export class VruttiSearch extends LitElement {
             // Trigger file search
             this.isSearching = true;
             this.currentSearchId++;
+            this.results = { files: [], folders: [], words: [] };
             const searchId = this.currentSearchId;
             try {
-                const req = JSON.stringify([{ directory: actualDir, query: "" }]);
-                const resStr = await (window as any).vruttiSearch(req);
-                if (searchId === this.currentSearchId) {
-                    this.results = JSON.parse(resStr);
+                const req = JSON.stringify([{ directory: actualDir, query: "", searchId }]);
+                if ((window as any).vruttiSearchAsync) {
+                    (window as any).vruttiSearchAsync(req);
                 }
             } catch (err) {
                 if (searchId === this.currentSearchId) {
                     console.error("Search failed", err);
                     this.results = { files: [], folders: [], words: [] };
-                    this.dispatchEvent(new CustomEvent('search-error', { detail: { message: "Search failed due to invalid response." }, bubbles: true, composed: true }));
+                    this.dispatchEvent(new CustomEvent('search-error', { detail: { message: "Search failed due to an error." }, bubbles: true, composed: true }));
+                    this.isSearching = false;
                 }
-            }
-            if (searchId === this.currentSearchId) {
-                this.isSearching = false;
             }
             return;
         }
@@ -301,6 +317,7 @@ export class VruttiSearch extends LitElement {
         this.searchTimeout = window.setTimeout(async () => {
             this.isSearching = true;
             this.currentSearchId++;
+            this.results = { files: [], folders: [], words: [] };
             const searchId = this.currentSearchId;
             try {
                 const req = JSON.stringify([{
@@ -308,34 +325,32 @@ export class VruttiSearch extends LitElement {
                     query: this.query,
                     matchCase: this.matchCase,
                     wholeWord: this.wholeWord,
-                    useRegex: this.useRegex
+                    useRegex: this.useRegex,
+                    searchId
                 }]);
                 
-                if ((window as any).vruttiSearch) {
-                    const resStr = await (window as any).vruttiSearch(req);
-                    if (searchId === this.currentSearchId) {
-                        this.results = JSON.parse(resStr);
-                    }
+                if ((window as any).vruttiSearchAsync) {
+                    (window as any).vruttiSearchAsync(req);
                 }
             } catch (err) {
                 if (searchId === this.currentSearchId) {
                     console.error("Search failed", err);
                     this.results = { files: [], folders: [], words: [] };
-                    this.dispatchEvent(new CustomEvent('search-error', { detail: { message: "Search failed due to invalid response." }, bubbles: true, composed: true }));
+                    this.dispatchEvent(new CustomEvent('search-error', { detail: { message: "Search failed due to an error." }, bubbles: true, composed: true }));
+                    this.isSearching = false;
                 }
-            }
-            if (searchId === this.currentSearchId) {
-                this.isSearching = false;
             }
         }, 150);
     };
 
     connectedCallback() {
         super.connectedCallback();
+        window.addEventListener('vrutti-ipc', this.handleIpc as EventListener);
     }
 
     disconnectedCallback() {
         super.disconnectedCallback();
+        window.removeEventListener('vrutti-ipc', this.handleIpc as EventListener);
         if (this.searchTimeout) window.clearTimeout(this.searchTimeout);
     }
 
