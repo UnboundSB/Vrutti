@@ -727,23 +727,29 @@ namespace vrutti::ui {
                 int searchId = 0;
                 
                 if (argsNode && argsNode->type == vrutti::core::utils::JsonNode::Type::Object) {
-                    if (argsNode->objectElements.count("directory") && argsNode->objectElements["directory"]->type == vrutti::core::utils::JsonNode::Type::String) {
-                        directory = vrutti::core::utils::JsonParser::unescapeString(argsNode->objectElements["directory"]->stringValue);
+                    auto dirNode = argsNode->get("directory");
+                    if (dirNode && dirNode->type == vrutti::core::utils::JsonNode::Type::String) {
+                        directory = vrutti::core::utils::JsonParser::unescapeString(dirNode->stringValue);
                     }
-                    if (argsNode->objectElements.count("query") && argsNode->objectElements["query"]->type == vrutti::core::utils::JsonNode::Type::String) {
-                        query = vrutti::core::utils::JsonParser::unescapeString(argsNode->objectElements["query"]->stringValue);
+                    auto queryNode = argsNode->get("query");
+                    if (queryNode && queryNode->type == vrutti::core::utils::JsonNode::Type::String) {
+                        query = vrutti::core::utils::JsonParser::unescapeString(queryNode->stringValue);
                     }
-                    if (argsNode->objectElements.count("matchCase") && argsNode->objectElements["matchCase"]->type == vrutti::core::utils::JsonNode::Type::Boolean) {
-                        matchCase = argsNode->objectElements["matchCase"]->boolValue;
+                    auto matchCaseNode = argsNode->get("matchCase");
+                    if (matchCaseNode && matchCaseNode->type == vrutti::core::utils::JsonNode::Type::Boolean) {
+                        matchCase = matchCaseNode->boolValue;
                     }
-                    if (argsNode->objectElements.count("wholeWord") && argsNode->objectElements["wholeWord"]->type == vrutti::core::utils::JsonNode::Type::Boolean) {
-                        wholeWord = argsNode->objectElements["wholeWord"]->boolValue;
+                    auto wholeWordNode = argsNode->get("wholeWord");
+                    if (wholeWordNode && wholeWordNode->type == vrutti::core::utils::JsonNode::Type::Boolean) {
+                        wholeWord = wholeWordNode->boolValue;
                     }
-                    if (argsNode->objectElements.count("useRegex") && argsNode->objectElements["useRegex"]->type == vrutti::core::utils::JsonNode::Type::Boolean) {
-                        useRegex = argsNode->objectElements["useRegex"]->boolValue;
+                    auto useRegexNode = argsNode->get("useRegex");
+                    if (useRegexNode && useRegexNode->type == vrutti::core::utils::JsonNode::Type::Boolean) {
+                        useRegex = useRegexNode->boolValue;
                     }
-                    if (argsNode->objectElements.count("searchId") && argsNode->objectElements["searchId"]->type == vrutti::core::utils::JsonNode::Type::Number) {
-                        searchId = (int)argsNode->objectElements["searchId"]->numberValue;
+                    auto searchIdNode = argsNode->get("searchId");
+                    if (searchIdNode && searchIdNode->type == vrutti::core::utils::JsonNode::Type::Number) {
+                        searchId = (int)searchIdNode->numberValue;
                     }
                 }
 
@@ -841,12 +847,11 @@ namespace vrutti::ui {
                     wordsJson += "]";
                     
                     std::string resultJson = "{\"searchId\":" + std::to_string(searchId) + ",\"results\":{\"files\":" + filesJson + ",\"folders\":[],\"words\":" + wordsJson + "}}";
+                    std::string escapedResultJson = vrutti::core::utils::JsonSerializer::escapeString(resultJson);
+                    std::string ipcMsgJs = "if (window.vruttiIpcMessage) { window.vruttiIpcMessage({ method: 'search/results', params: JSON.parse(\"" + escapedResultJson + "\") }); }";
                     
-                    std::string ipcMsg = "{\"method\":\"search/results\",\"params\":" + resultJson + "}";
-                    std::string b64 = base64_encode(ipcMsg);
-                    
-                    w->dispatch([w, b64]() {
-                        w->eval("if (window.vruttiIpcMessage) window.vruttiIpcMessage('" + b64 + "');");
+                    w->dispatch([w, ipcMsgJs]() {
+                        w->eval(ipcMsgJs);
                     });
                     
                 }).detach();
