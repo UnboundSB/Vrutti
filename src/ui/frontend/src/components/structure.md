@@ -12,6 +12,8 @@ Core module encapsulating components functionality and logic.
 - **vrutti-debug-console.ts**: Implements internal vrutti-debug-console.ts mechanisms.
 - **vrutti-editor-layout.ts**: Implements internal vrutti-editor-layout.ts mechanisms.
 - **vrutti-editor.ts**: Implements internal vrutti-editor.ts mechanisms.
+- **vrutti-extension-details.ts**: Implements internal vrutti-extension-details.ts mechanisms.
+- **vrutti-extensions.ts**: Implements internal vrutti-extensions.ts mechanisms.
 - **vrutti-menubar.ts**: Implements internal vrutti-menubar.ts mechanisms.
 - **vrutti-panel.ts**: Implements internal vrutti-panel.ts mechanisms.
 - **vrutti-quick-open.ts**: Implements internal vrutti-quick-open.ts mechanisms.
@@ -19,6 +21,8 @@ Core module encapsulating components functionality and logic.
 - **vrutti-settings.ts**: Implements internal vrutti-settings.ts mechanisms.
 - **vrutti-sidebar.ts**: Implements internal vrutti-sidebar.ts mechanisms.
 - **vrutti-statusbar.ts**: Implements internal vrutti-statusbar.ts mechanisms.
+- **vrutti-task-manager.ts**: Implements internal vrutti-task-manager.ts mechanisms.
+- **vrutti-task-picker.ts**: Implements internal vrutti-task-picker.ts mechanisms.
 - **vrutti-terminal.ts**: Implements internal vrutti-terminal.ts mechanisms.
 - **xterm-css.ts**: Implements internal xterm-css.ts mechanisms.
 - **xterm-styles.ts**: Implements internal xterm-styles.ts mechanisms.
