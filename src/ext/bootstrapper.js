@@ -4,6 +4,103 @@ const Module = require('module');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const inspector = require('inspector');
+const urlModule = require('url');
+
+class ExtensionDebugger {
+    constructor(ipcClient) {
+        this.ipcClient = ipcClient;
+        this.session = null;
+    }
+
+    start() {
+        if (this.session) return;
+        this.session = new inspector.Session();
+        this.session.connect();
+        
+        this.session.on('Debugger.paused', (message) => this.onPaused(message));
+        this.session.on('Debugger.resumed', () => this.ipcClient.sendNotification('debug/resumed', {}));
+        this.session.on('Console.messageAdded', (message) => {
+            this.ipcClient.sendNotification('debug/log', { type: message.params.message.level, text: message.params.message.text });
+        });
+
+        this.session.post('Debugger.enable');
+        this.session.post('Runtime.enable');
+        this.session.post('Console.enable');
+        this.ipcClient.sendNotification('debug/log', { type: 'info', text: 'Attached to Vrutti Node.js Extension Host V8 Inspector.' });
+    }
+
+    stop() {
+        if (this.session) {
+            this.session.disconnect();
+            this.session = null;
+            this.ipcClient.sendNotification('debug/resumed', {});
+            this.ipcClient.sendNotification('debug/log', { type: 'info', text: 'Debugger detached.' });
+        }
+    }
+
+    pause() { if (this.session) this.session.post('Debugger.pause'); }
+    continue() { if (this.session) this.session.post('Debugger.resume'); }
+    stepOver() { if (this.session) this.session.post('Debugger.stepOver'); }
+    stepInto() { if (this.session) this.session.post('Debugger.stepInto'); }
+    stepOut() { if (this.session) this.session.post('Debugger.stepOut'); }
+
+    evaluate(expression) {
+        if (this.session) {
+            this.session.post('Runtime.evaluate', { expression, returnByValue: true }, (err, result) => {
+                if (result && result.result) {
+                    this.ipcClient.sendNotification('debug/log', { 
+                        type: 'result', 
+                        text: result.result.value !== undefined ? String(result.result.value) : (result.result.description || 'undefined')
+                    });
+                } else if (err) {
+                    this.ipcClient.sendNotification('debug/log', { type: 'error', text: String(err) });
+                }
+            });
+        }
+    }
+
+    onPaused(message) {
+        const callFrames = message.params.callFrames;
+        const mappedFrames = callFrames.map(f => {
+            let fileUrl = f.url;
+            if (fileUrl.startsWith('file://')) {
+                fileUrl = urlModule.fileURLToPath(fileUrl);
+            }
+            return {
+                id: f.callFrameId,
+                name: f.functionName || '(anonymous)',
+                file: path.basename(fileUrl || '(unknown)'),
+                line: f.location.lineNumber + 1
+            };
+        });
+
+        const variables = [];
+        if (callFrames.length > 0) {
+            const scopeChain = callFrames[0].scopeChain;
+            if (scopeChain.length > 0) {
+                const localScope = scopeChain[0];
+                this.session.post('Runtime.getProperties', { objectId: localScope.object.objectId }, (err, res) => {
+                    if (res && res.result) {
+                        for (const prop of res.result) {
+                            if (prop.name === 'exports' || prop.name === 'module' || prop.name === 'require') continue;
+                            variables.push({
+                                name: prop.name,
+                                value: prop.value ? (prop.value.value !== undefined ? String(prop.value.value) : (prop.value.description || 'object')) : 'undefined',
+                                type: prop.value ? prop.value.type : 'undefined',
+                                hasChildren: prop.value && prop.value.objectId ? true : false
+                            });
+                        }
+                    }
+                    this.ipcClient.sendNotification('debug/paused', { callStack: mappedFrames, variables });
+                });
+                return;
+            }
+        }
+        
+        this.ipcClient.sendNotification('debug/paused', { callStack: mappedFrames, variables: [] });
+    }
+}
 
 function parseArgs() {
     const args = process.argv.slice(2);
@@ -482,6 +579,21 @@ async function main() {
                 await vruttiApi.commands.executeCommand(commandId, ...args);
             } catch (err) {
                 log(`Command execution failed: ${err.message}`);
+            }
+        });
+        
+        // Debugger IPC Bindings
+        const extDebugger = new ExtensionDebugger(ipcClient);
+        ipcClient.on('debug/start', () => extDebugger.start());
+        ipcClient.on('debug/stop', () => extDebugger.stop());
+        ipcClient.on('debug/pause', () => extDebugger.pause());
+        ipcClient.on('debug/continue', () => extDebugger.continue());
+        ipcClient.on('debug/stepOver', () => extDebugger.stepOver());
+        ipcClient.on('debug/stepInto', () => extDebugger.stepInto());
+        ipcClient.on('debug/stepOut', () => extDebugger.stepOut());
+        ipcClient.on('debug/evaluate', (payload) => {
+            if (payload && payload.expression) {
+                extDebugger.evaluate(payload.expression);
             }
         });
         
