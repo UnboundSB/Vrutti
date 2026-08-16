@@ -241,7 +241,9 @@ namespace vrutti::plugins::search {
         }
         
         std::regex re;
-        bool useRegexEngine = options.useRegex || options.wholeWord || !options.matchCase;
+        bool useRegexEngine = options.useRegex || options.wholeWord;
+        bool caseInsensitiveSubstring = !options.useRegex && !options.wholeWord && !options.matchCase;
+        
         if (useRegexEngine) {
             try {
                 re = std::regex(searchPattern, regexFlags);
@@ -251,7 +253,12 @@ namespace vrutti::plugins::search {
             }
         }
         
-        bool isFuzzy = !options.useRegex && !options.wholeWord;
+        std::string lowerQuery = query;
+        if (caseInsensitiveSubstring) {
+            for (char& c : lowerQuery) c = std::tolower(static_cast<unsigned char>(c));
+        }
+        
+        bool isFuzzy = false; // We don't use fuzzy matching for text search
         
         std::vector<CacheEntry> localCache;
         bool useCache = false;
@@ -268,22 +275,7 @@ namespace vrutti::plugins::search {
             
             auto processEntry = [&](const std::string& path, const std::string& name, bool isDir) {
                 if (resultCount >= 2000 && !options.isReplace) return false;
-                
-                if (isDir) {
-                    if (isFuzzy) {
-                        if (fuzzyMatch(query, name, options.matchCase)) response.folderMatches.push_back(path);
-                    } else {
-                        if (std::regex_search(name, re)) response.folderMatches.push_back(path);
-                    }
-                    return true;
-                }
-                
-                if (isFuzzy) {
-                    if (fuzzyMatch(query, name, options.matchCase)) response.fileMatches.push_back(path);
-                } else {
-                    if (std::regex_search(name, re)) response.fileMatches.push_back(path);
-                }
-                
+                // For text search we don't populate folderMatches/fileMatches this way
                 return true;
             };
 
@@ -316,18 +308,42 @@ namespace vrutti::plugins::search {
                     file.seekg(0, std::ios::beg);
                     
                     std::string line;
+                    std::string lowerLine;
                     int lineNumber = 1;
                     while (std::getline(file, line)) {
+                        bool matched = false;
                         if (useRegexEngine) {
-                            if (std::regex_search(line, re)) {
-                                response.wordMatches.push_back({entry.path, lineNumber, line});
-                                resultCount++;
-                            }
+                            matched = std::regex_search(line, re);
+                        } else if (caseInsensitiveSubstring) {
+                            lowerLine.resize(line.size());
+                            for (size_t i = 0; i < line.size(); ++i) lowerLine[i] = std::tolower(static_cast<unsigned char>(line[i]));
+                            matched = (lowerLine.find(lowerQuery) != std::string::npos);
                         } else {
-                            if (fuzzyMatch(query, line, options.matchCase)) {
-                                response.wordMatches.push_back({entry.path, lineNumber, line});
-                                resultCount++;
+                            matched = (line.find(query) != std::string::npos);
+                        }
+                        
+                        if (matched) {
+                            std::string snippet = line;
+                            if (snippet.length() > 200) {
+                                size_t qPos = std::string::npos;
+                                if (useRegexEngine) {
+                                    std::smatch m;
+                                    if (std::regex_search(snippet, m, re)) qPos = m.position();
+                                } else if (caseInsensitiveSubstring) {
+                                    qPos = lowerLine.find(lowerQuery);
+                                } else {
+                                    qPos = snippet.find(query);
+                                }
+                                if (qPos != std::string::npos) {
+                                    size_t start = (qPos > 50) ? (qPos - 50) : 0;
+                                    snippet = (start > 0 ? "..." : "") + snippet.substr(start, 200) + (start + 200 < snippet.length() ? "..." : "");
+                                } else {
+                                    snippet = snippet.substr(0, 200) + "...";
+                                }
                             }
+                            response.wordMatches.push_back({entry.path, lineNumber, snippet});
+                            resultCount++;
+                            if (resultCount >= 2000 && !options.isReplace) break;
                         }
                         lineNumber++;
                     }
@@ -373,6 +389,7 @@ namespace vrutti::plugins::search {
                 file.seekg(0, std::ios::beg);
                 
                 std::string line;
+                std::string lowerLine;
                 int lineNumber = 1;
                 bool fileModified = false;
                 std::vector<std::string> newLines;
@@ -385,6 +402,26 @@ namespace vrutti::plugins::search {
                             matched = true;
                             if (options.isReplace) {
                                 line = std::regex_replace(line, re, options.replaceString);
+                                fileModified = true;
+                            }
+                        }
+                    } else if (caseInsensitiveSubstring) {
+                        lowerLine.resize(line.size());
+                        for (size_t i = 0; i < line.size(); ++i) lowerLine[i] = std::tolower(static_cast<unsigned char>(line[i]));
+                        if (lowerLine.find(lowerQuery) != std::string::npos) {
+                            matched = true;
+                            if (options.isReplace) {
+                                // For case insensitive replace without regex, we need to replace manually
+                                size_t pos = 0;
+                                while ((pos = lowerLine.find(lowerQuery, pos)) != std::string::npos) {
+                                    line.replace(pos, lowerQuery.length(), options.replaceString);
+                                    // Update lowerLine to match the new line length/content so we can continue searching
+                                    lowerLine.replace(pos, lowerQuery.length(), options.replaceString);
+                                    for (size_t i = pos; i < pos + options.replaceString.length(); ++i) {
+                                        lowerLine[i] = std::tolower(static_cast<unsigned char>(lowerLine[i]));
+                                    }
+                                    pos += options.replaceString.length();
+                                }
                                 fileModified = true;
                             }
                         }
@@ -406,10 +443,16 @@ namespace vrutti::plugins::search {
                     if (matched) {
                         std::string snippet = line;
                         if (snippet.length() > 200) {
-                            size_t qPos = snippet.find(query);
-                            if (useRegexEngine && qPos == std::string::npos) {
+                            size_t qPos = std::string::npos;
+                            if (useRegexEngine) {
                                 std::smatch m;
                                 if (std::regex_search(snippet, m, re)) qPos = m.position();
+                            } else if (caseInsensitiveSubstring) {
+                                std::string snippetLower = snippet;
+                                for (char& c : snippetLower) c = std::tolower(static_cast<unsigned char>(c));
+                                qPos = snippetLower.find(lowerQuery);
+                            } else {
+                                qPos = snippet.find(query);
                             }
                             if (qPos != std::string::npos) {
                                 size_t start = (qPos > 50) ? (qPos - 50) : 0;
