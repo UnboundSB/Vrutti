@@ -1,9 +1,10 @@
-# Directory: events
+# Event System (src/core/events/)
 
 ## Purpose
-Core module encapsulating events functionality and logic.
+Provides an Event Bus or messaging backbone to allow decoupled communication between different native C++ subsystems.
 
 ## Files
-- **Event.h**: Implements internal Event.h mechanisms.
-- **Observable.h**: Implements internal Observable.h mechanisms.
+- (To be populated with event emitter/listener classes)
 
+## Child Directories
+- (No immediate subdirectories)

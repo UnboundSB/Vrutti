@@ -1,8 +1,10 @@
-# Directory: public
+# Public Assets (src/ui/frontend/public/)
 
 ## Purpose
-Core module encapsulating public functionality and logic.
+Stores static assets that are copied directly into the frontend build output.
 
 ## Files
-- **vrutti-logo.png**: Implements internal vrutti-logo.png mechanisms.
+- **codicon.css** & **codicon.ttf**: VS Code's iconic font library used for UI icons.
 
+## Child Directories
+- (No immediate subdirectories)

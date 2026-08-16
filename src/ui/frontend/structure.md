@@ -1,17 +1,14 @@
-# Directory: frontend
+# Frontend Web App (src/ui/frontend/)
 
 ## Purpose
-Core module encapsulating frontend functionality and logic.
-
-## Child Directories
-- **public/**: Manages public related abstractions and sub-modules.
-- **src/**: Manages src related abstractions and sub-modules.
+The root directory of the Vite-based Web Application that renders Vrutti IDE's user interface. It is written in TypeScript and Lit (Web Components).
 
 ## Files
-- **Dockerfile.frontend**: Implements internal Dockerfile.frontend mechanisms.
-- **index.html**: Implements internal index.html mechanisms.
-- **package-lock.json**: Implements internal package-lock.json mechanisms.
-- **package.json**: Implements internal package.json mechanisms.
-- **tsconfig.json**: Implements internal tsconfig.json mechanisms.
-- **vite.config.ts**: Implements internal vite.config.ts mechanisms.
+- **index.html**: The main HTML entry point loaded by the C++ WebView.
+- **package.json**: Defines NPM dependencies and build scripts for the frontend.
+- **vite.config.ts**: Configuration for the Vite bundler.
+- **tsconfig.json**: TypeScript compiler configuration.
 
+## Child Directories
+- **public/**: Static assets (fonts, icons) served directly without bundling.
+- **src/**: The core TypeScript source code and Web Components for the IDE interface.

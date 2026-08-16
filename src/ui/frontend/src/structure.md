@@ -1,14 +1,12 @@
-# Directory: src
+# Frontend Source (src/ui/frontend/src/)
 
 ## Purpose
-Core module encapsulating src functionality and logic.
-
-## Child Directories
-- **components/**: Manages components related abstractions and sub-modules.
+The main TypeScript source code directory for the frontend application. It initializes the UI and manages global states and themes.
 
 ## Files
-- **globalHover.ts**: Implements internal globalHover.ts mechanisms.
-- **main.ts**: Implements internal main.ts mechanisms.
-- **shared-styles.ts**: Implements internal shared-styles.ts mechanisms.
-- **ThemeBridge.ts**: Implements internal ThemeBridge.ts mechanisms.
+- **main.ts**: The main entry point for the frontend logic. It sets up IPC listeners, requests initial configuration from the native backend, and renders the root <vrutti-editor-layout> component.
+- **index.css**: Global CSS styles, theme variables, and reset rules.
+- **vite-env.d.ts**: Type declarations for Vite environment variables.
 
+## Child Directories
+- **components/**: Contains all reusable Web Components (Lit) that make up the IDE layout, such as the explorer, terminal, and search bar.

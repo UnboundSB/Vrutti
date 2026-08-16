@@ -1,9 +1,10 @@
-# Directory: editor
+# Editor Core (src/core/editor/)
 
 ## Purpose
-Core module encapsulating editor functionality and logic.
+Manages the backend representation of open documents, text buffers, and editor state.
 
 ## Files
-- **PieceTable.cpp**: Implements internal PieceTable.cpp mechanisms.
-- **PieceTable.h**: Implements internal PieceTable.h mechanisms.
+- (To be populated as text buffer structures are implemented)
 
+## Child Directories
+- (No immediate subdirectories)

@@ -1,9 +1,11 @@
-# Directory: config
+# Configuration (src/core/config/)
 
 ## Purpose
-Core module encapsulating config functionality and logic.
+Responsible for reading, parsing, and persisting the IDE's configuration files (e.g., user settings, themes, shortcuts) from disk.
 
 ## Files
-- **SettingsManager.cpp**: Implements internal SettingsManager.cpp mechanisms.
-- **SettingsManager.h**: Implements internal SettingsManager.h mechanisms.
+- **SettingsManager.cpp**: Implements the logic to read JSON settings files and serve them to other native or UI components.
+- **SettingsManager.h**: Header for the SettingsManager class.
 
+## Child Directories
+- (No immediate subdirectories)

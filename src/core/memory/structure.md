@@ -1,10 +1,10 @@
-# Directory: memory
+# Memory Management (src/core/memory/)
 
 ## Purpose
-Core module encapsulating memory functionality and logic.
+Contains custom allocators, memory tracking, and performance optimization structures for the C++ engine.
 
 ## Files
-- **ArenaAllocator.cpp**: Implements internal ArenaAllocator.cpp mechanisms.
-- **ArenaAllocator.h**: Implements internal ArenaAllocator.h mechanisms.
-- **Disposable.h**: Implements internal Disposable.h mechanisms.
+- (To be populated with allocators or arena implementations)
 
+## Child Directories
+- (No immediate subdirectories)

@@ -1,9 +1,10 @@
-# Directory: plugins
+# Native Plugins (src/plugins/)
 
 ## Purpose
-Core module encapsulating plugins functionality and logic.
+Houses independent modules that are compiled into dynamic libraries (DLLs) and loaded at runtime by the Core Engine for high-performance operations.
+
+## Files
+- (No immediate source files)
 
 ## Child Directories
-- **search/**: Manages search related abstractions and sub-modules.
-
-
+- **search/**: The native C++ search plugin providing ultra-fast regex and plain-text codebase scanning without external dependencies.

@@ -1,11 +1,10 @@
-# Directory: concurrency
+# Concurrency (src/core/concurrency/)
 
 ## Purpose
-Core module encapsulating concurrency functionality and logic.
+Provides utilities and primitives for multi-threading and asynchronous execution within the native C++ engine.
 
 ## Files
-- **Async.h**: Implements internal Async.h mechanisms.
-- **CancellationToken.h**: Implements internal CancellationToken.h mechanisms.
-- **ThreadPool.cpp**: Implements internal ThreadPool.cpp mechanisms.
-- **ThreadPool.h**: Implements internal ThreadPool.h mechanisms.
+- (To be implemented or contains internal thread abstractions)
 
+## Child Directories
+- (No immediate subdirectories)

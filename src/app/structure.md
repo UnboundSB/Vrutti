@@ -1,9 +1,10 @@
-# Directory: app
+# Application Entry (src/app/)
 
 ## Purpose
-Core module encapsulating app functionality and logic.
+Serves as the main entry point and bootstrap mechanism for the native C++ application. It handles process initialization and arguments parsing.
 
 ## Files
-- **main.cpp**: Implements internal main.cpp mechanisms.
-- **vrutti_app.rc**: Implements internal vrutti_app.rc mechanisms.
+- **main.cpp**: The absolute entry point for rutti_app.exe. It initializes the core engine, starts IPC, and boots up the main window UI.
 
+## Child Directories
+- (No immediate subdirectories)

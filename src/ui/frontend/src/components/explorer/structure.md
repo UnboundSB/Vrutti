@@ -1,10 +1,10 @@
-# Directory: explorer
+# Explorer Components (src/ui/frontend/src/components/explorer/)
 
 ## Purpose
-Core module encapsulating explorer functionality and logic.
+Manages the File Explorer sidebar, rendering the directory tree, files, and handling file manipulation interactions.
 
 ## Files
-- **explorerModel.ts**: Implements internal explorerModel.ts mechanisms.
-- **iconMapper.ts**: Implements internal iconMapper.ts mechanisms.
-- **vrutti-explorer.ts**: Implements internal vrutti-explorer.ts mechanisms.
+- **vrutti-explorer.ts**: The main explorer component that queries the native backend for directory contents and renders the interactive file tree.
 
+## Child Directories
+- (No immediate subdirectories)

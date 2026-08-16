@@ -1,20 +1,19 @@
-# Directory: core
+# Core Engine (src/core/)
 
 ## Purpose
-Core module encapsulating core functionality and logic.
-
-## Child Directories
-- **concurrency/**: Manages concurrency related abstractions and sub-modules.
-- **config/**: Manages config related abstractions and sub-modules.
-- **editor/**: Manages editor related abstractions and sub-modules.
-- **events/**: Manages events related abstractions and sub-modules.
-- **fs/**: Manages fs related abstractions and sub-modules.
-- **ipc/**: Manages ipc related abstractions and sub-modules.
-- **memory/**: Manages memory related abstractions and sub-modules.
-- **plugins/**: Manages plugins related abstractions and sub-modules.
-- **terminal/**: Manages terminal related abstractions and sub-modules.
-- **utils/**: Manages utils related abstractions and sub-modules.
+The foundational native C++ framework that powers Vrutti IDE. It provides low-level operating system abstractions and core services like IPC, file management, configuration, and event routing.
 
 ## Files
-- **task.md**: Implements internal task.md mechanisms.
+- (No immediate source files; functionality is modularized into subdirectories)
 
+## Child Directories
+- **concurrency/**: Manages thread pools, async tasks, and parallel execution logic.
+- **config/**: Handles loading, parsing, and managing user settings (SettingsManager).
+- **editor/**: Manages editor state and backend logic for text manipulation.
+- **events/**: Event bus and messaging system for cross-component communication.
+- **fs/**: High-performance filesystem operations and watchers.
+- **ipc/**: Inter-Process Communication (e.g., Named Pipes) bridging the C++ engine and Node.js extension host.
+- **memory/**: Memory management utilities (if any custom allocators are used).
+- **plugins/**: Manages the dynamic loading (PluginLoader) and lifecycle of native DLL plugins.
+- **terminal/**: Backend orchestration for the integrated terminal/PTY handling.
+- **utils/**: Shared helper classes (e.g., JSON parsing/serialization, logging).

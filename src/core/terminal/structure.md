@@ -1,11 +1,10 @@
-# Directory: terminal
+# Terminal Backend (src/core/terminal/)
 
 ## Purpose
-Core module encapsulating terminal functionality and logic.
+Manages pseudo-terminal (PTY) allocation and native shell execution for the integrated terminal feature.
 
 ## Files
-- **ReplProcess.cpp**: Implements internal ReplProcess.cpp mechanisms.
-- **ReplProcess.h**: Implements internal ReplProcess.h mechanisms.
-- **TerminalProcess.cpp**: Implements internal TerminalProcess.cpp mechanisms.
-- **TerminalProcess.h**: Implements internal TerminalProcess.h mechanisms.
+- (To be populated with PTY integration headers/implementations)
 
+## Child Directories
+- (No immediate subdirectories)

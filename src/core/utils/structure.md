@@ -1,14 +1,12 @@
-# Directory: utils
+# Utilities (src/core/utils/)
 
 ## Purpose
-Core module encapsulating utils functionality and logic.
+Contains shared helpers and standard abstractions used globally across the C++ codebase.
 
 ## Files
-- **Base64.h**: Implements internal Base64.h mechanisms.
-- **Json.cpp**: Implements internal Json.cpp mechanisms.
-- **Json.h**: Implements internal Json.h mechanisms.
-- **LineScanner.cpp**: Implements internal LineScanner.cpp mechanisms.
-- **LineScanner.h**: Implements internal LineScanner.h mechanisms.
-- **StringPool.cpp**: Implements internal StringPool.cpp mechanisms.
-- **StringPool.h**: Implements internal StringPool.h mechanisms.
+- **JsonParser.cpp**: A fast, custom JSON parser used for decoding IPC messages and configuration files without heavy third-party dependencies.
+- **JsonParser.h**: Header for the JsonParser class.
+- **JsonSerializer.h**: Utility to serialize C++ objects and strings into valid JSON strings.
 
+## Child Directories
+- (No immediate subdirectories)
