@@ -4,6 +4,40 @@
 #include <fstream>
 #include <thread>
 #include <cctype>
+#include <algorithm>
+#include <vector>
+#include <chrono>
+
+namespace {
+    int fuzzyMatch(const std::string& lowerPattern, const std::string& str) {
+        if (lowerPattern.empty()) return 1;
+        int pIdx = 0;
+        int score = 0;
+        int consecutive = 0;
+        
+        size_t lastSlash = str.find_last_of("/\\");
+        
+        for (size_t i = 0; i < str.length(); ++i) {
+            char c = static_cast<char>(std::tolower(static_cast<unsigned char>(str[i])));
+            if (static_cast<size_t>(pIdx) < lowerPattern.length() && c == lowerPattern[pIdx]) {
+                pIdx++;
+                score += 10 + (consecutive * 5);
+                if (lastSlash != std::string::npos && i > lastSlash) {
+                    score += 10;
+                }
+                consecutive++;
+            } else {
+                consecutive = 0;
+            }
+        }
+        
+        if (static_cast<size_t>(pIdx) == lowerPattern.length()) {
+            score -= static_cast<int>(str.length());
+            return score;
+        }
+        return 0;
+    }
+}
 
 // We must include webview.h here. It's a single header library.
 #include "../vendor/webview.h"
@@ -24,11 +58,35 @@ namespace vrutti::ui {
     }
 
     Window::~Window() {
+        if (m_searchPlugin) {
+            m_pluginLoader.unloadPlugin(m_searchPlugin->getName());
+        }
         shutdown();
     }
 
     bool Window::init() {
         std::cout << "[UI] Initializing Native Webview Window..." << std::endl;
+        
+        std::filesystem::path exePath;
+#ifdef _WIN32
+        char buffer[MAX_PATH];
+        GetModuleFileNameA(NULL, buffer, MAX_PATH);
+        exePath = std::filesystem::path(buffer);
+        std::string searchPluginPath = (exePath.parent_path() / "libvrutti_search.dll").string();
+#else
+        char buffer[PATH_MAX];
+        ssize_t count = readlink("/proc/self/exe", buffer, PATH_MAX);
+        if (count != -1) {
+            exePath = std::filesystem::path(std::string(buffer, (count > 0) ? count : 0));
+        }
+        std::string searchPluginPath = (exePath.parent_path() / "libvrutti_search.so").string();
+#endif
+        m_searchPlugin = m_pluginLoader.loadPlugin(searchPluginPath);
+        if (m_searchPlugin) {
+            std::cout << "[Window] Successfully loaded search plugin." << std::endl;
+        } else {
+            std::cerr << "[Window] Failed to load search plugin from: " << searchPluginPath << std::endl;
+        }
         
         // Ensure webview.h compiles by setting up a dummy handle
         m_windowHandle = new webview::webview(true, nullptr);
@@ -719,141 +777,38 @@ namespace vrutti::ui {
             if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
                 auto argsNode = parsedReq->arrayElements[0];
                 
-                std::string directory;
-                std::string query;
-                bool matchCase = false;
-                bool wholeWord = false;
-                bool useRegex = false;
                 int searchId = 0;
                 
+                std::string argsJsonString = "";
                 if (argsNode && argsNode->type == vrutti::core::utils::JsonNode::Type::Object) {
-                    auto dirNode = argsNode->get("directory");
-                    if (dirNode && dirNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                        directory = vrutti::core::utils::JsonParser::unescapeString(dirNode->stringValue);
-                    }
-                    auto queryNode = argsNode->get("query");
-                    if (queryNode && queryNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                        query = vrutti::core::utils::JsonParser::unescapeString(queryNode->stringValue);
-                    }
-                    auto matchCaseNode = argsNode->get("matchCase");
-                    if (matchCaseNode && matchCaseNode->type == vrutti::core::utils::JsonNode::Type::Boolean) {
-                        matchCase = matchCaseNode->boolValue;
-                    }
-                    auto wholeWordNode = argsNode->get("wholeWord");
-                    if (wholeWordNode && wholeWordNode->type == vrutti::core::utils::JsonNode::Type::Boolean) {
-                        wholeWord = wholeWordNode->boolValue;
-                    }
-                    auto useRegexNode = argsNode->get("useRegex");
-                    if (useRegexNode && useRegexNode->type == vrutti::core::utils::JsonNode::Type::Boolean) {
-                        useRegex = useRegexNode->boolValue;
-                    }
+                    argsJsonString = vrutti::core::utils::JsonSerializer::stringify(argsNode, 0, false);
                     auto searchIdNode = argsNode->get("searchId");
                     if (searchIdNode && searchIdNode->type == vrutti::core::utils::JsonNode::Type::Number) {
                         searchId = (int)searchIdNode->numberValue;
                     }
                 }
 
-                std::thread([w, directory, query, matchCase, wholeWord, useRegex, searchId]() {
-                    std::string cmd = "";
-                    bool isFileSearch = query.empty();
-                    std::string args = "";
+                auto t_start = std::chrono::high_resolution_clock::now();
 
-                    std::string safeQuery = query;
-                    size_t pos = 0;
-                    while ((pos = safeQuery.find("\"", pos)) != std::string::npos) {
-                         safeQuery.replace(pos, 1, "\\\"");
-                         pos += 2;
+                std::thread([this, w, argsJsonString, searchId, t_start]() {
+                    std::string resultJson = "{\"files\":[],\"folders\":[],\"words\":[]}";
+                    if (m_searchPlugin) {
+                        resultJson = m_searchPlugin->executeCommand("search", argsJsonString);
                     }
                     
-                    if (isFileSearch) {
-                        args = "--files";
-                    } else {
-                        if (matchCase) args += " --case-sensitive";
-                        else args += " --ignore-case";
-                        if (wholeWord) args += " --word-regexp";
-                        if (!useRegex) args += " --fixed-strings";
-                        args += " --line-number --heading --color=never";
-                        args += " \"" + safeQuery + "\"";
-                    }
-
-#ifdef _WIN32
-                    char exePath[MAX_PATH];
-                    GetModuleFileNameA(NULL, exePath, MAX_PATH);
-                    std::filesystem::path binPath(exePath);
-                    std::string rgExePath = (binPath.parent_path().parent_path() / "ripgrep" / "rg.exe").string();
-                    cmd = "cd /d \"" + directory + "\" && \"" + rgExePath + "\" " + args + " 2>&1";
-                    FILE* pipe = _popen(cmd.c_str(), "r");
-#else
-                    char bufferPath[PATH_MAX];
-                    ssize_t count = readlink("/proc/self/exe", bufferPath, PATH_MAX);
-                    std::filesystem::path binPath;
-                    if (count != -1) {
-                        binPath = std::filesystem::path(std::string(bufferPath, (count > 0) ? count : 0));
-                    }
-                    std::string rgExePath = (binPath.parent_path().parent_path() / "ripgrep" / "rg").string();
-                    cmd = "cd \"" + directory + "\" && \"" + rgExePath + "\" " + args + " 2>&1";
-                    FILE* pipe = popen(cmd.c_str(), "r");
-#endif
-                    std::string filesJson = "[";
-                    std::string wordsJson = "[";
-                    bool firstFile = true;
-                    bool firstWord = true;
+                    std::string fullResultJson = "{\"searchId\":" + std::to_string(searchId) + ",\"results\":" + resultJson + "}";
+                    std::string ipcMsg = "{\"method\":\"search/results\",\"params\":" + fullResultJson + "}";
+                    std::string b64 = base64_encode(ipcMsg);
                     
-                    if (pipe) {
-                        char buffer[1024];
-                        std::string currentFile = "";
-                        while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
-                            std::string line = buffer;
-                            if (!line.empty() && line.back() == '\n') line.pop_back();
-                            if (!line.empty() && line.back() == '\r') line.pop_back();
-                            if (line.empty()) continue;
-                            
-                            if (isFileSearch) {
-                                std::string fullPath = directory + "/" + line;
-                                for (char& c : fullPath) { if (c == '\\') c = '/'; }
-                                if (!firstFile) filesJson += ",";
-                                filesJson += vrutti::core::utils::JsonSerializer::escapeString(fullPath);
-                                firstFile = false;
-                            } else {
-                                size_t colonPos = line.find(':');
-                                if (colonPos != std::string::npos && colonPos > 0) {
-                                    bool isLineNum = true;
-                                    for (size_t i = 0; i < colonPos; ++i) {
-                                        if (!isdigit(line[i])) { isLineNum = false; break; }
-                                    }
-                                    if (isLineNum) {
-                                        std::string numStr = line.substr(0, colonPos);
-                                        std::string text = line.substr(colonPos + 1);
-                                        if (!firstWord) wordsJson += ",";
-                                        wordsJson += "{\"file\":" + vrutti::core::utils::JsonSerializer::escapeString(currentFile) + ",\"line\":" + numStr + ",\"text\":" + vrutti::core::utils::JsonSerializer::escapeString(text) + "}";
-                                        firstWord = false;
-                                    } else {
-                                        currentFile = directory + "/" + line;
-                                        for (char& c : currentFile) { if (c == '\\') c = '/'; }
-                                    }
-                                } else {
-                                    currentFile = directory + "/" + line;
-                                    for (char& c : currentFile) { if (c == '\\') c = '/'; }
-                                }
-                            }
-                        }
-#ifdef _WIN32
-                        _pclose(pipe);
-#else
-                        pclose(pipe);
-#endif
-                    }
-                    filesJson += "]";
-                    wordsJson += "]";
-                    
-                    std::string resultJson = "{\"searchId\":" + std::to_string(searchId) + ",\"results\":{\"files\":" + filesJson + ",\"folders\":[],\"words\":" + wordsJson + "}}";
-                    std::string escapedResultJson = vrutti::core::utils::JsonSerializer::escapeString(resultJson);
-                    std::string ipcMsgJs = "if (window.vruttiIpcMessage) { window.vruttiIpcMessage({ method: 'search/results', params: JSON.parse(\"" + escapedResultJson + "\") }); }";
+                    std::string ipcMsgJs = "if (window.vruttiIpcMessage) { window.vruttiIpcMessage('" + b64 + "'); }";
                     
                     w->dispatch([w, ipcMsgJs]() {
                         w->eval(ipcMsgJs);
                     });
                     
+                    auto t_end = std::chrono::high_resolution_clock::now();
+                    auto ms_total = std::chrono::duration_cast<std::chrono::milliseconds>(t_end - t_start).count();
+                    printf("[SearchProfile] SearchId %d FINISHED in %lld ms using SearchPlugin.\n", searchId, ms_total);
                 }).detach();
             }
             return "{}";

@@ -28,6 +28,7 @@ namespace vrutti::ui {
         vrutti::core::ipc::IPCClient* m_ipc;
         std::unordered_map<std::string, std::unique_ptr<vrutti::core::terminal::TerminalProcess>> m_terminals;
         std::unique_ptr<vrutti::core::terminal::ReplProcess> m_repl;
-        
+        vrutti::core::plugins::PluginLoader m_pluginLoader;
+        vrutti::core::plugins::IPlugin* m_searchPlugin = nullptr;
     };
 }

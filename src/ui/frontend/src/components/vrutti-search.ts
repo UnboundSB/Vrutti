@@ -208,22 +208,32 @@ export class VruttiSearch extends LitElement {
 
     @state() private query = '';
     @state() private replaceString = '';
+    @state() private includes = '';
+    @state() private excludes = '';
     @state() private directory = '.';
     @state() private results: { files: string[], folders: string[], words: SearchResult[] } = { files: [], folders: [], words: [] };
     @state() private isSearching = false;
     
     @state() private replaceExpanded = false;
+    @state() private detailsExpanded = false;
     @state() private matchCase = false;
     @state() private wholeWord = false;
     @state() private useRegex = false;
     
+    @state() private expandedFiles: Set<string> = new Set();
+    
+
+    private searchStartTime: number = 0;
 
     private handleIpc = (e: CustomEvent) => {
         if (e.detail && e.detail.method === 'search/results') {
             const params = e.detail.params;
             if (params && params.searchId === this.currentSearchId) {
+                const t0 = performance.now();
                 this.results = params.results;
+                this.expandedFiles = new Set(Object.keys(this.groupResultsByFile())); // Expand all by default
                 this.isSearching = false;
+                console.log(`[SearchProfile] Final search/results received in ${performance.now() - this.searchStartTime} ms since request. Processing took ${performance.now() - t0} ms.`);
             }
         } else if (e.detail && e.detail.method === 'search/results/partial') {
             const params = e.detail.params;
@@ -233,6 +243,7 @@ export class VruttiSearch extends LitElement {
                     folders: [...(this.results.folders || []), ...(params.results.folders || [])],
                     words: [...(this.results.words || []), ...(params.results.words || [])]
                 };
+                this.expandedFiles = new Set([...this.expandedFiles, ...Object.keys(this.groupResultsByFile())]);
             }
         }
     };
@@ -271,6 +282,16 @@ export class VruttiSearch extends LitElement {
         return groups;
     }
 
+    private toggleFileExpansion(file: string) {
+        const newSet = new Set(this.expandedFiles);
+        if (newSet.has(file)) {
+            newSet.delete(file);
+        } else {
+            newSet.add(file);
+        }
+        this.expandedFiles = newSet;
+    }
+
     private searchTimeout?: number;
     private currentSearchId: number = 0;
 
@@ -299,9 +320,8 @@ export class VruttiSearch extends LitElement {
             this.results = { files: [], folders: [], words: [] };
             const searchId = this.currentSearchId;
             try {
-                const req = JSON.stringify([{ directory: actualDir, query: "", searchId }]);
                 if ((window as any).vruttiSearchAsync) {
-                    (window as any).vruttiSearchAsync(req);
+                    (window as any).vruttiSearchAsync({ directory: actualDir, query: "", includes: this.includes, excludes: this.excludes, searchId });
                 }
             } catch (err) {
                 if (searchId === this.currentSearchId) {
@@ -320,17 +340,19 @@ export class VruttiSearch extends LitElement {
             this.results = { files: [], folders: [], words: [] };
             const searchId = this.currentSearchId;
             try {
-                const req = JSON.stringify([{
-                    directory: actualDir,
-                    query: this.query,
-                    matchCase: this.matchCase,
-                    wholeWord: this.wholeWord,
-                    useRegex: this.useRegex,
-                    searchId
-                }]);
-                
+                this.searchStartTime = performance.now();
+                console.log(`[SearchProfile] Sending search IPC...`);
                 if ((window as any).vruttiSearchAsync) {
-                    (window as any).vruttiSearchAsync(req);
+                    (window as any).vruttiSearchAsync({
+                        directory: actualDir,
+                        query: this.query,
+                        includes: this.includes,
+                        excludes: this.excludes,
+                        matchCase: this.matchCase,
+                        wholeWord: this.wholeWord,
+                        useRegex: this.useRegex,
+                        searchId
+                    });
                 }
             } catch (err) {
                 if (searchId === this.currentSearchId) {
@@ -353,6 +375,33 @@ export class VruttiSearch extends LitElement {
         window.removeEventListener('vrutti-ipc', this.handleIpc as EventListener);
         if (this.searchTimeout) window.clearTimeout(this.searchTimeout);
     }
+
+    private handleSearchChunk = (e: Event) => {
+        const detail = (e as CustomEvent).detail;
+        if (detail && detail.searchId === this.currentSearchId) {
+            const t0 = performance.now();
+            this.isSearching = false;
+            
+            const newFiles = detail.files || [];
+            const newWords = detail.words || [];
+            
+            this.results.files = [...(this.results.files || []), ...newFiles];
+            this.results.words = [...(this.results.words || []), ...newWords];
+            
+            const newSet = new Set(this.expandedFiles);
+            const groups = this.groupResultsByFile();
+            for (const file of Object.keys(groups)) {
+                if (!newSet.has(file)) {
+                    newSet.add(file);
+                }
+            }
+            this.expandedFiles = newSet;
+            
+            this.requestUpdate();
+            const t1 = performance.now();
+            console.log(`[SearchProfile] Processed chunk of ${newWords.length} words in ${t1 - t0} ms. Total time since search start: ${t1 - this.searchStartTime} ms.`);
+        }
+    };
 
     private renderHighlightedText(text: string) {
         if (!this.query) return html`${text}`;
@@ -432,6 +481,27 @@ export class VruttiSearch extends LitElement {
                         ` : ''}
                     </div>
                 </div>
+                
+                <div style="display:flex; justify-content: flex-end; padding-right: 4px; margin-top: 2px;">
+                    <div class="action-btn ${this.detailsExpanded ? 'active' : ''}" style="width: 24px" @click=${() => this.detailsExpanded = !this.detailsExpanded} title="Toggle Search Details">...</div>
+                </div>
+                
+                ${this.detailsExpanded ? html`
+                    <div style="display:flex; flex-direction:column; gap:6px; margin-top: 4px; padding-left: 24px;">
+                        <div>
+                            <div style="font-size:10px; opacity:0.7; margin-bottom:2px;">files to include</div>
+                            <div class="input-box replace">
+                                <input type="text" placeholder="e.g. *.ts, src/**/include" .value=${this.includes} @input=${(e: Event) => this.includes = (e.target as HTMLInputElement).value} @keydown=${this.handleQueryKeydown} />
+                            </div>
+                        </div>
+                        <div>
+                            <div style="font-size:10px; opacity:0.7; margin-bottom:2px;">files to exclude</div>
+                            <div class="input-box replace">
+                                <input type="text" placeholder="e.g. *.js, node_modules" .value=${this.excludes} @input=${(e: Event) => this.excludes = (e.target as HTMLInputElement).value} @keydown=${this.handleQueryKeydown} />
+                            </div>
+                        </div>
+                    </div>
+                ` : ''}
             </div>
             
             <div class="results-container">
@@ -466,17 +536,34 @@ export class VruttiSearch extends LitElement {
                     </div>
                 ` : ''}
                 
-                ${Object.entries(grouped).map(([file, items]) => html`
+                ${Object.entries(grouped).slice(0, 50).map(([file, items]) => html`
                     <div class="file-group">
-                        <div class="file-header">${file.split(/[\\/]/).pop()} <span style="opacity:0.5; font-size:9px; margin-left:auto">${items.length}</span></div>
-                        ${items.map(res => html`
+                        <div class="file-header" style="cursor:pointer;" @click=${() => this.toggleFileExpansion(file)}>
+                            <div class="toggle-chevron ${this.expandedFiles.has(file) ? 'expanded' : ''}" style="width:14px; height:14px; margin-right:4px;">
+                                ${unsafeSVG(icon_chevron_down)}
+                            </div>
+                            ${file.split(/[\\/]/).pop()}
+                            <span style="opacity:0.5; font-size:10px; margin-left:8px; font-weight:normal;">${file}</span>
+                            <span style="opacity:0.6; font-size:10px; margin-left:auto; background:rgba(255,255,255,0.1); padding:0 6px; border-radius:10px;">${items.length}</span>
+                        </div>
+                        ${this.expandedFiles.has(file) ? items.slice(0, 100).map(res => html`
                             <div class="result-item" @click=${() => this.handleResultClick(res)}>
                                 <span class="line-num">${res.line}</span>
                                 <span class="result-text">${this.renderHighlightedText(res.text.trim())}</span>
                             </div>
-                        `)}
+                        `) : ''}
+                        ${this.expandedFiles.has(file) && items.length > 100 ? html`
+                            <div class="result-item" style="opacity: 0.5; justify-content: center;">
+                                <span>... and ${items.length - 100} more matches in this file</span>
+                            </div>
+                        ` : ''}
                     </div>
                 `)}
+                ${Object.keys(grouped).length > 50 ? html`
+                    <div style="padding: 12px; text-align: center; color: #ff9e64; font-size: 11px; font-weight: 600;">
+                        ⚠️ Showing first 50 files to keep the editor fast. <br/> Please narrow your search.
+                    </div>
+                ` : ''}
             </div>
         `;
     }
