@@ -4,104 +4,7 @@ const Module = require('module');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const inspector = require('inspector');
-const urlModule = require('url');
-
-class ExtensionDebugger {
-    constructor(ipcClient) {
-        this.ipcClient = ipcClient;
-        this.session = null;
-    }
-
-    start() {
-        if (this.session) return;
-        this.session = new inspector.Session();
-        this.session.connect();
-        
-        this.session.on('Debugger.paused', (message) => this.onPaused(message));
-        this.session.on('Debugger.resumed', () => this.ipcClient.sendNotification('debug/resumed', {}));
-        this.session.on('Console.messageAdded', (message) => {
-            this.ipcClient.sendNotification('debug/log', { type: message.params.message.level, text: message.params.message.text });
-        });
-
-        this.session.post('Debugger.enable');
-        this.session.post('Runtime.enable');
-        this.session.post('Console.enable');
-        this.ipcClient.sendNotification('debug/log', { type: 'info', text: 'Attached to Vrutti Node.js Extension Host V8 Inspector.' });
-    }
-
-    stop() {
-        if (this.session) {
-            this.session.disconnect();
-            this.session = null;
-            this.ipcClient.sendNotification('debug/resumed', {});
-            this.ipcClient.sendNotification('debug/log', { type: 'info', text: 'Debugger detached.' });
-        }
-    }
-
-    pause() { if (this.session) this.session.post('Debugger.pause'); }
-    continue() { if (this.session) this.session.post('Debugger.resume'); }
-    stepOver() { if (this.session) this.session.post('Debugger.stepOver'); }
-    stepInto() { if (this.session) this.session.post('Debugger.stepInto'); }
-    stepOut() { if (this.session) this.session.post('Debugger.stepOut'); }
-
-    evaluate(expression) {
-        if (this.session) {
-            this.session.post('Runtime.evaluate', { expression, returnByValue: true }, (err, result) => {
-                if (result && result.result) {
-                    this.ipcClient.sendNotification('debug/log', { 
-                        type: 'result', 
-                        text: result.result.value !== undefined ? String(result.result.value) : (result.result.description || 'undefined')
-                    });
-                } else if (err) {
-                    this.ipcClient.sendNotification('debug/log', { type: 'error', text: String(err) });
-                }
-            });
-        }
-    }
-
-    onPaused(message) {
-        const callFrames = message.params.callFrames;
-        const mappedFrames = callFrames.map(f => {
-            let fileUrl = f.url;
-            if (fileUrl.startsWith('file://')) {
-                fileUrl = urlModule.fileURLToPath(fileUrl);
-            }
-            return {
-                id: f.callFrameId,
-                name: f.functionName || '(anonymous)',
-                file: path.basename(fileUrl || '(unknown)'),
-                line: f.location.lineNumber + 1
-            };
-        });
-
-        const variables = [];
-        if (callFrames.length > 0) {
-            const scopeChain = callFrames[0].scopeChain;
-            if (scopeChain.length > 0) {
-                const localScope = scopeChain[0];
-                this.session.post('Runtime.getProperties', { objectId: localScope.object.objectId }, (err, res) => {
-                    if (res && res.result) {
-                        for (const prop of res.result) {
-                            if (prop.name === 'exports' || prop.name === 'module' || prop.name === 'require') continue;
-                            variables.push({
-                                name: prop.name,
-                                value: prop.value ? (prop.value.value !== undefined ? String(prop.value.value) : (prop.value.description || 'object')) : 'undefined',
-                                type: prop.value ? prop.value.type : 'undefined',
-                                hasChildren: prop.value && prop.value.objectId ? true : false
-                            });
-                        }
-                    }
-                    this.ipcClient.sendNotification('debug/paused', { callStack: mappedFrames, variables });
-                });
-                return;
-            }
-        }
-        
-        this.ipcClient.sendNotification('debug/paused', { callStack: mappedFrames, variables: [] });
-    }
-}
-
+const { DapClient } = require('./dap-client');
 function parseArgs() {
     const args = process.argv.slice(2);
     const config = {};
@@ -230,6 +133,26 @@ class ExtensionManager {
         }
         this._installedExtensionsCache = installed;
         return installed;
+    }
+
+    async getAvailableDebuggers() {
+        const installed = await this.getInstalledExtensions();
+        const debuggers = [];
+        for (const ext of installed) {
+            if (ext.contributes && ext.contributes.debuggers) {
+                for (const dbg of ext.contributes.debuggers) {
+                    debuggers.push({
+                        type: dbg.type,
+                        label: dbg.label || dbg.type,
+                        program: dbg.program ? path.resolve(ext.localPath, 'extension', dbg.program) : null,
+                        runtime: dbg.runtime,
+                        extensionName: ext.name,
+                        args: dbg.args
+                    });
+                }
+            }
+        }
+        return debuggers;
     }
 
     async getAvailableThemes() {
@@ -499,6 +422,11 @@ async function main() {
             }
         });
 
+        ipcClient.on('debuggers/available', async () => {
+            const debuggers = await manager.getAvailableDebuggers();
+            ipcClient.sendNotification('debuggers/available', debuggers);
+        });
+
         // Register default internal command
         vruttiApi.commands.registerCommand('vrutti.action.run', async (file, mode, userParams) => {
             const url = require('url');
@@ -582,18 +510,54 @@ async function main() {
             }
         });
         
-        // Debugger IPC Bindings
-        const extDebugger = new ExtensionDebugger(ipcClient);
-        ipcClient.on('debug/start', () => extDebugger.start());
-        ipcClient.on('debug/stop', () => extDebugger.stop());
-        ipcClient.on('debug/pause', () => extDebugger.pause());
-        ipcClient.on('debug/continue', () => extDebugger.continue());
-        ipcClient.on('debug/stepOver', () => extDebugger.stepOver());
-        ipcClient.on('debug/stepInto', () => extDebugger.stepInto());
-        ipcClient.on('debug/stepOut', () => extDebugger.stepOut());
-        ipcClient.on('debug/evaluate', (payload) => {
-            if (payload && payload.expression) {
-                extDebugger.evaluate(payload.expression);
+        // Debug Adapter Protocol (DAP) Bindings
+        const dapClient = new DapClient(ipcClient);
+        
+        dapClient.on('event', (msg) => {
+            ipcClient.sendNotification('dap/event', msg);
+            if (msg.event === 'output' && msg.body) {
+                const category = msg.body.category || 'console';
+                const type = category === 'stderr' ? 'error' : 'info';
+                ipcClient.sendNotification('debug/log', { type, text: msg.body.output });
+            }
+        });
+
+        dapClient.on('request', (msg) => {
+            ipcClient.sendNotification('dap/request', msg);
+        });
+        
+        ipcClient.on('dap/start', async (payload) => {
+            try {
+                const debuggers = await manager.getAvailableDebuggers();
+                const targetDebugger = debuggers.find(d => d.type === payload.type);
+                if (targetDebugger) {
+                    let exec = targetDebugger.program;
+                    let args = targetDebugger.args || [];
+                    
+                    if (targetDebugger.runtime) {
+                        args = [exec, ...args];
+                        exec = targetDebugger.runtime;
+                    }
+                    
+                    dapClient.start(exec, args, payload.cwd);
+                } else {
+                    ipcClient.sendNotification('debug/log', { type: 'error', text: `Debugger type ${payload.type} not found in installed extensions.` });
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        });
+
+        ipcClient.on('dap/stop', () => dapClient.stop());
+        
+        ipcClient.on('dap/request', async (payload) => {
+            try {
+                if (payload && payload.command) {
+                    const result = await dapClient.sendRequest(payload.command, payload.args || {});
+                    ipcClient.sendNotification('dap/response', { command: payload.command, seq: payload.seq, success: true, body: result });
+                }
+            } catch (err) {
+                ipcClient.sendNotification('dap/response', { command: payload.command, seq: payload.seq, success: false, message: err.message });
             }
         });
         

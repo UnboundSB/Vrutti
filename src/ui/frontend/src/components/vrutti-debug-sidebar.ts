@@ -23,9 +23,17 @@ interface Breakpoint {
   enabled: boolean;
 }
 
+interface DebuggerInfo {
+  type: string;
+  label: string;
+  extensionName: string;
+}
+
 @customElement('vrutti-debug-sidebar')
 export class VruttiDebugSidebar extends LitElement {
   @state() private debugState: 'inactive' | 'paused' | 'running' = 'inactive';
+  @state() private availableDebuggers: DebuggerInfo[] = [];
+  @state() private selectedDebuggerType: string = '';
   
   // Sections expanded state
   @state() private sections = {
@@ -43,6 +51,12 @@ export class VruttiDebugSidebar extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     window.addEventListener('vrutti-ipc', this.handleIpc as EventListener);
+    
+    setTimeout(() => {
+      if ((window as any).vruttiIpcAsync) {
+        (window as any).vruttiIpcAsync(JSON.stringify({ method: 'debuggers/available' }));
+      }
+    }, 500);
   }
 
   disconnectedCallback() {
@@ -52,32 +66,107 @@ export class VruttiDebugSidebar extends LitElement {
 
   private handleIpc = (e: CustomEvent) => {
     const data = e.detail;
-    if (data.method === 'debug/paused') {
-      this.debugState = 'paused';
-      this.callStack = data.params.callStack || [];
-      this.variables = data.params.variables || [];
-      this.watch = data.params.watch || [];
-      
-      // Update editor execution line
-      if (this.callStack.length > 0) {
-        const topFrame = this.callStack[0];
-        window.dispatchEvent(new CustomEvent('vrutti-debug-pause', {
-          detail: { file: topFrame.file, line: topFrame.line }
+    if (data.method === 'debuggers/available') {
+      this.availableDebuggers = data.params || [];
+      if (this.availableDebuggers.length > 0 && !this.selectedDebuggerType) {
+        this.selectedDebuggerType = this.availableDebuggers[0].type;
+      }
+    } else if (data.method === 'dap/event') {
+      const msg = data.params;
+      if (msg.event === 'stopped') {
+        this.debugState = 'paused';
+        
+        // Let's ask for threads and stack trace
+        if ((window as any).vruttiIpcAsync) {
+          (window as any).vruttiIpcAsync(JSON.stringify({
+            method: 'dap/request',
+            params: { command: 'threads', args: {} }
+          }));
+        }
+      } else if (msg.event === 'continued') {
+        this.debugState = 'running';
+        this.callStack = [];
+        this.variables = [];
+        window.dispatchEvent(new CustomEvent('vrutti-debug-resume'));
+      }
+    } else if (data.method === 'dap/response') {
+      const resp = data.params;
+      if (resp.command === 'threads' && resp.success) {
+        const threads = resp.body.threads;
+        if (threads && threads.length > 0) {
+          (window as any).vruttiIpcAsync(JSON.stringify({
+            method: 'dap/request',
+            params: { command: 'stackTrace', args: { threadId: threads[0].id } }
+          }));
+        }
+      } else if (resp.command === 'stackTrace' && resp.success) {
+        const stackFrames = resp.body.stackFrames || [];
+        this.callStack = stackFrames.map((f: any) => ({
+          id: f.id,
+          name: f.name,
+          file: f.source ? f.source.name : '(unknown)',
+          line: f.line
+        }));
+        
+        if (this.callStack.length > 0) {
+          const topFrame = this.callStack[0];
+          window.dispatchEvent(new CustomEvent('vrutti-debug-pause', {
+            detail: { file: topFrame.file, line: topFrame.line }
+          }));
+          
+          (window as any).vruttiIpcAsync(JSON.stringify({
+            method: 'dap/request',
+            params: { command: 'scopes', args: { frameId: topFrame.id } }
+          }));
+        }
+      } else if (resp.command === 'scopes' && resp.success) {
+        const scopes = resp.body.scopes || [];
+        if (scopes.length > 0) {
+          (window as any).vruttiIpcAsync(JSON.stringify({
+            method: 'dap/request',
+            params: { command: 'variables', args: { variablesReference: scopes[0].variablesReference } }
+          }));
+        }
+      } else if (resp.command === 'variables' && resp.success) {
+        const variables = resp.body.variables || [];
+        this.variables = variables.map((v: any) => ({
+          name: v.name,
+          value: v.value,
+          type: v.type || '',
+          hasChildren: v.variablesReference > 0
         }));
       }
-    } else if (data.method === 'debug/resumed') {
-      this.debugState = 'running';
-      this.callStack = [];
-      this.variables = [];
-      window.dispatchEvent(new CustomEvent('vrutti-debug-resume'));
     }
   };
 
-  private sendDebugCommand(command: string, params: any = {}) {
+  private sendDapCommand(command: string, args: any = {}) {
+    if (command === 'start') {
+      if ((window as any).vruttiIpcAsync) {
+        (window as any).vruttiIpcAsync(JSON.stringify({
+          method: 'dap/start',
+          params: { type: this.selectedDebuggerType }
+        }));
+        setTimeout(() => {
+          (window as any).vruttiIpcAsync(JSON.stringify({
+            method: 'dap/request',
+            params: { command: 'initialize', args: { adapterID: this.selectedDebuggerType } }
+          }));
+        }, 500);
+      }
+      return;
+    }
+    
+    if (command === 'stop') {
+      if ((window as any).vruttiIpcAsync) {
+        (window as any).vruttiIpcAsync(JSON.stringify({ method: 'dap/stop' }));
+      }
+      return;
+    }
+
     if ((window as any).vruttiIpcAsync) {
       (window as any).vruttiIpcAsync(JSON.stringify({
-        method: `debug/${command}`,
-        params
+        method: 'dap/request',
+        params: { command, args }
       }));
     }
   }
@@ -221,20 +310,28 @@ export class VruttiDebugSidebar extends LitElement {
       ${this.debugState !== 'inactive' ? html`
         <div class="debug-toolbar">
           ${this.debugState === 'paused' ? 
-            this.renderDebugAction('▶', 'Continue', () => { this.debugState = 'running'; this.sendDebugCommand('continue'); }) :
-            this.renderDebugAction('⏸', 'Pause', () => { this.sendDebugCommand('pause'); })
+            this.renderDebugAction('▶', 'Continue', () => { this.debugState = 'running'; this.sendDapCommand('continue'); }) :
+            this.renderDebugAction('⏸', 'Pause', () => { this.sendDapCommand('pause'); })
           }
-          ${this.renderDebugAction('↷', 'Step Over', () => this.sendDebugCommand('stepOver'))}
-          ${this.renderDebugAction('↓', 'Step Into', () => this.sendDebugCommand('stepInto'))}
-          ${this.renderDebugAction('↑', 'Step Out', () => this.sendDebugCommand('stepOut'))}
-          ${this.renderDebugAction('↻', 'Restart', () => this.sendDebugCommand('restart'))}
-          <button class="action-btn stop" title="Stop" @click=${() => { this.debugState = 'inactive'; this.sendDebugCommand('stop'); }}>■</button>
+          ${this.renderDebugAction('↷', 'Step Over', () => this.sendDapCommand('next'))}
+          ${this.renderDebugAction('↓', 'Step Into', () => this.sendDapCommand('stepIn'))}
+          ${this.renderDebugAction('↑', 'Step Out', () => this.sendDapCommand('stepOut'))}
+          ${this.renderDebugAction('↻', 'Restart', () => this.sendDapCommand('restart'))}
+          <button class="action-btn stop" title="Stop" @click=${() => { this.debugState = 'inactive'; this.sendDapCommand('stop'); }}>■</button>
         </div>
       ` : html`
         <div style="padding: 12px; text-align: center; color: #565f89; font-size: 12px;">
-          To start debugging, run a launch configuration or attach to a process.
+          To start debugging, select a debugger and run.
           <br><br>
-          <button style="background: #7aa2f7; color: #1a1b26; border: none; padding: 4px 12px; border-radius: 2px; cursor: pointer; font-weight: bold;" @click=${() => { this.debugState = 'running'; this.sendDebugCommand('start', { target: 'extension-host' }); }}>Run and Debug</button>
+          <select style="background: #1a1b26; color: #a9b1d6; border: 1px solid #3b4261; padding: 4px; border-radius: 2px; width: 100%; margin-bottom: 8px;"
+            @change=${(e: any) => this.selectedDebuggerType = e.target.value}
+            .value=${this.selectedDebuggerType}>
+            ${this.availableDebuggers.map(d => html`<option value="${d.type}">${d.label} (${d.extensionName})</option>`)}
+            ${this.availableDebuggers.length === 0 ? html`<option value="">No debuggers installed</option>` : ''}
+          </select>
+          <button style="background: #7aa2f7; color: #1a1b26; border: none; padding: 4px 12px; border-radius: 2px; cursor: pointer; font-weight: bold; width: 100%;" 
+            ?disabled=${!this.selectedDebuggerType}
+            @click=${() => { this.debugState = 'running'; this.sendDapCommand('start'); }}>Run and Debug</button>
         </div>
       `}
 
