@@ -96,17 +96,18 @@ export class VruttiDebugSidebar extends LitElement {
   private handleBreakpointsChanged = (e: CustomEvent) => {
     const detail = e.detail;
     if (detail && detail.file && Array.isArray(detail.lines)) {
-      this.breakpoints = this.breakpoints.filter(b => b.file !== detail.file);
+      const newBreakpoints = this.breakpoints.filter(b => b.file !== detail.file);
       for (const line of detail.lines) {
-        this.breakpoints.push({ file: detail.file, line: line, enabled: true });
+        newBreakpoints.push({ file: detail.file, line: line, enabled: true });
       }
+      this.breakpoints = newBreakpoints;
+
       if (this.debugState !== 'inactive') {
         this.sendDapCommand('setBreakpoints', {
           source: { path: this.formatLocalPath(detail.file) },
           breakpoints: detail.lines.map((l: number) => ({ line: l }))
         });
       }
-      this.requestUpdate();
     }
   };
 
@@ -255,7 +256,11 @@ export class VruttiDebugSidebar extends LitElement {
       justify-content: center;
     }
 
-    .dap-btn:hover { background: #292e42; }
+    .dap-btn[disabled] {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .dap-btn:not([disabled]):hover { background: #292e42; }
 
     .action-btn {
       background: none;
@@ -351,12 +356,16 @@ export class VruttiDebugSidebar extends LitElement {
     return html`
       ${this.debugState !== 'inactive' ? html`
         <div class="debug-toolbar">
-          <button title="Continue" class="dap-btn" @click=${() => this.sendDapCommand('continue', { threadId: this.activeThreadId })}><svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M4 2v12l10-6L4 2z"/></svg></button>
-          <button title="Step Over" class="dap-btn" @click=${() => this.sendDapCommand('next', { threadId: this.activeThreadId })}><svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M10.5 3h3v10h-3v-1.5h1.5v-7h-1.5V3zM2 8l4-4v3h5v2H6v3L2 8z"/></svg></button>
-          <button title="Step Into" class="dap-btn" @click=${() => this.sendDapCommand('stepIn', { threadId: this.activeThreadId })}><svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M8 2l4 4H9v6H7V6H4l4-4zM2 13h12v2H2v-2z"/></svg></button>
-          <button title="Step Out" class="dap-btn" @click=${() => this.sendDapCommand('stepOut', { threadId: this.activeThreadId })}><svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M8 14l-4-4h3V4h2v6h3l-4 4zM2 1h12v2H2V1z"/></svg></button>
+          ${this.debugState === 'paused' ? html`
+            <button title="Continue" class="dap-btn" @click=${() => { this.debugState = 'running'; this.sendDapCommand('continue', { threadId: this.activeThreadId }); }}><svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M4 2v12l10-6L4 2z"/></svg></button>
+          ` : html`
+            <button title="Pause" class="dap-btn" @click=${() => this.sendDapCommand('pause', { threadId: this.activeThreadId })}><svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M5 2h2v12H5V2zm4 0h2v12H9V2z"/></svg></button>
+          `}
+          <button title="Step Over" class="dap-btn" ?disabled=${this.debugState !== 'paused'} @click=${() => this.sendDapCommand('next', { threadId: this.activeThreadId })}><svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M10.5 3h3v10h-3v-1.5h1.5v-7h-1.5V3zM2 8l4-4v3h5v2H6v3L2 8z"/></svg></button>
+          <button title="Step Into" class="dap-btn" ?disabled=${this.debugState !== 'paused'} @click=${() => this.sendDapCommand('stepIn', { threadId: this.activeThreadId })}><svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M8 2l4 4H9v6H7V6H4l4-4zM2 13h12v2H2v-2z"/></svg></button>
+          <button title="Step Out" class="dap-btn" ?disabled=${this.debugState !== 'paused'} @click=${() => this.sendDapCommand('stepOut', { threadId: this.activeThreadId })}><svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M8 14l-4-4h3V4h2v6h3l-4 4zM2 1h12v2H2V1z"/></svg></button>
           <button title="Restart" class="dap-btn" style="color: #9ece6a;" @click=${() => this.sendDapCommand('restart')}><svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M8 2a6 6 0 1 0 6 6h-2a4 4 0 1 1-4-4v2l4-3-4-3v2z"/></svg></button>
-          <button title="Stop" class="dap-btn" style="color: #f7768e;" @click=${() => this.sendDapCommand('stop')}><svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M4 4h8v8H4V4z"/></svg></button>
+          <button title="Stop" class="dap-btn" style="color: #f7768e;" @click=${() => { this.debugState = 'inactive'; this.sendDapCommand('stop'); }}><svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M4 4h8v8H4V4z"/></svg></button>
         </div>
       ` : html`
         <div style="padding: 12px; text-align: center; color: #565f89; font-size: 12px;">
