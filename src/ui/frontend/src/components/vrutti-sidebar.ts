@@ -70,6 +70,14 @@ export class VruttiSidebar extends LitElement {
       }
     }
     
+    window.addEventListener('switch-to-debug-panel', () => {
+      this.selectTab('debug');
+      this.isOpen = true;
+      if (!this.isDockOpen) {
+        this.toggleDock();
+      }
+    });
+
     // If no initial path was provided via CLI argument, restore from localStorage
     if (!initialPath) {
       const savedPath = localStorage.getItem('lastWorkspace');

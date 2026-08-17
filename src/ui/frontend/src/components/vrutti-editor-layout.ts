@@ -294,6 +294,11 @@ export class VruttiEditorLayout extends LitElement {
         if (!filePath) return;
         this.openRunDropdownId = null;
         
+        if (mode === 'debug') {
+            window.dispatchEvent(new CustomEvent('switch-to-debug-panel'));
+            return;
+        }
+
         let params = "";
         if (mode === 'params') {
             const userInput = window.prompt("Enter command line parameters for this execution:");
@@ -324,6 +329,7 @@ export class VruttiEditorLayout extends LitElement {
     }
 
     private dispatchActiveFile(path: string | null) {
+        (window as any).currentActiveFile = path;
         window.dispatchEvent(new CustomEvent('active-file-changed', {
             detail: { path }
         }));
