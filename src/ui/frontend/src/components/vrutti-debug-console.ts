@@ -95,11 +95,8 @@ export class VruttiDebugConsole extends LitElement {
           text: val
         }];
         
-        if ((window as any).vruttiIpcAsync) {
-          (window as any).vruttiIpcAsync(JSON.stringify({
-            method: 'debug/evaluate',
-            params: { expression: val }
-          }));
+        if ((window as any).sendIpcMessage) {
+          (window as any).sendIpcMessage('debug/evaluate', JSON.stringify({ expression: val }));
         }
 
         this.inputValue = '';
