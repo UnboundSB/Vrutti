@@ -141,11 +141,29 @@ class ExtensionManager {
         for (const ext of installed) {
             if (ext.contributes && ext.contributes.debuggers) {
                 for (const dbg of ext.contributes.debuggers) {
+                    let programPath = dbg.program;
+                    if (!programPath && dbg.windows && process.platform === 'win32') {
+                        programPath = dbg.windows.program;
+                    } else if (!programPath && dbg.linux && process.platform === 'linux') {
+                        programPath = dbg.linux.program;
+                    } else if (!programPath && dbg.osx && process.platform === 'darwin') {
+                        programPath = dbg.osx.program;
+                    }
+                    
+                    let runtimePath = dbg.runtime;
+                    if (!runtimePath && dbg.windows && process.platform === 'win32') {
+                        runtimePath = dbg.windows.runtime;
+                    } else if (!runtimePath && dbg.linux && process.platform === 'linux') {
+                        runtimePath = dbg.linux.runtime;
+                    } else if (!runtimePath && dbg.osx && process.platform === 'darwin') {
+                        runtimePath = dbg.osx.runtime;
+                    }
+
                     debuggers.push({
                         type: dbg.type,
                         label: dbg.label || dbg.type,
-                        program: dbg.program ? path.resolve(ext.localPath, 'extension', dbg.program) : null,
-                        runtime: dbg.runtime,
+                        program: programPath ? path.resolve(ext.localPath, 'extension', programPath) : null,
+                        runtime: runtimePath,
                         extensionName: ext.name,
                         args: dbg.args
                     });
@@ -236,6 +254,11 @@ class ExtensionManager {
         await fs.promises.unlink(zipPath);
         log(`Successfully installed extension ${name}`);
         await this.invalidateCache();
+    }
+
+    async invalidateCache() {
+        this._installedExtensionsCache = null;
+        this._cachedThemes = null;
     }
 
     _downloadFile(url, dest, progressCallback) {
