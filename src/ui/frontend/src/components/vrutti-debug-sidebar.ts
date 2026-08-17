@@ -85,9 +85,11 @@ export class VruttiDebugSidebar extends LitElement {
     if (!path) return '';
     if (path.startsWith('file://')) {
       let decoded = decodeURIComponent(path);
-      decoded = decoded.replace('file:///', ''); 
-      if (!/^[a-zA-Z]:/.test(decoded)) {
-        decoded = '/' + decoded;
+      decoded = decoded.replace('file:///', '').replace('file://', ''); 
+      if (/^[a-zA-Z]:/.test(decoded)) {
+        decoded = decoded.replace(/\//g, '\\');
+      } else {
+        if (!decoded.startsWith('/')) decoded = '/' + decoded;
       }
       return decoded;
     }
@@ -158,6 +160,24 @@ export class VruttiDebugSidebar extends LitElement {
         this.callStack = [];
         this.variables = [];
         window.dispatchEvent(new CustomEvent('vrutti-debug-resume'));
+      } else if (msg.event === 'terminated' || msg.event === 'exited') {
+        this.debugState = 'inactive';
+        this.callStack = [];
+        this.variables = [];
+        window.dispatchEvent(new CustomEvent('vrutti-debug-resume'));
+      } else if (msg.event === 'vrutti-dap-started') {
+        this.sendDapCommand('initialize', {
+            clientID: 'vrutti',
+            clientName: 'Vrutti IDE',
+            adapterID: this.selectedDebuggerType,
+            pathFormat: 'path',
+            linesStartAt1: true,
+            columnsStartAt1: true,
+            supportsVariableType: true,
+            supportsVariablePaging: true,
+            supportsRunInTerminalRequest: true,
+            locale: 'en'
+        });
       }
     } else if (data.method === 'dap/response') {
       const resp = data.params;
@@ -213,7 +233,7 @@ export class VruttiDebugSidebar extends LitElement {
     }
   };
 
-  private sendDapCommand(command: string, args: any = {}) {
+  public sendDapCommand(command: string, args: any = {}) {
     let cwd = '';
     const active = (window as any).currentActiveFile;
     if (active) {
@@ -224,12 +244,18 @@ export class VruttiDebugSidebar extends LitElement {
         }
     }
     
-    window.dispatchEvent(new CustomEvent('dap-command', {
-        detail: {
+    if (!(window as any).sendIpcMessage) return;
+
+    if (command === 'start') {
+        (window as any).sendIpcMessage('dap/start', JSON.stringify({ type: this.selectedDebuggerType, cwd }));
+    } else if (command === 'stop') {
+        (window as any).sendIpcMessage('dap/stop', '{}');
+    } else {
+        (window as any).sendIpcMessage('dap/request', JSON.stringify({
             command,
-            args: { ...args, type: this.selectedDebuggerType, cwd }
-        }
-    }));
+            args: { ...args, cwd }
+        }));
+    }
   }
 
   private toggleSection(section: keyof typeof this.sections) {
@@ -379,7 +405,7 @@ export class VruttiDebugSidebar extends LitElement {
           <button title="Stop" class="dap-btn" style="color: #f7768e;" @click=${() => { this.debugState = 'inactive'; this.sendDapCommand('stop'); }}><svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M4 4h8v8H4V4z"/></svg></button>
         </div>
       ` : html`
-        <div style="padding: 12px; text-align: center; color: #565f89; font-size: 12px;">
+        <div style="padding: 12px; text-align: center; color: #565f89; font-size: 12px; box-sizing: border-box; width: 100%;">
           To start debugging, select a debugger and run.
           <br><br>
           <select style="display: block; box-sizing: border-box; background: #1a1b26; color: #a9b1d6; border: 1px solid #3b4261; padding: 4px; border-radius: 2px; width: 100%; margin-bottom: 8px;"

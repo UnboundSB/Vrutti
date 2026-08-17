@@ -460,14 +460,18 @@ async function main() {
             const ext = path.extname(file);
             const dir = path.dirname(file);
             const baseName = path.basename(file, ext);
-            
+            if (mode === 'debug') {
+                ipcClient.sendNotification('menu/action', { action: 'Run and Debug' });
+                return;
+            }
+
             let cmdString = '';
             if (ext === '.py') {
                 cmdString = `python "${file}"`;
             } else if (ext === '.js') {
-                cmdString = mode === 'debug' ? `node --inspect "${file}"` : `node "${file}"`;
+                cmdString = `node "${file}"`;
             } else if (ext === '.ts') {
-                cmdString = mode === 'debug' ? `npx ts-node --inspect "${file}"` : `npx ts-node "${file}"`;
+                cmdString = `npx ts-node "${file}"`;
             } else if (ext === '.cpp' || ext === '.c') {
                 const isWin = os.platform() === 'win32';
                 const exeName = isWin ? `${baseName}.exe` : baseName;
@@ -537,6 +541,7 @@ async function main() {
         const dapClient = new DapClient(ipcClient);
         
         dapClient.on('event', (msg) => {
+            log(`[DAP Event] ${msg.event}: ${JSON.stringify(msg)}`);
             ipcClient.sendNotification('dap/event', msg);
             if (msg.event === 'output' && msg.body) {
                 const category = msg.body.category || 'console';
@@ -546,10 +551,12 @@ async function main() {
         });
 
         dapClient.on('request', (msg) => {
+            log(`[DAP Request] ${msg.command}: ${JSON.stringify(msg)}`);
             ipcClient.sendNotification('dap/request', msg);
         });
         
         ipcClient.on('dap/start', async (payload) => {
+            log(`[DAP Start] Received start request: ${JSON.stringify(payload)}`);
             try {
                 const debuggers = await manager.getAvailableDebuggers();
                 const targetDebugger = debuggers.find(d => d.type === payload.type);
@@ -578,10 +585,13 @@ async function main() {
                     
                     if (!exec) {
                         ipcClient.sendNotification('debug/log', { type: 'error', text: `Debugger executable could not be resolved for type ${payload.type}. Ensure it is installed correctly.` });
+                        log(`[DAP Start] Debugger executable not resolved!`);
                         return;
                     }
 
+                    log(`[DAP Start] Starting Debug Adapter: ${exec} ${args.join(' ')} with CWD: ${payload.cwd}`);
                     dapClient.start(exec, args, payload.cwd);
+                    ipcClient.sendNotification('dap/event', { event: 'vrutti-dap-started' });
                 } else {
                     ipcClient.sendNotification('debug/log', { type: 'error', text: `Debugger type ${payload.type} not found in installed extensions.` });
                 }

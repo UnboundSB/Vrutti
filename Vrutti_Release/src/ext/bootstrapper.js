@@ -4,7 +4,7 @@ const Module = require('module');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-
+const { DapClient } = require('./dap-client');
 function parseArgs() {
     const args = process.argv.slice(2);
     const config = {};
@@ -135,6 +135,44 @@ class ExtensionManager {
         return installed;
     }
 
+    async getAvailableDebuggers() {
+        const installed = await this.getInstalledExtensions();
+        const debuggers = [];
+        for (const ext of installed) {
+            if (ext.contributes && ext.contributes.debuggers) {
+                for (const dbg of ext.contributes.debuggers) {
+                    let programPath = dbg.program;
+                    if (!programPath && dbg.windows && process.platform === 'win32') {
+                        programPath = dbg.windows.program;
+                    } else if (!programPath && dbg.linux && process.platform === 'linux') {
+                        programPath = dbg.linux.program;
+                    } else if (!programPath && dbg.osx && process.platform === 'darwin') {
+                        programPath = dbg.osx.program;
+                    }
+                    
+                    let runtimePath = dbg.runtime;
+                    if (!runtimePath && dbg.windows && process.platform === 'win32') {
+                        runtimePath = dbg.windows.runtime;
+                    } else if (!runtimePath && dbg.linux && process.platform === 'linux') {
+                        runtimePath = dbg.linux.runtime;
+                    } else if (!runtimePath && dbg.osx && process.platform === 'darwin') {
+                        runtimePath = dbg.osx.runtime;
+                    }
+
+                    debuggers.push({
+                        type: dbg.type,
+                        label: dbg.label || dbg.type,
+                        program: programPath ? path.resolve(ext.localPath, 'extension', programPath) : null,
+                        runtime: runtimePath,
+                        extensionName: ext.name,
+                        args: dbg.args
+                    });
+                }
+            }
+        }
+        return debuggers;
+    }
+
     async getAvailableThemes() {
         if (this._cachedThemes) return this._cachedThemes;
         const themes = [];
@@ -216,6 +254,11 @@ class ExtensionManager {
         await fs.promises.unlink(zipPath);
         log(`Successfully installed extension ${name}`);
         await this.invalidateCache();
+    }
+
+    async invalidateCache() {
+        this._installedExtensionsCache = null;
+        this._cachedThemes = null;
     }
 
     _downloadFile(url, dest, progressCallback) {
@@ -402,6 +445,11 @@ async function main() {
             }
         });
 
+        ipcClient.on('debuggers/available', async () => {
+            const debuggers = await manager.getAvailableDebuggers();
+            ipcClient.sendNotification('debuggers/available', debuggers);
+        });
+
         // Register default internal command
         vruttiApi.commands.registerCommand('vrutti.action.run', async (file, mode, userParams) => {
             const url = require('url');
@@ -412,14 +460,18 @@ async function main() {
             const ext = path.extname(file);
             const dir = path.dirname(file);
             const baseName = path.basename(file, ext);
-            
+            if (mode === 'debug') {
+                ipcClient.sendNotification('menu/action', { action: 'Run and Debug' });
+                return;
+            }
+
             let cmdString = '';
             if (ext === '.py') {
                 cmdString = `python "${file}"`;
             } else if (ext === '.js') {
-                cmdString = mode === 'debug' ? `node --inspect "${file}"` : `node "${file}"`;
+                cmdString = `node "${file}"`;
             } else if (ext === '.ts') {
-                cmdString = mode === 'debug' ? `npx ts-node --inspect "${file}"` : `npx ts-node "${file}"`;
+                cmdString = `npx ts-node "${file}"`;
             } else if (ext === '.cpp' || ext === '.c') {
                 const isWin = os.platform() === 'win32';
                 const exeName = isWin ? `${baseName}.exe` : baseName;
@@ -482,6 +534,82 @@ async function main() {
                 await vruttiApi.commands.executeCommand(commandId, ...args);
             } catch (err) {
                 log(`Command execution failed: ${err.message}`);
+            }
+        });
+        
+        // Debug Adapter Protocol (DAP) Bindings
+        const dapClient = new DapClient(ipcClient);
+        
+        dapClient.on('event', (msg) => {
+            log(`[DAP Event] ${msg.event}: ${JSON.stringify(msg)}`);
+            ipcClient.sendNotification('dap/event', msg);
+            if (msg.event === 'output' && msg.body) {
+                const category = msg.body.category || 'console';
+                const type = category === 'stderr' ? 'error' : 'info';
+                ipcClient.sendNotification('debug/log', { type, text: msg.body.output });
+            }
+        });
+
+        dapClient.on('request', (msg) => {
+            log(`[DAP Request] ${msg.command}: ${JSON.stringify(msg)}`);
+            ipcClient.sendNotification('dap/request', msg);
+        });
+        
+        ipcClient.on('dap/start', async (payload) => {
+            log(`[DAP Start] Received start request: ${JSON.stringify(payload)}`);
+            try {
+                const debuggers = await manager.getAvailableDebuggers();
+                const targetDebugger = debuggers.find(d => d.type === payload.type);
+                if (targetDebugger) {
+                    let exec = targetDebugger.program;
+                    let args = targetDebugger.args || [];
+                    
+                    if (targetDebugger.runtime) {
+                        args = [exec, ...args];
+                        exec = targetDebugger.runtime;
+                    }
+                    
+                    if (!exec) {
+                        if (payload.type === 'python' || targetDebugger.extensionName === 'debugpy') {
+                            exec = 'python';
+                            const path = require('path');
+                            const fs = require('fs');
+                            const adapterScript = path.join(manager.extDirBase, targetDebugger.extensionName, 'extension', 'bundled', 'libs', 'debugpy', 'adapter');
+                            if (fs.existsSync(adapterScript)) {
+                                args = [adapterScript];
+                            } else {
+                                exec = null;
+                            }
+                        }
+                    }
+                    
+                    if (!exec) {
+                        ipcClient.sendNotification('debug/log', { type: 'error', text: `Debugger executable could not be resolved for type ${payload.type}. Ensure it is installed correctly.` });
+                        log(`[DAP Start] Debugger executable not resolved!`);
+                        return;
+                    }
+
+                    log(`[DAP Start] Starting Debug Adapter: ${exec} ${args.join(' ')} with CWD: ${payload.cwd}`);
+                    dapClient.start(exec, args, payload.cwd);
+                    ipcClient.sendNotification('dap/event', { event: 'vrutti-dap-started' });
+                } else {
+                    ipcClient.sendNotification('debug/log', { type: 'error', text: `Debugger type ${payload.type} not found in installed extensions.` });
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        });
+
+        ipcClient.on('dap/stop', () => dapClient.stop());
+        
+        ipcClient.on('dap/request', async (payload) => {
+            try {
+                if (payload && payload.command) {
+                    const result = await dapClient.sendRequest(payload.command, payload.args || {});
+                    ipcClient.sendNotification('dap/response', { command: payload.command, seq: payload.seq, success: true, body: result });
+                }
+            } catch (err) {
+                ipcClient.sendNotification('dap/response', { command: payload.command, seq: payload.seq, success: false, message: err.message });
             }
         });
         
