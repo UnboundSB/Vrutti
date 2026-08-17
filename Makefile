@@ -2,7 +2,8 @@
 # Works natively with MSYS2/MinGW, Linux (GCC/Clang), and macOS
 
 CXX = g++
-CXXFLAGS = -std=c++20 -Wall -Wextra -O2 -I./src -I./build/_deps/webview2-src/build/native/include
+WINDRES = windres
+CXXFLAGS = -std=c++20 -Wall -Wextra -O3 -flto -I./src -I./build/_deps/webview2-src/build/native/include
 
 # Directories
 SRC_DIR = src
@@ -13,7 +14,8 @@ OS := $(shell uname -s 2>/dev/null || echo Windows_NT)
 
 ifeq ($(OS), Windows_NT)
 	TARGET = $(BIN_DIR)/vrutti_app.exe
-	LDFLAGS += -lole32 -lcomctl32 -loleaut32 -luuid -lgdi32 -lshlwapi -lws2_32 -lkernel32 -ladvapi32 -lversion -static
+	LDFLAGS += -lole32 -lcomctl32 -loleaut32 -luuid -lgdi32 -lshlwapi -lws2_32 -lkernel32 -ladvapi32 -lversion -static -flto
+	RES_FILE = $(OBJ_DIR)/app/vrutti_app_res.o
 else ifeq ($(OS), Linux)
 	TARGET = $(BIN_DIR)/vrutti_app
 	CXXFLAGS += $(shell pkg-config --cflags gtk+-3.0 webkit2gtk-4.0)
@@ -49,23 +51,31 @@ SRCS = $(SRC_DIR)/app/main.cpp \
 
 # Object files
 OBJS = $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(SRCS))
+ifdef RES_FILE
+OBJS += $(RES_FILE)
+endif
 
 # Default target
 all: $(TARGET)
 
 # Link the executable
 $(TARGET): $(OBJS)
-	@mkdir -p $(dir $@)
+	@if not exist "$(subst /,\,$(dir $@))" mkdir "$(subst /,\,$(dir $@))"
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 	@echo "[SUCCESS] Build complete: $@"
 
 # Compile source files to object files
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
-	@mkdir -p $(dir $@)
+	@if not exist "$(subst /,\,$(dir $@))" mkdir "$(subst /,\,$(dir $@))"
 	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+# Compile Windows resource file
+$(OBJ_DIR)/app/vrutti_app_res.o: $(SRC_DIR)/app/vrutti_app.rc
+	@if not exist "$(subst /,\,$(dir $@))" mkdir "$(subst /,\,$(dir $@))"
+	$(WINDRES) $< -O coff -o $@
 
 # Clean build artifacts
 clean:
-	rm -rf build/
+	@if exist build rmdir /s /q build
 
 .PHONY: all clean
