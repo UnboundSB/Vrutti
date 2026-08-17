@@ -51,6 +51,7 @@ export class VruttiDebugSidebar extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     window.addEventListener('vrutti-ipc', this.handleIpc as EventListener);
+    window.addEventListener('vrutti-breakpoints-changed', this.handleBreakpointsChanged as EventListener);
     
     setTimeout(() => {
       if ((window as any).vruttiIpcAsync) {
@@ -61,8 +62,29 @@ export class VruttiDebugSidebar extends LitElement {
 
   disconnectedCallback() {
     window.removeEventListener('vrutti-ipc', this.handleIpc as EventListener);
+    window.removeEventListener('vrutti-breakpoints-changed', this.handleBreakpointsChanged as EventListener);
     super.disconnectedCallback();
   }
+
+  private handleBreakpointsChanged = (e: CustomEvent) => {
+    const detail = e.detail;
+    if (detail && detail.file && Array.isArray(detail.lines)) {
+      // Filter out old breakpoints for this file
+      this.breakpoints = this.breakpoints.filter(b => b.file !== detail.file);
+      // Add new ones
+      for (const line of detail.lines) {
+        this.breakpoints.push({ file: detail.file, line: line, enabled: true });
+      }
+      
+      // If we are currently debugging, send to DAP
+      if (this.debugState !== 'inactive') {
+        this.sendDapCommand('setBreakpoints', {
+          source: { path: detail.file },
+          breakpoints: detail.lines.map((l: number) => ({ line: l }))
+        });
+      }
+    }
+  };
 
   private handleIpc = (e: CustomEvent) => {
     const data = e.detail;
@@ -73,7 +95,22 @@ export class VruttiDebugSidebar extends LitElement {
       }
     } else if (data.method === 'dap/event') {
       const msg = data.params;
-      if (msg.event === 'stopped') {
+      if (msg.event === 'initialized') {
+        const fileToLines = new Map<string, number[]>();
+        for (const bp of this.breakpoints) {
+          if (!fileToLines.has(bp.file)) fileToLines.set(bp.file, []);
+          fileToLines.get(bp.file)!.push(bp.line);
+        }
+        
+        for (const [file, lines] of fileToLines.entries()) {
+          this.sendDapCommand('setBreakpoints', {
+            source: { path: file },
+            breakpoints: lines.map((l: number) => ({ line: l }))
+          });
+        }
+        
+        this.sendDapCommand('configurationDone');
+      } else if (msg.event === 'stopped') {
         this.debugState = 'paused';
         
         // Let's ask for threads and stack trace
@@ -91,7 +128,13 @@ export class VruttiDebugSidebar extends LitElement {
       }
     } else if (data.method === 'dap/response') {
       const resp = data.params;
-      if (resp.command === 'threads' && resp.success) {
+      if (resp.command === 'initialize' && resp.success) {
+        this.sendDapCommand('launch', {
+          // Minimal standard args, adapters may require specific things
+          cwd: (window as any).vruttiWorkspaceDir || '',
+          stopOnEntry: false
+        });
+      } else if (resp.command === 'threads' && resp.success) {
         const threads = resp.body.threads;
         if (threads && threads.length > 0) {
           (window as any).vruttiIpcAsync(JSON.stringify({
