@@ -34,6 +34,7 @@ export class VruttiDebugSidebar extends LitElement {
   @state() private debugState: 'inactive' | 'paused' | 'running' = 'inactive';
   @state() private availableDebuggers: DebuggerInfo[] = [];
   @state() private selectedDebuggerType: string = '';
+  @state() private activeFile: string = '';
   
   // Sections expanded state
   @state() private sections = {
@@ -52,6 +53,7 @@ export class VruttiDebugSidebar extends LitElement {
     super.connectedCallback();
     window.addEventListener('vrutti-ipc', this.handleIpc as EventListener);
     window.addEventListener('vrutti-breakpoints-changed', this.handleBreakpointsChanged as EventListener);
+    window.addEventListener('active-file-changed', this.handleActiveFileChanged as EventListener);
     
     setTimeout(() => {
       if ((window as any).sendIpcMessage) {
@@ -63,8 +65,15 @@ export class VruttiDebugSidebar extends LitElement {
   disconnectedCallback() {
     window.removeEventListener('vrutti-ipc', this.handleIpc as EventListener);
     window.removeEventListener('vrutti-breakpoints-changed', this.handleBreakpointsChanged as EventListener);
+    window.removeEventListener('active-file-changed', this.handleActiveFileChanged as EventListener);
     super.disconnectedCallback();
   }
+
+  private handleActiveFileChanged = (e: CustomEvent) => {
+    if (e.detail && e.detail.path) {
+      this.activeFile = e.detail.path;
+    }
+  };
 
   private handleBreakpointsChanged = (e: CustomEvent) => {
     const detail = e.detail;
@@ -127,7 +136,8 @@ export class VruttiDebugSidebar extends LitElement {
       const resp = data.params;
       if (resp.command === 'initialize' && resp.success) {
         this.sendDapCommand('launch', {
-          // Minimal standard args, adapters may require specific things
+          // Pass the active file to run
+          program: this.activeFile,
           cwd: (window as any).vruttiWorkspaceDir || '',
           stopOnEntry: false
         });
@@ -178,6 +188,11 @@ export class VruttiDebugSidebar extends LitElement {
 
   private sendDapCommand(command: string, args: any = {}) {
     if (command === 'start') {
+      if (!this.activeFile) {
+        alert("Please open a file to debug first.");
+        return;
+      }
+      
       if ((window as any).sendIpcMessage) {
         (window as any).sendIpcMessage('dap/start', JSON.stringify({ type: this.selectedDebuggerType }));
         setTimeout(() => {
@@ -222,6 +237,7 @@ export class VruttiDebugSidebar extends LitElement {
 
     .debug-toolbar {
       display: flex;
+      flex-wrap: wrap;
       padding: 8px;
       gap: 4px;
       background: var(--vrutti-surface-border, #1f2335);
