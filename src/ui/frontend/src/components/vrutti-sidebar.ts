@@ -6,6 +6,7 @@ import './explorer/vrutti-explorer';
 import './vrutti-search';
 import './scm/vrutti-scm';
 import './vrutti-extensions';
+import './vrutti-debug-sidebar';
 import { ExplorerModel, ExplorerItem } from './explorer/explorerModel';
 
 import { globalHoverStyle } from '../shared-styles';
@@ -459,6 +460,8 @@ export class VruttiSidebar extends LitElement {
             ? html`<vrutti-scm></vrutti-scm>`
             : this.activeTab === 'extensions'
             ? html`<vrutti-extensions></vrutti-extensions>`
+            : this.activeTab === 'debug'
+            ? html`<vrutti-debug-sidebar></vrutti-debug-sidebar>`
             : html`<div style="padding: 15px; opacity: 0.5;">${this.activeTab} panel not yet implemented.</div>`
           }
         </div>

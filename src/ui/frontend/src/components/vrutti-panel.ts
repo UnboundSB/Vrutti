@@ -581,6 +581,17 @@ export class VruttiPanel extends LitElement {
               `)}
             </select>
           </div>
+        ` : this.activePanelTab === 'DEBUG CONSOLE' ? html`
+          <div class="output-channel-selector" style="margin-right: 12px; display: flex; align-items: center; gap: 8px;">
+            <select style="background: #1a1b26; color: #a9b1d6; border: 1px solid #1f2335; padding: 2px 6px; border-radius: 4px; font-size: 11px; outline: none; cursor: pointer;">
+              <option value="node">Node.js - Extension Host</option>
+              <option value="cpp">C++ (gdb) - vrutti</option>
+            </select>
+            <select style="background: #1a1b26; color: #a9b1d6; border: 1px solid #1f2335; padding: 2px 6px; border-radius: 4px; font-size: 11px; outline: none; cursor: pointer;">
+              <option value="t1">Thread 1 (Main)</option>
+              <option value="t2">Thread 2 (Worker)</option>
+            </select>
+          </div>
         ` : ''}
         <div class="panel-header-actions">
           <button title="Maximize Panel">

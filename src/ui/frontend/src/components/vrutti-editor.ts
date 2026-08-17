@@ -18,6 +18,26 @@ const breakpointEffect = StateEffect.define<{pos: number, on: boolean}>({
     map: (val, mapping) => ({pos: mapping.mapPos(val.pos), on: val.on})
 });
 
+const executionLineEffect = StateEffect.define<number | null>();
+const executionLineMark = Decoration.line({class: "cm-execution-line"});
+const executionLineState = StateField.define<DecorationSet>({
+    create() { return Decoration.none; },
+    update(set, transaction) {
+        set = set.map(transaction.changes);
+        for (let e of transaction.effects) {
+            if (e.is(executionLineEffect)) {
+                if (e.value === null) {
+                    set = Decoration.none;
+                } else {
+                    set = Decoration.set([executionLineMark.range(e.value)]);
+                }
+            }
+        }
+        return set;
+    },
+    provide: f => EditorView.decorations.from(f)
+});
+
 const breakpointMarker = new class extends GutterMarker {
     toDOM() {
         let span = document.createElement("span");
@@ -164,6 +184,11 @@ export class VruttiEditor extends LitElement {
             border-radius: 50%;
             margin-top: 5px;
             margin-left: 6px;
+        }
+
+        .cm-execution-line {
+            background-color: rgba(158, 206, 106, 0.2);
+            border-left: 3px solid #9ece6a;
         }
 
         ::-webkit-scrollbar {
@@ -517,6 +542,22 @@ export class VruttiEditor extends LitElement {
         }
     }
 
+    public getEditorView() {
+        return this._editorView;
+    }
+
+    public setExecutionLine(line: number | null) {
+        if (!this._editorView) return;
+        if (line === null) {
+            this._editorView.dispatch({ effects: executionLineEffect.of(null) });
+            return;
+        }
+        const doc = this._editorView.state.doc;
+        if (line < 1 || line > doc.lines) return;
+        const pos = doc.line(line).from;
+        this._editorView.dispatch({ effects: executionLineEffect.of(pos) });
+    }
+
     private initEditor() {
         if (this._editorView) {
             this._editorView.destroy();
@@ -604,6 +645,7 @@ export class VruttiEditor extends LitElement {
             this.getThemeExtension(),
             saveKeymap,
             updateListener,
+            executionLineState,
             this.getLanguageExtension()
         ];
 

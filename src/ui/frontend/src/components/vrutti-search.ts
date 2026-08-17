@@ -376,6 +376,7 @@ export class VruttiSearch extends LitElement {
         if (this.searchTimeout) window.clearTimeout(this.searchTimeout);
     }
 
+    // @ts-expect-error unused method
     private handleSearchChunk = (e: Event) => {
         const detail = (e as CustomEvent).detail;
         if (detail && detail.searchId === this.currentSearchId) {
