@@ -54,8 +54,8 @@ export class VruttiDebugSidebar extends LitElement {
     window.addEventListener('vrutti-breakpoints-changed', this.handleBreakpointsChanged as EventListener);
     
     setTimeout(() => {
-      if ((window as any).vruttiIpcAsync) {
-        (window as any).vruttiIpcAsync(JSON.stringify({ method: 'debuggers/available' }));
+      if ((window as any).sendIpcMessage) {
+        (window as any).sendIpcMessage('debuggers/available', '{}');
       }
     }, 500);
   }
@@ -114,11 +114,8 @@ export class VruttiDebugSidebar extends LitElement {
         this.debugState = 'paused';
         
         // Let's ask for threads and stack trace
-        if ((window as any).vruttiIpcAsync) {
-          (window as any).vruttiIpcAsync(JSON.stringify({
-            method: 'dap/request',
-            params: { command: 'threads', args: {} }
-          }));
+        if ((window as any).sendIpcMessage) {
+          (window as any).sendIpcMessage('dap/request', JSON.stringify({ command: 'threads', args: {} }));
         }
       } else if (msg.event === 'continued') {
         this.debugState = 'running';
@@ -137,10 +134,9 @@ export class VruttiDebugSidebar extends LitElement {
       } else if (resp.command === 'threads' && resp.success) {
         const threads = resp.body.threads;
         if (threads && threads.length > 0) {
-          (window as any).vruttiIpcAsync(JSON.stringify({
-            method: 'dap/request',
-            params: { command: 'stackTrace', args: { threadId: threads[0].id } }
-          }));
+          if ((window as any).sendIpcMessage) {
+            (window as any).sendIpcMessage('dap/request', JSON.stringify({ command: 'stackTrace', args: { threadId: threads[0].id } }));
+          }
         }
       } else if (resp.command === 'stackTrace' && resp.success) {
         const stackFrames = resp.body.stackFrames || [];
@@ -157,18 +153,16 @@ export class VruttiDebugSidebar extends LitElement {
             detail: { file: topFrame.file, line: topFrame.line }
           }));
           
-          (window as any).vruttiIpcAsync(JSON.stringify({
-            method: 'dap/request',
-            params: { command: 'scopes', args: { frameId: topFrame.id } }
-          }));
+          if ((window as any).sendIpcMessage) {
+            (window as any).sendIpcMessage('dap/request', JSON.stringify({ command: 'scopes', args: { frameId: topFrame.id } }));
+          }
         }
       } else if (resp.command === 'scopes' && resp.success) {
         const scopes = resp.body.scopes || [];
         if (scopes.length > 0) {
-          (window as any).vruttiIpcAsync(JSON.stringify({
-            method: 'dap/request',
-            params: { command: 'variables', args: { variablesReference: scopes[0].variablesReference } }
-          }));
+          if ((window as any).sendIpcMessage) {
+            (window as any).sendIpcMessage('dap/request', JSON.stringify({ command: 'variables', args: { variablesReference: scopes[0].variablesReference } }));
+          }
         }
       } else if (resp.command === 'variables' && resp.success) {
         const variables = resp.body.variables || [];
@@ -184,33 +178,24 @@ export class VruttiDebugSidebar extends LitElement {
 
   private sendDapCommand(command: string, args: any = {}) {
     if (command === 'start') {
-      if ((window as any).vruttiIpcAsync) {
-        (window as any).vruttiIpcAsync(JSON.stringify({
-          method: 'dap/start',
-          params: { type: this.selectedDebuggerType }
-        }));
+      if ((window as any).sendIpcMessage) {
+        (window as any).sendIpcMessage('dap/start', JSON.stringify({ type: this.selectedDebuggerType }));
         setTimeout(() => {
-          (window as any).vruttiIpcAsync(JSON.stringify({
-            method: 'dap/request',
-            params: { command: 'initialize', args: { adapterID: this.selectedDebuggerType } }
-          }));
+          (window as any).sendIpcMessage('dap/request', JSON.stringify({ command: 'initialize', args: { adapterID: this.selectedDebuggerType } }));
         }, 500);
       }
       return;
     }
     
     if (command === 'stop') {
-      if ((window as any).vruttiIpcAsync) {
-        (window as any).vruttiIpcAsync(JSON.stringify({ method: 'dap/stop' }));
+      if ((window as any).sendIpcMessage) {
+        (window as any).sendIpcMessage('dap/stop', '{}');
       }
       return;
     }
 
-    if ((window as any).vruttiIpcAsync) {
-      (window as any).vruttiIpcAsync(JSON.stringify({
-        method: 'dap/request',
-        params: { command, args }
-      }));
+    if ((window as any).sendIpcMessage) {
+      (window as any).sendIpcMessage('dap/request', JSON.stringify({ command, args }));
     }
   }
 
