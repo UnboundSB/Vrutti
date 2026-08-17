@@ -1,7 +1,7 @@
 import { LitElement, css, html } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { unsafeSVG } from 'lit/directives/unsafe-svg.js';
-import { icon_files, icon_search, icon_source_control, icon_debug_alt, icon_extensions, icon_chevron_left, icon_chevron_right, icon_close } from './codicons';
+import { icon_files, icon_search, icon_source_control, icon_debug_alt, icon_extensions, icon_close, icon_chevron_left, icon_chevron_right } from './codicons';
 import './explorer/vrutti-explorer';
 import './vrutti-search';
 import './scm/vrutti-scm';
@@ -172,22 +172,16 @@ export class VruttiSidebar extends LitElement {
   static styles = [globalHoverStyle, css`
     :host {
       display: flex;
-      position: absolute;
-      left: 0;
-      top: 0;
-      bottom: 0;
+      position: relative;
       height: 100%;
       z-index: 50;
-      transform: translateX(-100%);
-      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       background-color: var(--vrutti-surface, #13151f);
       border-right: 1px solid var(--vrutti-surface-border, #23273b);
-      box-shadow: 4px 0 15px rgba(0,0,0,0.4);
       font-family: var(--vrutti-font, 'Inter', sans-serif);
     }
     
     :host(.dock-open) {
-      transform: translateX(0);
+      /* No longer using transform */
     }
 
     .dock-toggle {
@@ -292,11 +286,15 @@ export class VruttiSidebar extends LitElement {
     .sidebar-resizer {
       position: absolute;
       top: 0;
-      right: 0;
-      width: 4px;
+      right: -2px;
+      width: 5px;
       height: 100%;
       cursor: col-resize;
       z-index: 100;
+    }
+    .sidebar-resizer:hover, .sidebar-resizer.active {
+      background: var(--vrutti-accent, #82aaff);
+      opacity: 0.5;
     }
 
     .sidebar-resizer:hover, .sidebar-pane.resizing .sidebar-resizer {
@@ -435,9 +433,7 @@ export class VruttiSidebar extends LitElement {
 
     render() {
       return html`
-        <div class="dock-toggle" @click="${this.toggleDock}" title="Toggle Sidebar">
-          ${unsafeSVG(this.isDockOpen ? icon_chevron_left : icon_chevron_right)}
-        </div>
+        <!-- removed dock toggle to simplify -->
         <div class="activity-bar">
         <div class="top-icons">
           <!-- Files Icon -->
@@ -464,8 +460,10 @@ export class VruttiSidebar extends LitElement {
         <div class="bottom-icons">
         </div>
       </div>
+      <div class="dock-toggle" @click="${() => this.isOpen = !this.isOpen}">
+        ${this.isOpen ? unsafeSVG(icon_chevron_left) : unsafeSVG(icon_chevron_right)}
+      </div>
       <div class="sidebar-pane ${this.isOpen ? '' : 'collapsed'} ${this.isResizing ? 'resizing' : ''}" style="width: ${this.isOpen ? this.sidebarWidth : 0}px;">
-        <div class="sidebar-resizer" @mousedown="${this.startResize}"></div>
         <div class="pane-header">
           <span>${this.activeTab}</span>
           <button class="pane-action-btn" @click="${() => this.isOpen = false}" title="Minimize">
@@ -521,6 +519,7 @@ export class VruttiSidebar extends LitElement {
           }
         </div>
       </div>
+      ${this.isOpen ? html`<div class="sidebar-resizer" @mousedown="${this.startResize}"></div>` : ''}
     `;
   }
 }

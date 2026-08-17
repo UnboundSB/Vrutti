@@ -97,6 +97,8 @@ export class VruttiApp extends LitElement {
            if ((window as any).vruttiWriteOutput) {
                (window as any).vruttiWriteOutput('Execution', msg.params.text);
            }
+        } else if (msg.method === 'menu/action') {
+           window.dispatchEvent(new CustomEvent('menu-action', { detail: msg.params }));
         }
       } catch (e) {
         console.error("Failed to parse IPC message from backend:", e);
