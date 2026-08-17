@@ -52,6 +52,17 @@ export class VruttiDebugSidebar extends LitElement {
   async connectedCallback() {
     super.connectedCallback();
     this.activeFile = (window as any).currentActiveFile || '';
+
+    if ((window as any).vruttiBreakpoints) {
+      const allBp: Breakpoint[] = [];
+      for (const [file, lines] of Object.entries((window as any).vruttiBreakpoints)) {
+        for (const line of lines as number[]) {
+          allBp.push({ file, line, enabled: true });
+        }
+      }
+      this.breakpoints = allBp;
+    }
+
     window.addEventListener('vrutti-ipc', this.handleIpc as EventListener);
     window.addEventListener('vrutti-breakpoints-changed', this.handleBreakpointsChanged as EventListener);
     window.addEventListener('active-file-changed', this.handleActiveFileChanged as EventListener);

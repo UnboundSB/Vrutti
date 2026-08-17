@@ -82,6 +82,11 @@ function toggleBreakpoint(view: EditorView, pos: number) {
         const host = view.dom.getRootNode() as ShadowRoot;
         const hostEl = host?.host as any;
         if (hostEl && hostEl.filePath) {
+            if (!(window as any).vruttiBreakpoints) {
+                (window as any).vruttiBreakpoints = {};
+            }
+            (window as any).vruttiBreakpoints[hostEl.filePath] = lines;
+
             window.dispatchEvent(new CustomEvent('vrutti-breakpoints-changed', {
                 detail: { 
                     file: hostEl.filePath,
