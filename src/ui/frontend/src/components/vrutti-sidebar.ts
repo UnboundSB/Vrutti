@@ -25,6 +25,35 @@ export class VruttiSidebar extends LitElement {
   @state()
   private explorerRoot?: ExplorerItem;
 
+  @state()
+  private sidebarWidth = 250;
+
+  @state()
+  private isResizing = false;
+
+  private startResize(e: MouseEvent) {
+    e.preventDefault();
+    this.isResizing = true;
+    document.addEventListener('mousemove', this.doResize);
+    document.addEventListener('mouseup', this.stopResize);
+    document.body.style.cursor = 'col-resize';
+  }
+
+  private doResize = (e: MouseEvent) => {
+    if (!this.isResizing) return;
+    let newWidth = e.clientX - 48; // Activity bar is 48px wide
+    if (newWidth < 150) newWidth = 150;
+    if (newWidth > 800) newWidth = 800;
+    this.sidebarWidth = newWidth;
+  };
+
+  private stopResize = () => {
+    this.isResizing = false;
+    document.removeEventListener('mousemove', this.doResize);
+    document.removeEventListener('mouseup', this.stopResize);
+    document.body.style.cursor = '';
+  };
+
   async connectedCallback() {
     super.connectedCallback();
     window.addEventListener('workspace-changed', this.handleWorkspaceChanged);
@@ -236,17 +265,34 @@ export class VruttiSidebar extends LitElement {
     }
 
     .sidebar-pane {
-      width: 250px;
       height: 100%;
       overflow: hidden;
       transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       display: flex;
       flex-direction: column;
+      position: relative;
+    }
+
+    .sidebar-pane.resizing {
+      transition: none;
     }
 
     .sidebar-pane.collapsed {
-      width: 0px;
       border-right: none;
+    }
+
+    .sidebar-resizer {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 4px;
+      height: 100%;
+      cursor: col-resize;
+      z-index: 100;
+    }
+
+    .sidebar-resizer:hover, .sidebar-pane.resizing .sidebar-resizer {
+      background-color: var(--vrutti-accent, #82aaff);
     }
 
     .pane-header {
@@ -410,7 +456,8 @@ export class VruttiSidebar extends LitElement {
         <div class="bottom-icons">
         </div>
       </div>
-      <div class="sidebar-pane ${this.isOpen ? '' : 'collapsed'}">
+      <div class="sidebar-pane ${this.isOpen ? '' : 'collapsed'} ${this.isResizing ? 'resizing' : ''}" style="width: ${this.isOpen ? this.sidebarWidth : 0}px;">
+        <div class="sidebar-resizer" @mousedown="${this.startResize}"></div>
         <div class="pane-header">
           <span>${this.activeTab}</span>
           <button class="pane-action-btn" @click="${() => this.isOpen = false}" title="Minimize">
