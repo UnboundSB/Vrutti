@@ -35,7 +35,7 @@ export class VruttiDebugSidebar extends LitElement {
   @state() private availableDebuggers: DebuggerInfo[] = [];
   @state() private selectedDebuggerType: string = '';
   @state() private activeFile: string = '';
-  
+  @state() private activeThreadId: number = 1;
   // Sections expanded state
   @state() private sections = {
     variables: true,
@@ -70,6 +70,23 @@ export class VruttiDebugSidebar extends LitElement {
     super.disconnectedCallback();
   }
 
+  private formatLocalPath(path: string): string {
+    if (!path) return '';
+    if (path.startsWith('file://')) {
+      let decoded = decodeURIComponent(path);
+      decoded = decoded.replace('file:///', ''); 
+      if (!/^[a-zA-Z]:/.test(decoded)) {
+        decoded = '/' + decoded;
+      }
+      return decoded;
+    }
+    return path;
+  }
+  
+  private getBasename(path: string): string {
+    return path.split(/[\\/]/).pop() || path;
+  }
+
   private handleActiveFileChanged = (e: CustomEvent) => {
     if (e.detail && e.detail.path) {
       this.activeFile = e.detail.path;
@@ -79,24 +96,21 @@ export class VruttiDebugSidebar extends LitElement {
   private handleBreakpointsChanged = (e: CustomEvent) => {
     const detail = e.detail;
     if (detail && detail.file && Array.isArray(detail.lines)) {
-      // Filter out old breakpoints for this file
       this.breakpoints = this.breakpoints.filter(b => b.file !== detail.file);
-      // Add new ones
       for (const line of detail.lines) {
         this.breakpoints.push({ file: detail.file, line: line, enabled: true });
       }
-      
-      // If we are currently debugging, send to DAP
       if (this.debugState !== 'inactive') {
         this.sendDapCommand('setBreakpoints', {
-          source: { path: detail.file },
+          source: { path: this.formatLocalPath(detail.file) },
           breakpoints: detail.lines.map((l: number) => ({ line: l }))
         });
       }
+      this.requestUpdate();
     }
   };
 
-  private handleIpc = (e: CustomEvent) => {
+  private handleIpc = (e: any) => {
     const data = e.detail;
     if (data.method === 'debuggers/available') {
       this.availableDebuggers = data.params || [];
@@ -108,8 +122,9 @@ export class VruttiDebugSidebar extends LitElement {
       if (msg.event === 'initialized') {
         const fileToLines = new Map<string, number[]>();
         for (const bp of this.breakpoints) {
-          if (!fileToLines.has(bp.file)) fileToLines.set(bp.file, []);
-          fileToLines.get(bp.file)!.push(bp.line);
+          const formattedPath = this.formatLocalPath(bp.file);
+          if (!fileToLines.has(formattedPath)) fileToLines.set(formattedPath, []);
+          fileToLines.get(formattedPath)!.push(bp.line);
         }
         
         for (const [file, lines] of fileToLines.entries()) {
@@ -123,7 +138,6 @@ export class VruttiDebugSidebar extends LitElement {
       } else if (msg.event === 'stopped') {
         this.debugState = 'paused';
         
-        // Let's ask for threads and stack trace
         if ((window as any).sendIpcMessage) {
           (window as any).sendIpcMessage('dap/request', JSON.stringify({ command: 'threads', args: {} }));
         }
@@ -137,16 +151,16 @@ export class VruttiDebugSidebar extends LitElement {
       const resp = data.params;
       if (resp.command === 'initialize' && resp.success) {
         this.sendDapCommand('launch', {
-          // Pass the active file to run
-          program: this.activeFile,
-          cwd: (window as any).vruttiWorkspaceDir || '',
+          program: this.formatLocalPath(this.activeFile),
+          cwd: this.formatLocalPath((window as any).vruttiWorkspaceDir || ''),
           stopOnEntry: false
         });
       } else if (resp.command === 'threads' && resp.success) {
         const threads = resp.body.threads;
         if (threads && threads.length > 0) {
+          this.activeThreadId = threads[0].id;
           if ((window as any).sendIpcMessage) {
-            (window as any).sendIpcMessage('dap/request', JSON.stringify({ command: 'stackTrace', args: { threadId: threads[0].id } }));
+            (window as any).sendIpcMessage('dap/request', JSON.stringify({ command: 'stackTrace', args: { threadId: this.activeThreadId } }));
           }
         }
       } else if (resp.command === 'stackTrace' && resp.success) {
@@ -188,43 +202,26 @@ export class VruttiDebugSidebar extends LitElement {
   };
 
   private sendDapCommand(command: string, args: any = {}) {
-    if (command === 'start') {
-      if (!this.activeFile) {
-        alert("Please open a file to debug first.");
-        return;
-      }
-      
-      if ((window as any).sendIpcMessage) {
-        (window as any).sendIpcMessage('dap/start', JSON.stringify({ type: this.selectedDebuggerType }));
-        setTimeout(() => {
-          (window as any).sendIpcMessage('dap/request', JSON.stringify({ command: 'initialize', args: { adapterID: this.selectedDebuggerType } }));
-        }, 500);
-      }
-      return;
+    let cwd = '';
+    const active = (window as any).currentActiveFile;
+    if (active) {
+        const formatted = this.formatLocalPath(active);
+        cwd = formatted.substring(0, formatted.lastIndexOf('/'));
+        if (!cwd && formatted.lastIndexOf('\\') !== -1) {
+            cwd = formatted.substring(0, formatted.lastIndexOf('\\'));
+        }
     }
     
-    if (command === 'stop') {
-      if ((window as any).sendIpcMessage) {
-        (window as any).sendIpcMessage('dap/stop', '{}');
-      }
-      return;
-    }
-
-    if ((window as any).sendIpcMessage) {
-      (window as any).sendIpcMessage('dap/request', JSON.stringify({ command, args }));
-    }
+    window.dispatchEvent(new CustomEvent('dap-command', {
+        detail: {
+            command,
+            args: { ...args, type: this.selectedDebuggerType, cwd }
+        }
+    }));
   }
 
   private toggleSection(section: keyof typeof this.sections) {
     this.sections = { ...this.sections, [section]: !this.sections[section] };
-  }
-
-  private renderDebugAction(icon: string, label: string, action: () => void) {
-    return html`
-      <button class="action-btn" title="${label}" @click=${action}>
-        ${icon}
-      </button>
-    `;
   }
 
   static styles = css`
@@ -245,6 +242,20 @@ export class VruttiDebugSidebar extends LitElement {
       border-bottom: 1px solid #292e42;
       justify-content: center;
     }
+
+    .dap-btn {
+      background: none;
+      border: none;
+      color: #7aa2f7;
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .dap-btn:hover { background: #292e42; }
 
     .action-btn {
       background: none;
@@ -330,39 +341,22 @@ export class VruttiDebugSidebar extends LitElement {
     .frame-name { color: #e0af68; margin-right: 8px; }
     .frame-file { color: #565f89; font-size: 11px; }
 
-    .bp-file { color: #a9b1d6; margin-right: 8px; }
-    .bp-line { color: #ff9e64; }
-    
-    .checkbox {
-      width: 12px;
-      height: 12px;
-      margin-right: 8px;
-      border: 1px solid #565f89;
-      border-radius: 2px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    
-    .checkbox.checked {
-      background: #7aa2f7;
-      border-color: #7aa2f7;
-    }
+    .breakpoint-item { display: flex; align-items: center; width: 100%; }
+    .breakpoint-icon { width: 8px; height: 8px; border-radius: 50%; background: #f7768e; margin-right: 8px; }
+    .breakpoint-file { color: #a9b1d6; margin-right: 8px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .breakpoint-line { color: #ff9e64; }
   `;
 
   render() {
     return html`
       ${this.debugState !== 'inactive' ? html`
         <div class="debug-toolbar">
-          ${this.debugState === 'paused' ? 
-            this.renderDebugAction('▶', 'Continue', () => { this.debugState = 'running'; this.sendDapCommand('continue'); }) :
-            this.renderDebugAction('⏸', 'Pause', () => { this.sendDapCommand('pause'); })
-          }
-          ${this.renderDebugAction('↷', 'Step Over', () => this.sendDapCommand('next'))}
-          ${this.renderDebugAction('↓', 'Step Into', () => this.sendDapCommand('stepIn'))}
-          ${this.renderDebugAction('↑', 'Step Out', () => this.sendDapCommand('stepOut'))}
-          ${this.renderDebugAction('↻', 'Restart', () => this.sendDapCommand('restart'))}
-          <button class="action-btn stop" title="Stop" @click=${() => { this.debugState = 'inactive'; this.sendDapCommand('stop'); }}>■</button>
+          <button title="Continue" class="dap-btn" @click=${() => this.sendDapCommand('continue', { threadId: this.activeThreadId })}><svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M4 2v12l10-6L4 2z"/></svg></button>
+          <button title="Step Over" class="dap-btn" @click=${() => this.sendDapCommand('next', { threadId: this.activeThreadId })}><svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M10.5 3h3v10h-3v-1.5h1.5v-7h-1.5V3zM2 8l4-4v3h5v2H6v3L2 8z"/></svg></button>
+          <button title="Step Into" class="dap-btn" @click=${() => this.sendDapCommand('stepIn', { threadId: this.activeThreadId })}><svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M8 2l4 4H9v6H7V6H4l4-4zM2 13h12v2H2v-2z"/></svg></button>
+          <button title="Step Out" class="dap-btn" @click=${() => this.sendDapCommand('stepOut', { threadId: this.activeThreadId })}><svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M8 14l-4-4h3V4h2v6h3l-4 4zM2 1h12v2H2V1z"/></svg></button>
+          <button title="Restart" class="dap-btn" style="color: #9ece6a;" @click=${() => this.sendDapCommand('restart')}><svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M8 2a6 6 0 1 0 6 6h-2a4 4 0 1 1-4-4v2l4-3-4-3v2z"/></svg></button>
+          <button title="Stop" class="dap-btn" style="color: #f7768e;" @click=${() => this.sendDapCommand('stop')}><svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M4 4h8v8H4V4z"/></svg></button>
         </div>
       ` : html`
         <div style="padding: 12px; text-align: center; color: #565f89; font-size: 12px;">
@@ -433,9 +427,11 @@ export class VruttiDebugSidebar extends LitElement {
         <div class="section-content ${this.sections.breakpoints ? 'expanded' : ''}">
           ${this.breakpoints.map(bp => html`
             <div class="item" @click=${() => bp.enabled = !bp.enabled}>
-              <div class="checkbox ${bp.enabled ? 'checked' : ''}"></div>
-              <span class="bp-file">${bp.file}</span>
-              <span class="bp-line">${bp.line}</span>
+              <div class="breakpoint-item">
+                <div class="breakpoint-icon"></div>
+                <span class="breakpoint-file" title="${this.formatLocalPath(bp.file)}">${this.getBasename(this.formatLocalPath(bp.file))}</span>
+                <span class="breakpoint-line">${bp.line}</span>
+              </div>
             </div>
           `)}
         </div>
