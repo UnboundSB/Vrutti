@@ -17,11 +17,11 @@ A next-generation, high-performance development environment built from the groun
 
 | | Installer | Portable |
 |---|:---:|:---:|
-| **File** | `Vrutti_Setup.exe` | `vrutti_early_release.zip` |
+| **File** | `Vrutti_Alpha_0.0.1_SleepyRabbit_Setup.exe` | `vrutti_early_release.zip` |
 | **Best for** | Most users | No-admin / USB use |
 | **Setup** | One-click, auto shortcuts, auto-update | Extract and run |
 | **Requires** | Windows 10/11, admin rights | Windows 10/11 |
-| **Get it** | [Download →](https://github.com/UnboundSB/Vrutti/releases/latest/download/Vrutti_Setup.exe) | [Download →](https://github.com/UnboundSB/Vrutti/releases/latest/download/vrutti_early_release.zip) |
+| **Get it** | [Download →](https://github.com/UnboundSB/Vrutti/releases/latest/download/Vrutti_Alpha_0.0.1_SleepyRabbit_Setup.exe) | [Download →](https://github.com/UnboundSB/Vrutti/releases/latest/download/vrutti_early_release.zip) |
 
 </div>
 
@@ -103,7 +103,7 @@ OS&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Window
 1. Install [Inno Setup 6](https://jrsoftware.org/isdl.php)
 2. Build the backend and frontend (steps at left)
 3. `.\package_release.ps1` → portable ZIP
-4. `.\build_installer.ps1` → `Vrutti_Setup.exe`
+4. `.\build_installer.ps1` → `Vrutti_Alpha_0.0.1_SleepyRabbit_Setup.exe`
 
 </td></tr>
 </table>

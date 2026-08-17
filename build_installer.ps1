@@ -46,6 +46,9 @@ $ISCC = "$env:ProgramFiles (x86)\Inno Setup 6\ISCC.exe"
 if (-Not (Test-Path $ISCC)) {
     $ISCC = "$env:ProgramFiles\Inno Setup 6\ISCC.exe"
 }
+if (-Not (Test-Path $ISCC)) {
+    $ISCC = "$env:LOCALAPPDATA\Programs\Antigravity IDE\_\resources\app\node_modules\innosetup\bin\ISCC.exe"
+}
 
 if (Test-Path $ISCC) {
     Write-Host "Found Inno Setup at $ISCC. Compiling installer..."
