@@ -69,6 +69,27 @@ function toggleBreakpoint(view: EditorView, pos: number) {
     view.dispatch({
         effects: breakpointEffect.of({pos, on: !hasBreakpoint})
     });
+    
+    setTimeout(() => {
+        let newBreakpoints = view.state.field(breakpointState);
+        let lines: number[] = [];
+        let iter = newBreakpoints.iter();
+        while (iter.value !== null) {
+            lines.push(view.state.doc.lineAt(iter.from).number);
+            iter.next();
+        }
+        
+        const host = view.dom.getRootNode() as ShadowRoot;
+        const hostEl = host?.host as any;
+        if (hostEl && hostEl.filePath) {
+            window.dispatchEvent(new CustomEvent('vrutti-breakpoints-changed', {
+                detail: { 
+                    file: hostEl.filePath,
+                    lines
+                }
+            }));
+        }
+    }, 0);
 }
 
 const breakpointGutter = [
