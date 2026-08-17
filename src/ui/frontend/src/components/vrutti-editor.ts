@@ -198,8 +198,9 @@ export class VruttiEditor extends LitElement {
         }
         
         .cm-breakpoint-gutter {
-            width: 14px;
+            width: 20px;
             cursor: pointer;
+            margin-right: 4px;
         }
         
         .cm-breakpoint {
@@ -209,7 +210,7 @@ export class VruttiEditor extends LitElement {
             background-color: #f7768e;
             border-radius: 50%;
             margin-top: 5px;
-            margin-left: 6px;
+            margin-left: 5px;
         }
 
         .cm-execution-line {

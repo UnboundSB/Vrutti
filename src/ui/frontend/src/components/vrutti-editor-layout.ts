@@ -247,6 +247,29 @@ export class VruttiEditorLayout extends LitElement {
         this.activePaneId = this.rootNode.id;
     }
 
+    connectedCallback() {
+        super.connectedCallback();
+        window.addEventListener('editor-action', this.handleEditorAction as EventListener);
+    }
+
+    disconnectedCallback() {
+        super.disconnectedCallback();
+        window.removeEventListener('editor-action', this.handleEditorAction as EventListener);
+    }
+
+    private handleEditorAction = (e: Event) => {
+        const detail = (e as CustomEvent).detail;
+        if (detail.action === 'Start Debugging' || detail.action === 'Run and Debug') {
+            const leaf = this.findNode(this.rootNode, this.activePaneId);
+            const activeTab = leaf?.type === 'leaf' ? leaf.activeTab : null;
+            if (activeTab) this.runFile(activeTab, 'debug');
+        } else if (detail.action === 'Run Without Debugging') {
+            const leaf = this.findNode(this.rootNode, this.activePaneId);
+            const activeTab = leaf?.type === 'leaf' ? leaf.activeTab : null;
+            if (activeTab) this.runFile(activeTab, 'run');
+        }
+    }
+
     public openFile(filePath: string) {
         // Find active pane or first available leaf
         let targetLeaf = this.findNode(this.rootNode, this.activePaneId) as LeafNode;
@@ -296,6 +319,16 @@ export class VruttiEditorLayout extends LitElement {
         
         if (mode === 'debug') {
             window.dispatchEvent(new CustomEvent('switch-to-debug-panel'));
+            setTimeout(() => {
+                const app = document.querySelector('vrutti-app');
+                const sidebar = app?.shadowRoot?.querySelector('vrutti-sidebar');
+                const debugSidebar = sidebar?.shadowRoot?.querySelector('vrutti-debug-sidebar') as any;
+                if (debugSidebar && debugSidebar.sendDapCommand) {
+                    debugSidebar.sendDapCommand('start');
+                } else if ((window as any).sendIpcMessage) {
+                    (window as any).sendIpcMessage('dap/start', JSON.stringify({ type: 'node', cwd: '' }));
+                }
+            }, 150);
             return;
         }
 
@@ -309,7 +342,7 @@ export class VruttiEditorLayout extends LitElement {
         if ((window as any).sendIpcMessage) {
             try {
                 // Trigger terminal to open
-                this.dispatchEvent(new CustomEvent('menu-action', { detail: { action: 'New Terminal' }, bubbles: true, composed: true }));
+                window.dispatchEvent(new CustomEvent('menu-action', { detail: { action: 'New Terminal' }, bubbles: true, composed: true }));
                 
                 // Wait for the DOM to mount the terminal before sending the IPC
                 await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
