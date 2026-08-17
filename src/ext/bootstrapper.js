@@ -562,6 +562,25 @@ async function main() {
                         exec = targetDebugger.runtime;
                     }
                     
+                    if (!exec) {
+                        if (payload.type === 'python' || targetDebugger.extensionName === 'debugpy') {
+                            exec = 'python';
+                            const path = require('path');
+                            const fs = require('fs');
+                            const adapterScript = path.join(manager.extDirBase, targetDebugger.extensionName, 'extension', 'bundled', 'libs', 'debugpy', 'adapter');
+                            if (fs.existsSync(adapterScript)) {
+                                args = [adapterScript];
+                            } else {
+                                exec = null;
+                            }
+                        }
+                    }
+                    
+                    if (!exec) {
+                        ipcClient.sendNotification('debug/log', { type: 'error', text: `Debugger executable could not be resolved for type ${payload.type}. Ensure it is installed correctly.` });
+                        return;
+                    }
+
                     dapClient.start(exec, args, payload.cwd);
                 } else {
                     ipcClient.sendNotification('debug/log', { type: 'error', text: `Debugger type ${payload.type} not found in installed extensions.` });
