@@ -368,13 +368,13 @@ export class VruttiDebugSidebar extends LitElement {
         <div style="padding: 12px; text-align: center; color: #565f89; font-size: 12px;">
           To start debugging, select a debugger and run.
           <br><br>
-          <select style="box-sizing: border-box; background: #1a1b26; color: #a9b1d6; border: 1px solid #3b4261; padding: 4px; border-radius: 2px; width: 100%; margin-bottom: 8px;"
+          <select style="display: block; box-sizing: border-box; background: #1a1b26; color: #a9b1d6; border: 1px solid #3b4261; padding: 4px; border-radius: 2px; width: 100%; margin-bottom: 8px;"
             @change=${(e: any) => this.selectedDebuggerType = e.target.value}
             .value=${this.selectedDebuggerType}>
             ${this.availableDebuggers.map(d => html`<option value="${d.type}">${d.label} (${d.extensionName})</option>`)}
             ${this.availableDebuggers.length === 0 ? html`<option value="">No debuggers installed</option>` : ''}
           </select>
-          <button style="box-sizing: border-box; background: #7aa2f7; color: #1a1b26; border: none; padding: 4px 12px; border-radius: 2px; cursor: pointer; font-weight: bold; width: 100%;" 
+          <button style="display: block; box-sizing: border-box; background: #7aa2f7; color: #1a1b26; border: none; padding: 4px 12px; border-radius: 2px; cursor: pointer; font-weight: bold; width: 100%;" 
             ?disabled=${!this.selectedDebuggerType}
             @click=${() => { this.debugState = 'running'; this.sendDapCommand('start'); }}>Run and Debug</button>
         </div>
