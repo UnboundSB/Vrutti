@@ -137,7 +137,7 @@ export class VruttiApp extends LitElement {
     // Connect theme bridge to listen for IPC themes
     themeBridge.connect();
 
-    this.addEventListener('menu-action', this.handleMenuAction);
+    window.addEventListener('menu-action', this.handleMenuAction as EventListener);
     this.addEventListener('close-settings', this.handleCloseSettings);
     this.addEventListener('setting-changed', this.handleSettingChanged);
     this.addEventListener('open-file', this.handleOpenFile as EventListener);
@@ -187,7 +187,7 @@ export class VruttiApp extends LitElement {
 
   disconnectedCallback() {
     super.disconnectedCallback();
-    this.removeEventListener('menu-action', this.handleMenuAction);
+    window.removeEventListener('menu-action', this.handleMenuAction as EventListener);
     this.removeEventListener('close-settings', this.handleCloseSettings);
     this.removeEventListener('setting-changed', this.handleSettingChanged);
     this.removeEventListener('open-file', this.handleOpenFile as EventListener);
