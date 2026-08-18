@@ -250,11 +250,60 @@ export class VruttiEditorLayout extends LitElement {
     connectedCallback() {
         super.connectedCallback();
         window.addEventListener('editor-action', this.handleEditorAction as EventListener);
+        window.addEventListener('workspace-loaded', this.handleWorkspaceLoaded as EventListener);
+        // Attempt initial load if workspace is already set
+        if ((window as any).currentWorkspace) {
+            this.loadLayoutState((window as any).currentWorkspace);
+        }
     }
 
     disconnectedCallback() {
         super.disconnectedCallback();
         window.removeEventListener('editor-action', this.handleEditorAction as EventListener);
+        window.removeEventListener('workspace-loaded', this.handleWorkspaceLoaded as EventListener);
+    }
+
+    private handleWorkspaceLoaded = (e: Event) => {
+        const detail = (e as CustomEvent).detail;
+        if (detail && detail.path) {
+            this.loadLayoutState(detail.path);
+        }
+    }
+
+    private loadLayoutState(workspace: string) {
+        try {
+            const saved = localStorage.getItem('layoutState_' + workspace);
+            if (saved) {
+                const state = JSON.parse(saved);
+                if (state && state.rootNode) {
+                    this.rootNode = state.rootNode;
+                    this.activePaneId = state.activePaneId || state.rootNode.id;
+                    return;
+                }
+            }
+        } catch (e) {
+            console.warn('Failed to load layout state', e);
+        }
+        // Fallback or new workspace
+        this.rootNode = { type: 'leaf', id: generateId(), tabs: [], activeTab: null };
+        this.activePaneId = this.rootNode.id;
+    }
+
+    private saveLayoutState() {
+        const workspace = (window as any).currentWorkspace;
+        if (workspace) {
+            const state = {
+                rootNode: this.rootNode,
+                activePaneId: this.activePaneId
+            };
+            localStorage.setItem('layoutState_' + workspace, JSON.stringify(state));
+        }
+    }
+
+    updated(changedProperties: Map<string, any>) {
+        if (changedProperties.has('rootNode') || changedProperties.has('activePaneId')) {
+            this.saveLayoutState();
+        }
     }
 
     private handleEditorAction = (e: Event) => {

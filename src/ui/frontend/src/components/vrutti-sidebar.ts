@@ -123,6 +123,7 @@ export class VruttiSidebar extends LitElement {
     this.explorerRoot.isExpanded = true;
     await this.explorerRoot.loadChildren();
     this.requestUpdate();
+    window.dispatchEvent(new CustomEvent('workspace-loaded', { detail: { path } }));
   }
 
   private async createFileAtRoot(e: Event) {
