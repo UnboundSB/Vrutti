@@ -416,7 +416,12 @@ export class VruttiDebugSidebar extends LitElement {
           </select>
           <button style="display: block; box-sizing: border-box; background: #7aa2f7; color: #1a1b26; border: none; padding: 4px 12px; border-radius: 2px; cursor: pointer; font-weight: bold; width: 100%;" 
             ?disabled=${!this.selectedDebuggerType}
-            @click=${() => { this.debugState = 'running'; this.sendDapCommand('start'); }}>Run and Debug</button>
+            @click=${() => { 
+                this.debugState = 'running'; 
+                this.sendDapCommand('start'); 
+                window.dispatchEvent(new CustomEvent('menu-action', { detail: { action: 'New Terminal' }, bubbles: true, composed: true }));
+                window.dispatchEvent(new CustomEvent('switch-to-debug-console'));
+            }}>Run and Debug</button>
         </div>
       `}
 
