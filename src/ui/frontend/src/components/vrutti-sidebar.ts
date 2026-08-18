@@ -180,8 +180,12 @@ export class VruttiSidebar extends LitElement {
       font-family: var(--vrutti-font, 'Inter', sans-serif);
     }
     
-    :host(.dock-open) {
-      /* No longer using transform */
+    :host(.docked) .activity-bar {
+      display: none;
+    }
+    
+    :host(.docked) .sidebar-pane {
+      display: none;
     }
 
     .dock-toggle {
@@ -475,8 +479,8 @@ export class VruttiSidebar extends LitElement {
         <div class="bottom-icons">
         </div>
       </div>
-      <div class="dock-toggle ${this.isOpen ? '' : 'collapsed'}" @click="${() => this.isOpen = !this.isOpen}">
-        ${this.isOpen ? unsafeSVG(icon_chevron_left) : unsafeSVG(icon_chevron_right)}
+      <div class="dock-toggle ${this.isDocked ? 'collapsed' : ''}" @click="${() => this.toggleDock()}">
+        ${this.isDocked ? unsafeSVG(icon_chevron_right) : unsafeSVG(icon_chevron_left)}
       </div>
       <div class="sidebar-pane ${this.isOpen ? '' : 'collapsed'} ${this.isResizing ? 'resizing' : ''}" style="width: ${this.isOpen ? this.sidebarWidth : 0}px;">
         <div class="pane-header">
