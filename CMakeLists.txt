@@ -12,6 +12,7 @@ if(MSVC)
     add_compile_options(/W4 /O2)
 else()
     add_compile_options(-Wall -Wextra -O3 -flto)
+    add_link_options(-static -static-libgcc -static-libstdc++)
 endif()
 
 # TODO: Add UI/Compositor and Bridge dependencies later
