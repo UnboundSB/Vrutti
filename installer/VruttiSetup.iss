@@ -1,11 +1,11 @@
 [Setup]
 AppName=Vrutti Alpha SleepyRabbit
-AppVersion=0.0.1
+AppVersion=0.0.2
 AppPublisher=UnboundSB
 AppPublisherURL=https://github.com/UnboundSB/Vrutti
 DefaultDirName={autopf}\Vrutti
 DefaultGroupName=Vrutti
-OutputBaseFilename=Vrutti_Alpha_0.0.1_SleepyRabbit_Setup
+OutputBaseFilename=Vrutti_Alpha_0.0.2_SleepyRabbit_Setup
 OutputDir=..\
 Compression=lzma2/ultra64
 SolidCompression=yes
