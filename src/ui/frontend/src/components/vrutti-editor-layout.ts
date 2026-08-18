@@ -318,7 +318,9 @@ export class VruttiEditorLayout extends LitElement {
         this.openRunDropdownId = null;
         
         if (mode === 'debug') {
+            window.dispatchEvent(new CustomEvent('menu-action', { detail: { action: 'New Terminal' }, bubbles: true, composed: true }));
             window.dispatchEvent(new CustomEvent('switch-to-debug-panel'));
+            window.dispatchEvent(new CustomEvent('switch-to-debug-console'));
             setTimeout(() => {
                 const app = document.querySelector('vrutti-app');
                 const sidebar = app?.shadowRoot?.querySelector('vrutti-sidebar');
