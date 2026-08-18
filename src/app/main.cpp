@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <filesystem>
 
 #include "ui/compositor/Window.h"
 #include "core/ipc/IPCClient.h"
@@ -14,9 +15,24 @@ int main(int argc, char* argv[]) {
     
     std::string initialWorkspace;
     if (argc > 1) {
-        initialWorkspace = argv[1];
+        std::filesystem::path wp(argv[1]);
+        initialWorkspace = std::filesystem::absolute(wp).string();
+    } else {
+        initialWorkspace = "";
     }
     
+#ifdef _WIN32
+    // Fix CWD to the Vrutti installation / development root so relative paths work
+    char buffer[MAX_PATH];
+    GetModuleFileNameA(NULL, buffer, MAX_PATH);
+    std::filesystem::path exePath(buffer);
+    std::filesystem::path basePath = exePath.parent_path();
+    if (basePath.filename() == "build") {
+        basePath = basePath.parent_path();
+    }
+    SetCurrentDirectoryA(basePath.string().c_str());
+#endif
+
     // Initialize IPC Client for Extension Host
     vrutti::core::ipc::IPCClient ipc("vrutti_pipe");
     ipc.start();
