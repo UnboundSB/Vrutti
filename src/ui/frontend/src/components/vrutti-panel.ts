@@ -50,6 +50,7 @@ export class VruttiPanel extends LitElement {
     window.addEventListener('vrutti-output-write', this.handleOutputWrite);
     window.addEventListener('vrutti-ipc', this.handleIpc as EventListener);
     window.addEventListener('terminal-ready', this.handleTerminalReady as EventListener);
+    window.addEventListener('switch-to-debug-console', this.handleSwitchToDebugConsole as EventListener);
   }
 
   disconnectedCallback() {
@@ -57,7 +58,12 @@ export class VruttiPanel extends LitElement {
     window.removeEventListener('vrutti-output-write', this.handleOutputWrite);
     window.removeEventListener('vrutti-ipc', this.handleIpc as EventListener);
     window.removeEventListener('terminal-ready', this.handleTerminalReady as EventListener);
+    window.removeEventListener('switch-to-debug-console', this.handleSwitchToDebugConsole as EventListener);
   }
+
+  private handleSwitchToDebugConsole = () => {
+    this.activePanelTab = 'DEBUG CONSOLE';
+  };
 
   private handleTerminalReady = (e: Event) => {
     const termId = (e as CustomEvent).detail?.id;
@@ -666,22 +672,7 @@ export class VruttiPanel extends LitElement {
       ` : this.activePanelTab === 'DEBUG CONSOLE' ? html`
         <vrutti-debug-console></vrutti-debug-console>
       ` : this.activePanelTab === 'PORTS' ? html`
-        <div class="ports-body" style="display: flex; flex-direction: column; flex: 1; overflow: hidden; background: var(--vscode-editor-background, #1a1b26);">
-          <div class="ports-header" style="display: flex; padding: 4px 12px; border-bottom: 1px solid #1f2335; color: #717cb4; font-size: 11px; text-transform: uppercase;">
-            <div style="flex: 1;">Port</div>
-            <div style="flex: 2;">Local Address</div>
-            <div style="flex: 1;">Status</div>
-          </div>
-          <div class="ports-list" style="flex: 1; overflow-y: auto; padding: 8px 12px; color: #a9b1d6; font-size: 13px;">
-            <!-- Placeholder for no ports -->
-            <div style="display: flex; margin-bottom: 6px; color: #717cb4;">
-              No ports forwarded yet.
-            </div>
-          </div>
-          <div style="padding: 8px 12px; border-top: 1px solid #1f2335; display: flex; gap: 8px;">
-            <button style="background: #292e42; color: #a9b1d6; border: 1px solid #3b4261; border-radius: 4px; padding: 4px 12px; font-size: 11px; cursor: pointer;">Forward a Port</button>
-          </div>
-        </div>
+        <div style="padding: 15px; opacity: 0.5;">Ports panel not yet implemented.</div>
       ` : html`
         <div style="flex: 1; display: flex; align-items: center; justify-content: center; color: #717cb4; font-size: 13px;">
           ${this.activePanelTab} - Not yet implemented
