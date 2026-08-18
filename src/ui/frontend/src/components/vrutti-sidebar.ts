@@ -202,6 +202,17 @@ export class VruttiSidebar extends LitElement {
       cursor: pointer;
       box-shadow: 4px 0 10px rgba(0,0,0,0.2);
       z-index: 60;
+      transition: opacity 0.2s;
+    }
+
+    .dock-toggle.collapsed {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    :host(:hover) .dock-toggle.collapsed {
+      opacity: 1;
+      pointer-events: auto;
     }
 
     .dock-toggle:hover {
@@ -418,17 +429,21 @@ export class VruttiSidebar extends LitElement {
     }
   }
 
+  @state()
+  private isDocked = false;
+
   toggleSidebar() {
     this.isOpen = !this.isOpen;
   }
 
   toggleDock() {
-      this.isDockOpen = !this.isDockOpen;
-      if (this.isDockOpen) {
-        this.classList.add('dock-open');
+      this.isDocked = !this.isDocked;
+      if (this.isDocked) {
+        this.classList.add('docked');
       } else {
-        this.classList.remove('dock-open');
+        this.classList.remove('docked');
       }
+      this.requestUpdate();
     }
 
     render() {
@@ -460,7 +475,7 @@ export class VruttiSidebar extends LitElement {
         <div class="bottom-icons">
         </div>
       </div>
-      <div class="dock-toggle" @click="${() => this.isOpen = !this.isOpen}">
+      <div class="dock-toggle ${this.isOpen ? '' : 'collapsed'}" @click="${() => this.isOpen = !this.isOpen}">
         ${this.isOpen ? unsafeSVG(icon_chevron_left) : unsafeSVG(icon_chevron_right)}
       </div>
       <div class="sidebar-pane ${this.isOpen ? '' : 'collapsed'} ${this.isResizing ? 'resizing' : ''}" style="width: ${this.isOpen ? this.sidebarWidth : 0}px;">
