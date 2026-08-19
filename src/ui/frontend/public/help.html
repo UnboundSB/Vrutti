@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vrutti IDE - User Guide</title>
+  <style>
+    :root {
+      --bg: #1e1e2e;
+      --surface: #252837;
+      --text: #cdd6f4;
+      --text-muted: #a6adc8;
+      --primary: #89b4fa;
+      --border: #313244;
+      --font: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 60px;
+      padding-bottom: 30px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    h1 {
+      color: var(--primary);
+      font-size: 2.5rem;
+      margin: 0 0 10px 0;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 1.2rem;
+      margin: 0;
+    }
+
+    section {
+      margin-bottom: 50px;
+      background: var(--surface);
+      padding: 30px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+    }
+
+    h2 {
+      color: var(--primary);
+      margin-top: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    kbd {
+      background: #11111b;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 0.9em;
+      border: 1px solid var(--border);
+      border-bottom-width: 2px;
+      color: var(--primary);
+    }
+
+    ul {
+      padding-left: 20px;
+    }
+
+    li {
+      margin-bottom: 10px;
+    }
+
+    a {
+      color: var(--primary);
+      text-decoration: none;
+      border-bottom: 1px dashed var(--primary);
+    }
+
+    a:hover {
+      border-bottom-style: solid;
+    }
+
+    .shortcut-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+
+    .shortcut-table th, .shortcut-table td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .shortcut-table th {
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    footer {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-top: 50px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <h1>Vrutti IDE</h1>
+      <p class="subtitle">Fast, native, and built for modern developers.</p>
+    </header>
+
+    <section id="getting-started">
+      <h2>🚀 Getting Started</h2>
+      <p>Welcome to Vrutti! You're looking at a next-generation native code editor powered by a C++ engine and a blazing-fast Lit web frontend.</p>
+      <ul>
+        <li><strong>Open a folder:</strong> Go to File > Open Folder... or simply use the file explorer on the left.</li>
+        <li><strong>Command Palette:</strong> Press <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>P</kbd> to open the command palette and quickly search for files or commands.</li>
+        <li><strong>Terminal:</strong> Press <kbd>Ctrl</kbd> + <kbd>`</kbd> to toggle the integrated high-performance terminal.</li>
+      </ul>
+    </section>
+
+    <section id="features">
+      <h2>✨ Key Features</h2>
+      <ul>
+        <li><strong>Topological Git Graph:</strong> An interactive, hardware-accelerated SVG git visualizer. Click "Source Control" on the sidebar to view your repository history, drag to pan, and interact directly with commits.</li>
+        <li><strong>Integrated Tasks:</strong> Vrutti seamlessly parses your project's `tasks.json`. Run them directly from the Terminal > Run Task menu.</li>
+        <li><strong>Native Speed:</strong> By keeping heavy file-system watching, language servers, and IPC routing in C++, Vrutti maintains minimal memory overhead compared to traditional Electron editors.</li>
+      </ul>
+    </section>
+
+    <section id="shortcuts">
+      <h2>⌨️ Keyboard Shortcuts</h2>
+      <table class="shortcut-table">
+        <thead>
+          <tr>
+            <th>Action</th>
+            <th>Shortcut</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Command Palette</td>
+            <td><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>P</kbd></td>
+          </tr>
+          <tr>
+            <td>Toggle Terminal</td>
+            <td><kbd>Ctrl</kbd> + <kbd>`</kbd></td>
+          </tr>
+          <tr>
+            <td>Save File</td>
+            <td><kbd>Ctrl</kbd> + <kbd>S</kbd></td>
+          </tr>
+          <tr>
+            <td>Find in File</td>
+            <td><kbd>Ctrl</kbd> + <kbd>F</kbd></td>
+          </tr>
+          <tr>
+            <td>Toggle Sidebar</td>
+            <td><kbd>Ctrl</kbd> + <kbd>B</kbd></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="troubleshooting">
+      <h2>🔧 Troubleshooting</h2>
+      <p>If you encounter issues, here are a few things to try:</p>
+      <ul>
+        <li><strong>UI Looks Glitchy?</strong> The IDE uses WebGL for the terminal and Git graph. Ensure your graphics drivers are up to date.</li>
+        <li><strong>Debugger Not Attaching?</strong> Ensure you have the Python/Node extension properly loaded. The native DAP client requires the `initialize` command which is handled automatically, but path mapping on Windows must match exactly.</li>
+        <li><strong>Need more help?</strong> Visit our <a href="https://github.com/UnboundSB/Vrutti/issues" target="_blank">GitHub Issues</a> page.</li>
+      </ul>
+    </section>
+
+    <footer>
+      <p>Vrutti IDE Alpha Release. Made with ❤️ by UnboundSB.</p>
+    </footer>
+  </div>
+
+</body>
+</html>

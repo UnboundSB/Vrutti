@@ -329,7 +329,7 @@ export class VruttiApp extends LitElement {
       
       const externalLinks: Record<string, string> = {
         'Welcome': 'https://github.com/UnboundSB/Vrutti',
-        'Documentation': 'https://github.com/UnboundSB/Vrutti/wiki',
+        'Documentation': new URL('./help.html', window.location.href).href,
         'Editor Playground': 'https://github.com/UnboundSB/Vrutti/wiki/Playground',
         'Release Notes': 'https://github.com/UnboundSB/Vrutti/releases',
         'Keyboard Shortcuts Reference': 'https://github.com/UnboundSB/Vrutti/wiki/Shortcuts',
