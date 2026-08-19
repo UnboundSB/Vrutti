@@ -8,3 +8,9 @@ Provides an Event Bus or messaging backbone to allow decoupled communication bet
 
 ## Child Directories
 - (No immediate subdirectories)
+
+
+## Additional Components
+- **Event.h**: Component implementation.
+- **Observable.h**: Component implementation.
+

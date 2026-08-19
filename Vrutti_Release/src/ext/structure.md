@@ -9,14 +9,3 @@ The Node.js environment responsible for loading extensions, providing the extens
 ## Child Directories
 - **bin/**: Executable scripts or wrapper binaries used by the extension host.
 - **builtin-themes/**: Default bundled themes (e.g., rutti-default-dark) containing syntax highlighting and UI color definitions.
-
-
-## Additional Components
-- **api.js**: Component implementation.
-- **dap-client.js**: Component implementation.
-- **ipc.js**: Component implementation.
-- **package-lock.json**: Component implementation.
-- **package.json**: Component implementation.
-- **textmate-engine.js**: Component implementation.
-- **theme-resolver.js**: Component implementation.
-

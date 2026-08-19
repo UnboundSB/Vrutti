@@ -8,3 +8,9 @@ Manages the File Explorer sidebar, rendering the directory tree, files, and hand
 
 ## Child Directories
 - (No immediate subdirectories)
+
+
+## Additional Components
+- **explorerModel.ts**: Component implementation.
+- **iconMapper.ts**: Component implementation.
+

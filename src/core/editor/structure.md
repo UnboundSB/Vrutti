@@ -8,3 +8,9 @@ Manages the backend representation of open documents, text buffers, and editor s
 
 ## Child Directories
 - (No immediate subdirectories)
+
+
+## Additional Components
+- **PieceTable.cpp**: Component implementation.
+- **PieceTable.h**: Component implementation.
+

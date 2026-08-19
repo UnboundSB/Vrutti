@@ -17,3 +17,8 @@ The foundational native C++ framework that powers Vrutti IDE. It provides low-le
 - **plugins/**: Manages the dynamic loading (PluginLoader) and lifecycle of native DLL plugins.
 - **terminal/**: Backend orchestration for the integrated terminal/PTY handling.
 - **utils/**: Shared helper classes (e.g., JSON parsing/serialization, logging).
+
+
+## Additional Components
+- **task.md**: Component implementation.
+

@@ -10,3 +10,10 @@ The main TypeScript source code directory for the frontend application. It initi
 
 ## Child Directories
 - **components/**: Contains all reusable Web Components (Lit) that make up the IDE layout, such as the explorer, terminal, and search bar.
+
+
+## Additional Components
+- **globalHover.ts**: Component implementation.
+- **shared-styles.ts**: Component implementation.
+- **ThemeBridge.ts**: Component implementation.
+

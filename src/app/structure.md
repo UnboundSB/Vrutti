@@ -8,3 +8,8 @@ Serves as the main entry point and bootstrap mechanism for the native C++ applic
 
 ## Child Directories
 - (No immediate subdirectories)
+
+
+## Additional Components
+- **vrutti_app.rc**: Component implementation.
+

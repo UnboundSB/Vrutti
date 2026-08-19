@@ -8,3 +8,16 @@ Handles high-performance filesystem operations, directory traversal, and file-wa
 
 ## Child Directories
 - (No immediate subdirectories)
+
+
+## Additional Components
+- **Glob.cpp**: Component implementation.
+- **Glob.h**: Component implementation.
+- **Path.cpp**: Component implementation.
+- **Path.h**: Component implementation.
+- **Stream.h**: Component implementation.
+- **URI.cpp**: Component implementation.
+- **URI.h**: Component implementation.
+- **Workspace.cpp**: Component implementation.
+- **Workspace.h**: Component implementation.
+

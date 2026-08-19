@@ -8,3 +8,9 @@ Stores static assets that are copied directly into the frontend build output.
 
 ## Child Directories
 - (No immediate subdirectories)
+
+
+## Additional Components
+- **help.html**: Component implementation.
+- **vrutti-logo.png**: Component implementation.
+

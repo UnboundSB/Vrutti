@@ -8,3 +8,11 @@ Manages pseudo-terminal (PTY) allocation and native shell execution for the inte
 
 ## Child Directories
 - (No immediate subdirectories)
+
+
+## Additional Components
+- **ReplProcess.cpp**: Component implementation.
+- **ReplProcess.h**: Component implementation.
+- **TerminalProcess.cpp**: Component implementation.
+- **TerminalProcess.h**: Component implementation.
+

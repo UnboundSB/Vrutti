@@ -32,3 +32,14 @@ The root directory of the Vrutti IDE workspace, containing the main build config
 - **test_base64.exe**: Responsible for storing data related to test_base64.exe.
 - **test_terminal.cpp**: Implements the test_terminal core logic and functionality.
 - **test_terminal.exe**: Responsible for storing data related to test_terminal.exe.
+
+
+## Additional Components
+- **ripgrep**: Component implementation.
+- **build_installer.ps1**: Component implementation.
+- **gen_docs.ps1**: Component implementation.
+- **LICENSE**: Component implementation.
+- **logger.js**: Component implementation.
+- **package_release.ps1**: Component implementation.
+- **rebase_editor.ps1**: Component implementation.
+

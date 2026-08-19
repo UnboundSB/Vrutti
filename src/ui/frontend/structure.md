@@ -12,3 +12,9 @@ The root directory of the Vite-based Web Application that renders Vrutti IDE's u
 ## Child Directories
 - **public/**: Static assets (fonts, icons) served directly without bundling.
 - **src/**: The core TypeScript source code and Web Components for the IDE interface.
+
+
+## Additional Components
+- **Dockerfile.frontend**: Component implementation.
+- **package-lock.json**: Component implementation.
+

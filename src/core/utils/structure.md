@@ -10,3 +10,14 @@ Contains shared helpers and standard abstractions used globally across the C++ c
 
 ## Child Directories
 - (No immediate subdirectories)
+
+
+## Additional Components
+- **Base64.h**: Component implementation.
+- **Json.cpp**: Component implementation.
+- **Json.h**: Component implementation.
+- **LineScanner.cpp**: Component implementation.
+- **LineScanner.h**: Component implementation.
+- **StringPool.cpp**: Component implementation.
+- **StringPool.h**: Component implementation.
+

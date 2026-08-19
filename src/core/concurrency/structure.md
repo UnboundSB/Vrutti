@@ -8,3 +8,11 @@ Provides utilities and primitives for multi-threading and asynchronous execution
 
 ## Child Directories
 - (No immediate subdirectories)
+
+
+## Additional Components
+- **Async.h**: Component implementation.
+- **CancellationToken.h**: Component implementation.
+- **ThreadPool.cpp**: Component implementation.
+- **ThreadPool.h**: Component implementation.
+
