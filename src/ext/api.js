@@ -256,6 +256,35 @@ class VruttiAPI {
                 this.range = range;
             }
         };
+
+        const apiSelf = this;
+        class CancellationToken {
+            constructor() {
+                this._isCancelled = false;
+                this._emitter = new apiSelf.EventEmitter();
+            }
+            get isCancellationRequested() { return this._isCancelled; }
+            get onCancellationRequested() { return this._emitter.event; }
+            _cancel() {
+                this._isCancelled = true;
+                this._emitter.fire();
+            }
+            _dispose() {
+                this._emitter.dispose();
+            }
+        }
+
+        this.CancellationTokenSource = class CancellationTokenSource {
+            constructor() {
+                this.token = new CancellationToken();
+            }
+            cancel() {
+                this.token._cancel();
+            }
+            dispose() {
+                this.token._dispose();
+            }
+        };
     }
 }
 
