@@ -87,13 +87,51 @@ class VruttiAPI {
             getCommands: async () => Array.from(this._commandRegistry.keys())
         };
 
+        this._providers = new Map();
+        
+        const registerProvider = (type, selector, provider) => {
+            const id = `${type}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            this._providers.set(id, provider);
+            this.ipcClient.sendNotification('languages/register', { type, selector, id });
+            return { dispose: () => this._providers.delete(id) };
+        };
+
         this.languages = {
-            registerCompletionItemProvider: () => ({ dispose: () => {} }),
-            registerHoverProvider: () => ({ dispose: () => {} }),
-            registerDefinitionProvider: () => ({ dispose: () => {} }),
-            registerDocumentFormattingEditProvider: () => ({ dispose: () => {} }),
+            registerCompletionItemProvider: (selector, provider, ...triggerCharacters) => registerProvider('completion', selector, provider),
+            registerHoverProvider: (selector, provider) => registerProvider('hover', selector, provider),
+            registerDefinitionProvider: (selector, provider) => registerProvider('definition', selector, provider),
+            registerDocumentFormattingEditProvider: (selector, provider) => registerProvider('formatting', selector, provider),
             getLanguages: async () => []
         };
+
+        // Listen for requests from C++ core and dispatch to JS providers
+        this.ipcClient.on('languages/request', async (payload) => {
+            const { id, reqId, method, args } = payload;
+            const provider = this._providers.get(id);
+            if (!provider) {
+                this.ipcClient.sendNotification('languages/response', { reqId, error: 'Provider not found' });
+                return;
+            }
+            try {
+                let result;
+                // Basic mock doc until full document synchronization is implemented
+                const doc = { uri: this.Uri.parse(args.uri || ''), getText: () => "" };
+                
+                if (method === 'provideCompletionItems' && provider.provideCompletionItems) {
+                    const pos = new this.Position(args.position.line, args.position.character);
+                    result = await provider.provideCompletionItems(doc, pos, { isCancellationRequested: false }, { triggerKind: 1 });
+                } else if (method === 'provideHover' && provider.provideHover) {
+                    const pos = new this.Position(args.position.line, args.position.character);
+                    result = await provider.provideHover(doc, pos, { isCancellationRequested: false });
+                } else if (method === 'provideDefinition' && provider.provideDefinition) {
+                    const pos = new this.Position(args.position.line, args.position.character);
+                    result = await provider.provideDefinition(doc, pos, { isCancellationRequested: false });
+                }
+                this.ipcClient.sendNotification('languages/response', { reqId, result });
+            } catch (err) {
+                this.ipcClient.sendNotification('languages/response', { reqId, error: err.message });
+            }
+        });
 
         this.env = {
             appName: 'Vrutti IDE',
@@ -177,6 +215,46 @@ class VruttiAPI {
             static parse(value) { return new Uri('file', '', value, '', ''); }
             static file(path) { return new Uri('file', '', path, '', ''); }
             toString() { return this.scheme + '://' + this.path; }
+        };
+
+        this.Position = class Position {
+            constructor(line, character) {
+                this.line = line;
+                this.character = character;
+            }
+        };
+
+        this.Range = class Range {
+            constructor(startLine, startCharacter, endLine, endCharacter) {
+                if (arguments.length === 2) {
+                    this.start = startLine;
+                    this.end = startCharacter;
+                } else {
+                    this.start = new this.Position(startLine, startCharacter);
+                    this.end = new this.Position(endLine, endCharacter);
+                }
+            }
+        };
+
+        this.Location = class Location {
+            constructor(uri, rangeOrPosition) {
+                this.uri = uri;
+                this.range = rangeOrPosition;
+            }
+        };
+
+        this.CompletionItem = class CompletionItem {
+            constructor(label, kind) {
+                this.label = label;
+                this.kind = kind;
+            }
+        };
+
+        this.Hover = class Hover {
+            constructor(contents, range) {
+                this.contents = contents;
+                this.range = range;
+            }
         };
     }
 }
