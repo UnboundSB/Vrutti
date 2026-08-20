@@ -11,7 +11,7 @@ Compression=lzma2/ultra64
 SolidCompression=yes
 ArchitecturesAllowed=x64
 ArchitecturesInstallIn64BitMode=x64
-; SetupIconFile=..\logos\vrutti-logo.ico
+SetupIconFile=..\logos\icon.ico
 UninstallDisplayIcon={app}\vrutti.exe
 
 [Tasks]
@@ -20,6 +20,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 [Files]
 ; The main executable
 Source: "..\Vrutti_Release\vrutti.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\logos\icon.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\Vrutti_Release\*.dll"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 
 ; The extension host dependencies
@@ -29,8 +30,8 @@ Source: "..\Vrutti_Release\src\ext\*"; DestDir: "{app}\src\ext"; Flags: ignoreve
 Source: "..\Vrutti_Release\src\ui\frontend\dist\*"; DestDir: "{app}\src\ui\frontend\dist"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\Vrutti IDE"; Filename: "{app}\vrutti.exe"
-Name: "{commondesktop}\Vrutti IDE"; Filename: "{app}\vrutti.exe"; Tasks: desktopicon
+Name: "{group}\Vrutti IDE"; Filename: "{app}\vrutti.exe"; IconFilename: "{app}\icon.ico"
+Name: "{commondesktop}\Vrutti IDE"; Filename: "{app}\vrutti.exe"; Tasks: desktopicon; IconFilename: "{app}\icon.ico"
 
 [Run]
 Filename: "{app}\vrutti.exe"; Description: "Launch Vrutti IDE"; Flags: nowait postinstall skipifsilent
