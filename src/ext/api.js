@@ -155,8 +155,11 @@ class VruttiAPI {
             }
             try {
                 let result;
-                // Basic mock doc until full document synchronization is implemented
-                const doc = { uri: this.Uri.parse(args.uri || ''), getText: () => "" };
+                // Use the synchronized document from workspace
+                let doc = this.workspace.textDocuments ? this.workspace.textDocuments.find(d => d.uri.toString() === args.uri) : null;
+                if (!doc) {
+                    doc = new this.TextDocument(args.uri || '', 'plaintext', 1, '');
+                }
                 
                 if (method === 'provideCompletionItems' && provider.provideCompletionItems) {
                     const pos = new this.Position(args.position.line, args.position.character);
@@ -348,6 +351,88 @@ class VruttiAPI {
                 this.token._dispose();
             }
         };
+
+        // Setup Workspace Document Syncing
+        const workspaceDocs = new Map();
+        const onDidChangeDoc = new this.EventEmitter();
+        const onDidOpenDoc = new this.EventEmitter();
+        const onDidCloseDoc = new this.EventEmitter();
+
+        this.TextDocument = class TextDocument {
+            constructor(uri, languageId, version, text) {
+                this.uri = typeof uri === 'string' ? apiSelf.Uri.parse(uri) : uri;
+                this.languageId = languageId;
+                this.version = version;
+                this._text = text || "";
+                this._lines = this._text.split(/\r?\n/);
+            }
+            get lineCount() { return this._lines.length; }
+            getText(range) { return this._text; }
+            positionAt(offset) {
+                let currentOffset = 0;
+                for (let i = 0; i < this._lines.length; i++) {
+                    const lineLen = this._lines[i].length + 1;
+                    if (currentOffset + lineLen > offset) {
+                        return new apiSelf.Position(i, offset - currentOffset);
+                    }
+                    currentOffset += lineLen;
+                }
+                return new apiSelf.Position(this._lines.length - 1, (this._lines[this._lines.length - 1] || "").length);
+            }
+            offsetAt(position) {
+                let offset = 0;
+                for (let i = 0; i < position.line && i < this._lines.length; i++) {
+                    offset += this._lines[i].length + 1;
+                }
+                return offset + position.character;
+            }
+            lineAt(lineOrPos) {
+                const line = typeof lineOrPos === 'number' ? lineOrPos : lineOrPos.line;
+                const text = this._lines[line] || "";
+                return {
+                    lineNumber: line,
+                    text: text,
+                    range: new apiSelf.Range(line, 0, line, text.length)
+                };
+            }
+            _updateText(newText, version) {
+                this._text = newText;
+                this._lines = newText.split(/\r?\n/);
+                this.version = version;
+            }
+        };
+
+        this.workspace.textDocuments = [];
+        this.workspace.onDidChangeTextDocument = onDidChangeDoc.event;
+        this.workspace.onDidOpenTextDocument = onDidOpenDoc.event;
+        this.workspace.onDidCloseTextDocument = onDidCloseDoc.event;
+
+        this.ipcClient.on('workspace/didOpenTextDocument', (payload) => {
+            const doc = new this.TextDocument(payload.uri, payload.languageId, payload.version, payload.text);
+            workspaceDocs.set(payload.uri, doc);
+            this.workspace.textDocuments = Array.from(workspaceDocs.values());
+            onDidOpenDoc.fire(doc);
+        });
+
+        this.ipcClient.on('workspace/didChangeTextDocument', (payload) => {
+            const doc = workspaceDocs.get(payload.uri);
+            if (doc) {
+                doc._updateText(payload.text, payload.version);
+                onDidChangeDoc.fire({
+                    document: doc,
+                    contentChanges: [{ text: payload.text }]
+                });
+            }
+        });
+
+        this.ipcClient.on('workspace/didCloseTextDocument', (payload) => {
+            const doc = workspaceDocs.get(payload.uri);
+            if (doc) {
+                workspaceDocs.delete(payload.uri);
+                this.workspace.textDocuments = Array.from(workspaceDocs.values());
+                onDidCloseDoc.fire(doc);
+            }
+        });
     }
 }
 
