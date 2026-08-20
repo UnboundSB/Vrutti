@@ -6,6 +6,7 @@ The foundational native C++ framework that powers Vrutti IDE. It provides low-le
 ## Files
 - (No immediate source files; functionality is modularized into subdirectories)
 
+
 ## Child Directories
 - **concurrency/**: Manages thread pools, async tasks, and parallel execution logic.
 - **config/**: Handles loading, parsing, and managing user settings (SettingsManager).
@@ -13,6 +14,7 @@ The foundational native C++ framework that powers Vrutti IDE. It provides low-le
 - **events/**: Event bus and messaging system for cross-component communication.
 - **fs/**: High-performance filesystem operations and watchers.
 - **ipc/**: Inter-Process Communication (e.g., Named Pipes) bridging the C++ engine and Node.js extension host.
+- **lsp/**: Language Server Protocol client for language intelligence features.
 - **memory/**: Memory management utilities (if any custom allocators are used).
 - **plugins/**: Manages the dynamic loading (PluginLoader) and lifecycle of native DLL plugins.
 - **terminal/**: Backend orchestration for the integrated terminal/PTY handling.
