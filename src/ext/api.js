@@ -101,7 +101,48 @@ class VruttiAPI {
             registerHoverProvider: (selector, provider) => registerProvider('hover', selector, provider),
             registerDefinitionProvider: (selector, provider) => registerProvider('definition', selector, provider),
             registerDocumentFormattingEditProvider: (selector, provider) => registerProvider('formatting', selector, provider),
-            getLanguages: async () => []
+            getLanguages: async () => [],
+            createDiagnosticCollection: (name) => {
+                const collectionName = name || `collection_${Date.now()}`;
+                return {
+                    name: collectionName,
+                    set: (uri, diagnostics) => {
+                        let entries = [];
+                        if (Array.isArray(uri)) {
+                            entries = uri;
+                        } else {
+                            entries = [[uri, diagnostics]];
+                        }
+                        const serialized = entries.map(([u, diags]) => ({
+                            uri: u.toString(),
+                            diagnostics: (diags || []).map(d => ({
+                                range: d.range,
+                                message: d.message,
+                                severity: d.severity,
+                                code: d.code,
+                                source: d.source,
+                                relatedInformation: d.relatedInformation
+                            }))
+                        }));
+                        this.ipcClient.sendNotification('languages/diagnostics', {
+                            collection: collectionName,
+                            entries: serialized
+                        });
+                    },
+                    delete: (uri) => {
+                        this.ipcClient.sendNotification('languages/diagnostics/delete', {
+                            collection: collectionName,
+                            uri: uri.toString()
+                        });
+                    },
+                    clear: () => {
+                        this.ipcClient.sendNotification('languages/diagnostics/clear', { collection: collectionName });
+                    },
+                    dispose: () => {
+                        this.ipcClient.sendNotification('languages/diagnostics/clear', { collection: collectionName });
+                    }
+                };
+            }
         };
 
         // Listen for requests from C++ core and dispatch to JS providers
@@ -254,6 +295,28 @@ class VruttiAPI {
             constructor(contents, range) {
                 this.contents = contents;
                 this.range = range;
+            }
+        };
+
+        this.DiagnosticSeverity = {
+            Error: 0,
+            Warning: 1,
+            Information: 2,
+            Hint: 3
+        };
+
+        this.Diagnostic = class Diagnostic {
+            constructor(range, message, severity) {
+                this.range = range;
+                this.message = message;
+                this.severity = severity === undefined ? VruttiAPI.DiagnosticSeverity.Error : severity;
+            }
+        };
+
+        this.DiagnosticRelatedInformation = class DiagnosticRelatedInformation {
+            constructor(location, message) {
+                this.location = location;
+                this.message = message;
             }
         };
 
