@@ -22,6 +22,17 @@ function log(msg) {
     console.log(`[Bootstrapper] ${msg}`);
 }
 
+// Memory Optimization: soft garbage collection if memory footprint exceeds 256MB
+setInterval(() => {
+    const memory = process.memoryUsage();
+    if (memory.heapUsed > 256 * 1024 * 1024) {
+        if (global.gc) {
+            log(`Memory threshold exceeded (Heap: ${Math.round(memory.heapUsed / 1024 / 1024)}MB). Triggering soft GC.`);
+            global.gc();
+        }
+    }
+}, 30000);
+
 class ExtensionManager {
     constructor(ipcClient, api) {
         this.ipcClient = ipcClient;

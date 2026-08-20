@@ -49,7 +49,7 @@ int main(int argc, char* argv[]) {
     ZeroMemory(&pi, sizeof(pi));
 
     // Use the bundled node.exe
-    std::string cmd = "src\\ext\\bin\\node.exe src/ext/bootstrapper.js --pipe=\\\\.\\pipe\\vrutti_pipe";
+    std::string cmd = "src\\ext\\bin\\node.exe --expose-gc src/ext/bootstrapper.js --pipe=\\\\.\\pipe\\vrutti_pipe";
     std::vector<char> cmdBuffer(cmd.begin(), cmd.end());
     cmdBuffer.push_back('\0');
     
