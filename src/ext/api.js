@@ -48,6 +48,14 @@ class VruttiAPI {
             }
         };
 
+        let configurationCache = {};
+        let configEmitter = null;
+        
+        this.ipcClient.on('workspace/didChangeConfiguration', (payload) => {
+            configurationCache = payload.settings || {};
+            if (configEmitter) configEmitter.fire({});
+        });
+
         this.workspace = {
             getRootPath: async () => {
                 return this.ipcClient.sendRequest('workspace/getRootPath');
@@ -56,14 +64,30 @@ class VruttiAPI {
                 return this.ipcClient.sendRequest('workspace/openTextDocument', { uri });
             },
             getConfiguration: (section, scope) => {
+                const getNested = (obj, path) => {
+                    return path.split('.').reduce((acc, part) => acc && acc[part], obj);
+                };
                 return {
-                    get: (key, defaultValue) => defaultValue,
-                    has: () => false,
-                    inspect: () => undefined,
-                    update: async () => {}
+                    get: (key, defaultValue) => {
+                        const fullKey = section ? `${section}.${key}` : key;
+                        const val = getNested(configurationCache, fullKey);
+                        return val !== undefined ? val : defaultValue;
+                    },
+                    has: (key) => {
+                        const fullKey = section ? `${section}.${key}` : key;
+                        return getNested(configurationCache, fullKey) !== undefined;
+                    },
+                    inspect: (key) => undefined,
+                    update: async (key, value, target) => {
+                        const fullKey = section ? `${section}.${key}` : key;
+                        return this.ipcClient.sendRequest('workspace/updateConfiguration', { key: fullKey, value, target });
+                    }
                 };
             },
-            onDidChangeConfiguration: () => ({ dispose: () => {} }),
+            onDidChangeConfiguration: (listener, thisArgs, disposables) => {
+                if (!configEmitter) configEmitter = new this.EventEmitter();
+                return configEmitter.event(listener, thisArgs, disposables);
+            },
             onDidSaveTextDocument: () => ({ dispose: () => {} }),
             onDidOpenTextDocument: () => ({ dispose: () => {} }),
             onDidCloseTextDocument: () => ({ dispose: () => {} })
