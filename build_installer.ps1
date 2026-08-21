@@ -33,7 +33,8 @@ if (Test-Path "src\ext\builtin-themes") {
 
 Write-Host "Copying UI frontend bundle (src\ui\frontend\dist)..."
 if (Test-Path "src\ui\frontend\dist") {
-    Copy-Item "src\ui\frontend\dist\*" "$ReleaseDir\src\ui\frontend\dist\" -Recurse
+    # Copy the dist folder itself into the frontend folder to preserve subdirectories correctly
+    Copy-Item "src\ui\frontend\dist" "$ReleaseDir\src\ui\frontend" -Recurse -Force
 } else {
     Write-Host "ERROR: src\ui\frontend\dist not found! Run frontend build first."
     exit 1
