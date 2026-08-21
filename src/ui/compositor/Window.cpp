@@ -821,19 +821,7 @@ namespace vrutti::ui {
         if (!m_windowHandle) return;
         
         // Ensure initial HTML URI is formatted
-        std::filesystem::path exePath;
-#ifdef _WIN32
-        char buffer[MAX_PATH];
-        GetModuleFileNameA(NULL, buffer, MAX_PATH);
-        exePath = std::filesystem::path(buffer);
-#else
-        char buffer[PATH_MAX];
-        ssize_t count = readlink("/proc/self/exe", buffer, PATH_MAX);
-        if (count != -1) {
-            exePath = std::filesystem::path(std::string(buffer, (count > 0) ? count : 0));
-        }
-#endif
-        std::filesystem::path basePath = exePath.parent_path().parent_path();
+        std::filesystem::path basePath = std::filesystem::current_path();
         std::filesystem::path htmlPath = basePath / "src" / "ui" / "frontend" / "dist" / "index.html";
         
         std::string htmlStr = htmlPath.string();
