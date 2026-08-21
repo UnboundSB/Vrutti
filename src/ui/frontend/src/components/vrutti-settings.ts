@@ -5,6 +5,11 @@ interface Config {
   'editor.fontSize': number;
   'editor.fontFamily': string;
   'editor.wordWrap': boolean;
+  'editor.tabSize': number;
+  'editor.insertSpaces': boolean;
+  'editor.minimap.enabled': boolean;
+  'files.autoSave': boolean;
+  'telemetry.enableTelemetry': boolean;
   'appearance.transparencyEffects': boolean;
   'workbench.colorTheme'?: string;
 }
@@ -13,6 +18,11 @@ const DEFAULT_CONFIG: Config = {
   'editor.fontSize': 14,
   'editor.fontFamily': "'Fira Code', monospace",
   'editor.wordWrap': false,
+  'editor.tabSize': 4,
+  'editor.insertSpaces': true,
+  'editor.minimap.enabled': true,
+  'files.autoSave': false,
+  'telemetry.enableTelemetry': false,
   'appearance.transparencyEffects': false
 };
 
@@ -407,6 +417,33 @@ export class VruttiSettings extends LitElement {
               <span>Enable Word Wrap</span>
             </div>
           </div>
+
+          <div class="setting-group">
+            <div class="setting-title">Tab Size</div>
+            <div class="setting-desc">The number of spaces a tab is equal to.</div>
+            <input type="number" class="input-field" .value=${this.config['editor.tabSize'].toString()} 
+                   @input=${(e: any) => this.handleSettingChange('editor.tabSize', parseInt(e.target.value))} />
+          </div>
+
+          <div class="setting-group">
+            <div class="setting-title">Insert Spaces</div>
+            <div class="setting-desc">Insert spaces when pressing Tab.</div>
+            <div class="toggle-container">
+              <input type="checkbox" class="checkbox" .checked=${this.config['editor.insertSpaces']} 
+                     @change=${(e: any) => this.handleSettingChange('editor.insertSpaces', e.target.checked)} />
+              <span>Use Spaces for Indentation</span>
+            </div>
+          </div>
+
+          <div class="setting-group">
+            <div class="setting-title">Minimap</div>
+            <div class="setting-desc">Controls whether the minimap is shown.</div>
+            <div class="toggle-container">
+              <input type="checkbox" class="checkbox" .checked=${this.config['editor.minimap.enabled']} 
+                     @change=${(e: any) => this.handleSettingChange('editor.minimap.enabled', e.target.checked)} />
+              <span>Enable Minimap</span>
+            </div>
+          </div>
         `;
       case 'Theme':
         return html`
@@ -431,8 +468,29 @@ export class VruttiSettings extends LitElement {
             </div>
           </div>
         `;
-      case 'Keybindings':
       case 'General':
+        return html`
+          <div class="setting-group">
+            <div class="setting-title">Auto Save</div>
+            <div class="setting-desc">Controls whether dirty files are automatically saved.</div>
+            <div class="toggle-container">
+              <input type="checkbox" class="checkbox" .checked=${this.config['files.autoSave']} 
+                     @change=${(e: any) => this.handleSettingChange('files.autoSave', e.target.checked)} />
+              <span>Enable Auto Save</span>
+            </div>
+          </div>
+
+          <div class="setting-group">
+            <div class="setting-title">Telemetry</div>
+            <div class="setting-desc">Enable crash reports and usage data collection to help improve Vrutti.</div>
+            <div class="toggle-container">
+              <input type="checkbox" class="checkbox" .checked=${this.config['telemetry.enableTelemetry']} 
+                     @change=${(e: any) => this.handleSettingChange('telemetry.enableTelemetry', e.target.checked)} />
+              <span>Send Telemetry Data</span>
+            </div>
+          </div>
+        `;
+      case 'Keybindings':
       default:
         return html`
           <div style="color: var(--vrutti-surface-border); margin-top: 40px; text-align: center;">
