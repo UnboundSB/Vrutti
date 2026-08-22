@@ -119,6 +119,33 @@ class ExtensionManager {
                 try {
                     const pkgRaw = await fs.promises.readFile(pkgPath, 'utf8');
                     const pkg = JSON.parse(pkgRaw);
+                    let nls = null;
+                    const nlsPath = path.join(extPath, 'extension', 'package.nls.json');
+                    if (fs.existsSync(nlsPath)) {
+                        try {
+                            const nlsRaw = await fs.promises.readFile(nlsPath, 'utf8');
+                            nls = JSON.parse(nlsRaw);
+                        } catch (e) {}
+                    }
+
+                    if (nls) {
+                        const localize = (obj) => {
+                            if (typeof obj === 'string') {
+                                return obj.replace(/%([^%]+)%/g, (match, key) => {
+                                    return nls[key] !== undefined ? nls[key] : match;
+                                });
+                            } else if (Array.isArray(obj)) {
+                                return obj.map(localize);
+                            } else if (obj && typeof obj === 'object') {
+                                for (const key in obj) {
+                                    obj[key] = localize(obj[key]);
+                                }
+                            }
+                            return obj;
+                        };
+                        localize(pkg);
+                    }
+
                     if (pkg.contributes && pkg.contributes.viewsContainers && pkg.contributes.viewsContainers.activitybar) {
                         for (const container of pkg.contributes.viewsContainers.activitybar) {
                             if (container.icon) {
@@ -134,7 +161,7 @@ class ExtensionManager {
                         publisherDisplayName: pkg.publisher || pkg.author || dir,
                         description: pkg.description || '',
                         version: pkg.version || '1.0.0',
-                        isTheme: pkg.contributes && pkg.contributes.themes ? true : false,
+                        isTheme: pkg.contributes && (pkg.contributes.themes || pkg.contributes.iconThemes) ? true : false,
                         localPath: extPath,
                         main: pkg.main,
                         contributes: pkg.contributes,
