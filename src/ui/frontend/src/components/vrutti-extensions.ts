@@ -334,7 +334,13 @@ export class VruttiExtensions extends LitElement {
                 ${repeat(displayList, ext => `${ext.namespace}.${ext.name}`, ext => {
                     const progress = this.progressMap.get(ext.name);
                     const isInstalling = progress !== undefined;
-                    const isInstalled = this.installed.some(i => i.name === ext.name || i.id === `${ext.namespace}.${ext.name}`);
+                    const extId = `${ext.namespace}.${ext.name}`.toLowerCase();
+                    const extName = (ext.name || '').toLowerCase();
+                    const isInstalled = this.installed.some(i => {
+                        const iId = (i.id || '').toLowerCase();
+                        const iName = (i.name || '').toLowerCase();
+                        return iId === extId || iName === extName;
+                    });
                     return html`
                     <div class="extension-card" @click=${() => this.selectExtension(ext)}>
                         <img class="ext-icon" src=${ext.iconUrl || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23333"/><text x="50" y="50" fill="%23888" font-size="40" text-anchor="middle" dominant-baseline="middle">E</text></svg>'} @error=${(e: Event) => (e.target as HTMLImageElement).style.display = 'none'} />
