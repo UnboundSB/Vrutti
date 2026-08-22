@@ -2,6 +2,7 @@ import { LitElement, css, html } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import './vrutti-terminal';
 import './vrutti-debug-console';
+import './vrutti-webview';
 
 interface TerminalGroup {
   id: string;
@@ -38,6 +39,9 @@ export class VruttiPanel extends LitElement {
     'Extension Host': ['[Extension Host] Starting...'],
     'Tasks': []
   };
+
+  @state()
+  private customPanels: any[] = [];
 
   private nextGroupId = 2;
   private nextTerminalId = 2;
@@ -101,6 +105,15 @@ export class VruttiPanel extends LitElement {
           if (!this.terminalInputQueues[termId]) this.terminalInputQueues[termId] = [];
           this.terminalInputQueues[termId].push(cmd);
         }
+      }
+    } else if (msg && msg.method === 'webview/createPanel') {
+      const panel = msg.params;
+      this.customPanels = [...this.customPanels, panel];
+      this.activePanelTab = panel.id;
+    } else if (msg && msg.method === 'webview/dispose') {
+      this.customPanels = this.customPanels.filter(p => p.id !== msg.params.id);
+      if (this.activePanelTab === msg.params.id) {
+        this.activePanelTab = 'TERMINAL';
       }
     }
   };
@@ -578,6 +591,9 @@ export class VruttiPanel extends LitElement {
           this.focusActiveTerminal();
         }}>TERMINAL</div>
         <div class="panel-top-tab ${this.activePanelTab === 'PORTS' ? 'active' : ''}" @click=${() => this.activePanelTab = 'PORTS'}>PORTS</div>
+        ${this.customPanels.map(p => html`
+          <div class="panel-top-tab ${this.activePanelTab === p.id ? 'active' : ''}" @click=${() => this.activePanelTab = p.id}>${(p.title || 'Webview').toUpperCase()}</div>
+        `)}
         <div style="flex: 1;"></div>
         ${this.activePanelTab === 'OUTPUT' ? html`
           <div class="output-channel-selector">
@@ -673,6 +689,10 @@ export class VruttiPanel extends LitElement {
         <vrutti-debug-console></vrutti-debug-console>
       ` : this.activePanelTab === 'PORTS' ? html`
         <div style="padding: 15px; opacity: 0.5;">Ports panel not yet implemented.</div>
+      ` : this.customPanels.find(p => p.id === this.activePanelTab) ? html`
+        <div style="flex: 1; display: flex; flex-direction: column; background: var(--vscode-editor-background, #1a1b26);">
+          <vrutti-webview .webviewId=${this.activePanelTab}></vrutti-webview>
+        </div>
       ` : html`
         <div style="flex: 1; display: flex; align-items: center; justify-content: center; color: #717cb4; font-size: 13px;">
           ${this.activePanelTab} - Not yet implemented
