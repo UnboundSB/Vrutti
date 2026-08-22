@@ -4,6 +4,7 @@
 #include <fstream>
 #include <regex>
 #include "../../core/utils/Json.h"
+#include "../../core/concurrency/ThreadPool.h"
 
 #ifdef _WIN32
 #define PLUGIN_EXPORT __declspec(dllexport)
@@ -26,6 +27,7 @@ extern "C" {
 #include <mutex>
 #include <atomic>
 #include <vector>
+#include <algorithm>
 
 namespace vrutti::plugins::search {
 
@@ -40,7 +42,7 @@ namespace vrutti::plugins::search {
     static std::mutex g_cacheMutex;
     static std::atomic<bool> g_isIndexing = false;
 
-    static void buildIndexAsync(std::string dir) {
+    static void buildIndexSync(std::string dir) {
         g_isIndexing = true;
         std::vector<CacheEntry> localCache;
         try {
@@ -67,7 +69,11 @@ namespace vrutti::plugins::search {
             g_currentDir = dir;
         }
         g_isIndexing = false;
-        std::cout << "[SearchPlugin] Background indexing complete for " << dir << ". Found " << g_cache.size() << " items.\n";
+        std::cout << "[SearchPlugin] Indexing complete for " << dir << ". Found " << g_cache.size() << " items.\n";
+    }
+
+    static void buildIndexAsync(std::string dir) {
+        buildIndexSync(dir);
     }
 
     static bool fuzzyMatch(const std::string& query, const std::string& target, bool matchCase = false) {
@@ -261,228 +267,169 @@ namespace vrutti::plugins::search {
         bool isFuzzy = false; // We don't use fuzzy matching for text search
         
         std::vector<CacheEntry> localCache;
-        bool useCache = false;
         {
             std::lock_guard<std::mutex> lock(g_cacheMutex);
             if (g_currentDir == directory && !g_cache.empty()) {
                 localCache = g_cache;
-                useCache = true;
+            } else if (g_currentDir != directory && !g_isIndexing) {
+                g_currentDir = directory;
+                g_cache.clear();
             }
         }
         
+        if (localCache.empty()) {
+            buildIndexSync(directory);
+            std::lock_guard<std::mutex> lock(g_cacheMutex);
+            localCache = g_cache;
+        }
+        
         try {
-            size_t resultCount = 0;
+            std::atomic<size_t> resultCount = 0;
+            std::mutex resultsMutex;
+            vrutti::core::concurrency::ThreadPool pool;
+            std::vector<std::future<void>> futures;
             
-            auto processEntry = [&](const std::string& path, const std::string& name, bool isDir) {
-                if (resultCount >= 2000 && !options.isReplace) return false;
-                // For text search we don't populate folderMatches/fileMatches this way
-                return true;
-            };
-
-            if (useCache) {
-                for (const auto& entry : localCache) {
-                    if (!processEntry(entry.path, entry.name, entry.isDirectory)) break;
+            size_t batchSize = 100;
+            for (size_t i = 0; i < localCache.size(); i += batchSize) {
+                size_t end = std::min(i + batchSize, localCache.size());
+                std::vector<CacheEntry> batch(localCache.begin() + i, localCache.begin() + end);
+                
+                futures.push_back(pool.enqueue([&, batch]() {
+                    std::vector<SearchResult> threadWordMatches;
                     
-                    if (entry.isDirectory) continue;
-                    
-                    std::error_code ec;
-                    auto fsize = std::filesystem::file_size(entry.path, ec);
-                    if (!ec && fsize > 2 * 1024 * 1024) continue;
-                    
-                    std::ifstream file(entry.path);
-                    if (!file.is_open()) continue;
-                    
-                    char firstBytes[1024];
-                    file.read(firstBytes, sizeof(firstBytes));
-                    std::streamsize bytesRead = file.gcount();
-                    bool isBinary = false;
-                    for (std::streamsize i = 0; i < bytesRead; ++i) {
-                        if (firstBytes[i] == '\0') {
-                            isBinary = true;
-                            break;
-                        }
-                    }
-                    if (isBinary) continue;
-                    
-                    file.clear();
-                    file.seekg(0, std::ios::beg);
-                    
-                    std::string line;
-                    std::string lowerLine;
-                    int lineNumber = 1;
-                    while (std::getline(file, line)) {
-                        bool matched = false;
+                    for (const auto& entry : batch) {
+                        if (resultCount >= 2000 && !options.isReplace) break;
+                        if (entry.isDirectory) continue;
+                        
+                        std::error_code ec;
+                        auto fsize = std::filesystem::file_size(entry.path, ec);
+                        if (ec || fsize > 2 * 1024 * 1024 || fsize == 0) continue;
+                        
+                        std::ifstream file(entry.path, std::ios::binary);
+                        if (!file.is_open()) continue;
+                        
+                        std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+                        file.close();
+                        
+                        if (content.find('\0') != std::string::npos) continue;
+                        
+                        bool fileMatched = false;
                         if (useRegexEngine) {
-                            matched = std::regex_search(line, re);
+                            fileMatched = std::regex_search(content, re);
                         } else if (caseInsensitiveSubstring) {
-                            lowerLine.resize(line.size());
-                            for (size_t i = 0; i < line.size(); ++i) lowerLine[i] = std::tolower(static_cast<unsigned char>(line[i]));
-                            matched = (lowerLine.find(lowerQuery) != std::string::npos);
+                            auto it = std::search(content.begin(), content.end(), lowerQuery.begin(), lowerQuery.end(), 
+                                [](char ch1, char ch2) { return std::tolower(static_cast<unsigned char>(ch1)) == ch2; });
+                            fileMatched = (it != content.end());
                         } else {
-                            matched = (line.find(query) != std::string::npos);
+                            fileMatched = (content.find(query) != std::string::npos);
                         }
                         
-                        if (matched) {
-                            std::string snippet = line;
-                            if (snippet.length() > 200) {
-                                size_t qPos = std::string::npos;
+                        if (fileMatched) {
+                            std::istringstream stream(content);
+                            std::string line;
+                            std::string lowerLine;
+                            int lineNumber = 1;
+                            bool fileModified = false;
+                            std::vector<std::string> newLines;
+                            
+                            while (std::getline(stream, line)) {
+                                bool matched = false;
+                                
                                 if (useRegexEngine) {
-                                    std::smatch m;
-                                    if (std::regex_search(snippet, m, re)) qPos = m.position();
-                                } else if (caseInsensitiveSubstring) {
-                                    qPos = lowerLine.find(lowerQuery);
-                                } else {
-                                    qPos = snippet.find(query);
-                                }
-                                if (qPos != std::string::npos) {
-                                    size_t start = (qPos > 50) ? (qPos - 50) : 0;
-                                    snippet = (start > 0 ? "..." : "") + snippet.substr(start, 200) + (start + 200 < snippet.length() ? "..." : "");
-                                } else {
-                                    snippet = snippet.substr(0, 200) + "...";
-                                }
-                            }
-                            response.wordMatches.push_back({entry.path, lineNumber, snippet});
-                            resultCount++;
-                            if (resultCount >= 2000 && !options.isReplace) break;
-                        }
-                        lineNumber++;
-                    }
-                }
-            } else {
-                auto it = std::filesystem::recursive_directory_iterator(directory, std::filesystem::directory_options::skip_permission_denied);
-                auto end = std::filesystem::recursive_directory_iterator();
-                for (; it != end; ++it) {
-                    const auto& entry = *it;
-                    std::string name = entry.path().filename().string();
-                    std::string path = entry.path().string();
-                    bool isDir = entry.is_directory();
-                    
-                    if (isDir) {
-                        if (name == ".git" || name == "build" || name == "build-linux" || name == "node_modules" || name == "dist" || name == "out" || name == ".vscode" || name == ".idea") {
-                            it.disable_recursion_pending();
-                        }
-                    }
-                    
-                    if (!processEntry(path, name, isDir)) break;
-                    if (isDir || !entry.is_regular_file()) continue;
-                    
-                    std::error_code ec;
-                    auto fsize = std::filesystem::file_size(entry, ec);
-                    if (!ec && fsize > 2 * 1024 * 1024) continue;
-                    
-                    std::ifstream file(path);
-                if (!file.is_open()) continue;
-                
-                char firstBytes[1024];
-                file.read(firstBytes, sizeof(firstBytes));
-                std::streamsize bytesRead = file.gcount();
-                bool isBinary = false;
-                for (std::streamsize i = 0; i < bytesRead; ++i) {
-                    if (firstBytes[i] == '\0') {
-                        isBinary = true;
-                        break;
-                    }
-                }
-                if (isBinary) continue;
-                
-                file.clear();
-                file.seekg(0, std::ios::beg);
-                
-                std::string line;
-                std::string lowerLine;
-                int lineNumber = 1;
-                bool fileModified = false;
-                std::vector<std::string> newLines;
-                
-                while (std::getline(file, line)) {
-                    bool matched = false;
-                    
-                    if (useRegexEngine) {
-                        if (std::regex_search(line, re)) {
-                            matched = true;
-                            if (options.isReplace) {
-                                line = std::regex_replace(line, re, options.replaceString);
-                                fileModified = true;
-                            }
-                        }
-                    } else if (caseInsensitiveSubstring) {
-                        lowerLine.resize(line.size());
-                        for (size_t i = 0; i < line.size(); ++i) lowerLine[i] = std::tolower(static_cast<unsigned char>(line[i]));
-                        if (lowerLine.find(lowerQuery) != std::string::npos) {
-                            matched = true;
-                            if (options.isReplace) {
-                                // For case insensitive replace without regex, we need to replace manually
-                                size_t pos = 0;
-                                while ((pos = lowerLine.find(lowerQuery, pos)) != std::string::npos) {
-                                    line.replace(pos, lowerQuery.length(), options.replaceString);
-                                    // Update lowerLine to match the new line length/content so we can continue searching
-                                    lowerLine.replace(pos, lowerQuery.length(), options.replaceString);
-                                    for (size_t i = pos; i < pos + options.replaceString.length(); ++i) {
-                                        lowerLine[i] = std::tolower(static_cast<unsigned char>(lowerLine[i]));
+                                    if (std::regex_search(line, re)) {
+                                        matched = true;
+                                        if (options.isReplace) {
+                                            line = std::regex_replace(line, re, options.replaceString);
+                                            fileModified = true;
+                                        }
                                     }
-                                    pos += options.replaceString.length();
+                                } else if (caseInsensitiveSubstring) {
+                                    lowerLine.resize(line.size());
+                                    for (size_t k = 0; k < line.size(); ++k) lowerLine[k] = std::tolower(static_cast<unsigned char>(line[k]));
+                                    if (lowerLine.find(lowerQuery) != std::string::npos) {
+                                        matched = true;
+                                        if (options.isReplace) {
+                                            size_t pos = 0;
+                                            while ((pos = lowerLine.find(lowerQuery, pos)) != std::string::npos) {
+                                                line.replace(pos, lowerQuery.length(), options.replaceString);
+                                                lowerLine.replace(pos, lowerQuery.length(), options.replaceString);
+                                                for (size_t k = pos; k < pos + options.replaceString.length(); ++k) {
+                                                    lowerLine[k] = std::tolower(static_cast<unsigned char>(lowerLine[k]));
+                                                }
+                                                pos += options.replaceString.length();
+                                            }
+                                            fileModified = true;
+                                        }
+                                    }
+                                } else {
+                                    if (line.find(query) != std::string::npos) {
+                                        matched = true;
+                                        if (options.isReplace) {
+                                            size_t pos = 0;
+                                            while ((pos = line.find(query, pos)) != std::string::npos) {
+                                                line.replace(pos, query.length(), options.replaceString);
+                                                pos += options.replaceString.length();
+                                            }
+                                            fileModified = true;
+                                        }
+                                    }
                                 }
-                                fileModified = true;
+                                
+                                if (matched) {
+                                    std::string snippet = line;
+                                    if (snippet.length() > 200) {
+                                        size_t qPos = std::string::npos;
+                                        if (useRegexEngine) {
+                                            std::smatch m;
+                                            if (std::regex_search(snippet, m, re)) qPos = m.position();
+                                        } else if (caseInsensitiveSubstring) {
+                                            std::string snippetLower = snippet;
+                                            for (char& c : snippetLower) c = std::tolower(static_cast<unsigned char>(c));
+                                            qPos = snippetLower.find(lowerQuery);
+                                        } else {
+                                            qPos = snippet.find(query);
+                                        }
+                                        if (qPos != std::string::npos) {
+                                            size_t start = (qPos > 50) ? (qPos - 50) : 0;
+                                            snippet = (start > 0 ? "..." : "") + snippet.substr(start, 200) + (start + 200 < snippet.length() ? "..." : "");
+                                        } else {
+                                            snippet = snippet.substr(0, 200) + "...";
+                                        }
+                                    }
+                                    threadWordMatches.push_back({entry.path, lineNumber, snippet});
+                                }
+                                
+                                if (options.isReplace) {
+                                    newLines.push_back(line);
+                                }
+                                lineNumber++;
                             }
-                        }
-                    } else {
-                        // Simple substring search (case sensitive)
-                        if (line.find(query) != std::string::npos) {
-                            matched = true;
-                            if (options.isReplace) {
-                                size_t pos = 0;
-                                while ((pos = line.find(query, pos)) != std::string::npos) {
-                                    line.replace(pos, query.length(), options.replaceString);
-                                    pos += options.replaceString.length();
+                            
+                            if (options.isReplace && fileModified) {
+                                std::ofstream out(entry.path);
+                                for (size_t k = 0; k < newLines.size(); ++k) {
+                                    out << newLines[k];
+                                    if (k < newLines.size() - 1) out << "\n";
                                 }
-                                fileModified = true;
                             }
                         }
                     }
                     
-                    if (matched) {
-                        std::string snippet = line;
-                        if (snippet.length() > 200) {
-                            size_t qPos = std::string::npos;
-                            if (useRegexEngine) {
-                                std::smatch m;
-                                if (std::regex_search(snippet, m, re)) qPos = m.position();
-                            } else if (caseInsensitiveSubstring) {
-                                std::string snippetLower = snippet;
-                                for (char& c : snippetLower) c = std::tolower(static_cast<unsigned char>(c));
-                                qPos = snippetLower.find(lowerQuery);
-                            } else {
-                                qPos = snippet.find(query);
-                            }
-                            if (qPos != std::string::npos) {
-                                size_t start = (qPos > 50) ? (qPos - 50) : 0;
-                                snippet = (start > 0 ? "..." : "") + snippet.substr(start, 200) + (start + 200 < snippet.length() ? "..." : "");
-                            } else {
-                                snippet = snippet.substr(0, 200) + "...";
-                            }
+                    if (!threadWordMatches.empty()) {
+                        std::lock_guard<std::mutex> lock(resultsMutex);
+                        for (const auto& wm : threadWordMatches) {
+                            if (resultCount >= 2000 && !options.isReplace) break;
+                            response.wordMatches.push_back(wm);
+                            resultCount++;
                         }
-                        response.wordMatches.push_back({path, lineNumber, snippet});
-                        resultCount++;
-                        if (resultCount >= 2000 && !options.isReplace) break;
                     }
-                    
-                    if (options.isReplace) {
-                        newLines.push_back(line);
-                    }
-                    lineNumber++;
-                }
-                
-                file.close();
-                
-                if (options.isReplace && fileModified) {
-                    std::ofstream out(path);
-                    for (size_t i = 0; i < newLines.size(); ++i) {
-                        out << newLines[i];
-                        if (i < newLines.size() - 1) out << "\n";
-                    }
-                }
-            } // end for loop
-        } // end else block
+                }));
+            }
+            
+            for (auto& f : futures) {
+                f.get();
+            }
+            
         } catch (const std::exception& e) {
             std::cerr << "[SearchPlugin] Exception: " << e.what() << "\n";
         }
@@ -493,27 +440,30 @@ namespace vrutti::plugins::search {
     std::vector<std::string> SearchPlugin::findFiles(const std::string& directory) {
         std::vector<std::string> files;
         std::cout << "[SearchPlugin] Finding files in " << directory << "...\n";
-        try {
-            auto it = std::filesystem::recursive_directory_iterator(directory, std::filesystem::directory_options::skip_permission_denied);
-            auto end = std::filesystem::recursive_directory_iterator();
-            for (; it != end; ++it) {
-                const auto& entry = *it;
-                
-                if (entry.is_directory()) {
-                    std::string name = entry.path().filename().string();
-                    if (name == ".git" || name == "build" || name == "build-linux" || name == "node_modules" || name == "dist" || name == "out" || name == ".vscode" || name == ".idea") {
-                        it.disable_recursion_pending();
-                    }
-                    continue;
-                }
-                
-                if (!entry.is_regular_file()) continue;
-                
-                std::string path = entry.path().string();
-                files.push_back(path);
+        
+        std::vector<CacheEntry> localCache;
+        bool useCache = false;
+        {
+            std::lock_guard<std::mutex> lock(g_cacheMutex);
+            if (g_currentDir == directory && !g_cache.empty()) {
+                localCache = g_cache;
+                useCache = true;
+            } else if (g_currentDir != directory && !g_isIndexing) {
+                g_currentDir = directory;
+                g_cache.clear();
             }
-        } catch (const std::exception& e) {
-            std::cerr << "[SearchPlugin] Exception in findFiles: " << e.what() << "\n";
+        }
+        
+        if (!useCache) {
+            buildIndexSync(directory);
+            std::lock_guard<std::mutex> lock(g_cacheMutex);
+            localCache = g_cache;
+        }
+        
+        for (const auto& entry : localCache) {
+            if (!entry.isDirectory) {
+                files.push_back(entry.path);
+            }
         }
         return files;
     }
