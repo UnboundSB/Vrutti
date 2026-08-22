@@ -7,6 +7,7 @@ import './vrutti-search';
 import './scm/vrutti-scm';
 import './vrutti-extensions';
 import './vrutti-debug-sidebar';
+import './vrutti-webview';
 import { ExplorerModel, ExplorerItem } from './explorer/explorerModel';
 
 import { globalHoverStyle } from '../shared-styles';
@@ -27,6 +28,12 @@ export class VruttiSidebar extends LitElement {
 
   @state()
   private sidebarWidth = 250;
+
+  @state()
+  private customContainers: any[] = [];
+
+  @state()
+  private customViews: Record<string, any[]> = {};
 
   @state()
   private isResizing = false;
@@ -57,6 +64,7 @@ export class VruttiSidebar extends LitElement {
   async connectedCallback() {
     super.connectedCallback();
     window.addEventListener('workspace-changed', this.handleWorkspaceChanged);
+    window.addEventListener('vrutti-ipc', this.handleIpc as EventListener);
     
     let initialPath = '';
     if ((window as any).vruttiGetInitialWorkspace) {
@@ -100,7 +108,46 @@ export class VruttiSidebar extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
     window.removeEventListener('workspace-changed', this.handleWorkspaceChanged);
+    window.removeEventListener('vrutti-ipc', this.handleIpc as EventListener);
   }
+
+  private handleIpc = (e: CustomEvent) => {
+    const msg = e.detail;
+    if (msg.method === 'extensions/installed') {
+      const exts = msg.params || [];
+      const newContainers: any[] = [];
+      const newViews: Record<string, any[]> = {};
+      
+      for (const ext of exts) {
+        if (ext.contributes && ext.contributes.viewsContainers && ext.contributes.viewsContainers.activitybar) {
+          for (const container of ext.contributes.viewsContainers.activitybar) {
+            newContainers.push(container);
+            
+            if (ext.contributes.views && ext.contributes.views[container.id]) {
+              newViews[container.id] = ext.contributes.views[container.id];
+            } else {
+              newViews[container.id] = [];
+            }
+          }
+        }
+      }
+      this.customContainers = newContainers;
+      this.customViews = newViews;
+      
+      for (const container of this.customContainers) {
+        if (container.iconPath) {
+          if ((window as any).vruttiReadFile) {
+            (window as any).vruttiReadFile(container.iconPath).then((content: string) => {
+              if (content) {
+                container.iconContent = content;
+                this.requestUpdate();
+              }
+            }).catch(console.error);
+          }
+        }
+      }
+    }
+  };
 
   private handleWorkspaceChanged = async (e: Event) => {
     const detail = (e as CustomEvent).detail;
@@ -476,6 +523,12 @@ export class VruttiSidebar extends LitElement {
           <button class="icon-button ${this.activeTab === 'extensions' ? 'active' : ''}" @click="${() => this.selectTab('extensions')}" title="Extensions">
             ${unsafeSVG(icon_extensions)}
           </button>
+          <!-- Custom View Containers -->
+          ${this.customContainers.map(container => html`
+            <button class="icon-button ${this.activeTab === container.id ? 'active' : ''}" @click="${() => this.selectTab(container.id)}" title="${container.title}">
+              ${container.iconContent ? unsafeSVG(container.iconContent) : html`<svg viewBox="0 0 16 16" width="24" height="24" fill="currentColor"><path d="M1 3h14v10H1V3zm1 1v8h12V4H2zm3 2h6v1H5V6zm0 2h6v1H5V8z"/></svg>`}
+            </button>
+          `)}
         </div>
         <div class="bottom-icons">
         </div>
@@ -535,6 +588,21 @@ export class VruttiSidebar extends LitElement {
             ? html`<vrutti-extensions></vrutti-extensions>`
             : this.activeTab === 'debug'
             ? html`<vrutti-debug-sidebar></vrutti-debug-sidebar>`
+            : this.customContainers.find(c => c.id === this.activeTab)
+            ? html`
+                <div class="custom-views-container" style="display: flex; flex-direction: column; height: 100%;">
+                  ${(this.customViews[this.activeTab] || []).map(view => html`
+                    <div class="custom-view" style="flex: 1; border-bottom: 1px solid var(--vrutti-surface-border, #23273b); display: flex; flex-direction: column;">
+                      <div class="custom-view-header" style="padding: 4px 8px; font-weight: bold; font-size: 11px; background: var(--vrutti-bg, #0f111a);">
+                        ${view.name}
+                      </div>
+                      <div class="custom-view-content" style="flex: 1; position: relative; min-height: 0;">
+                        <vrutti-webview .viewId=${view.id}></vrutti-webview>
+                      </div>
+                    </div>
+                  `)}
+                </div>
+              `
             : html`<div style="padding: 15px; opacity: 0.5;">${this.activeTab} panel not yet implemented.</div>`
           }
         </div>
