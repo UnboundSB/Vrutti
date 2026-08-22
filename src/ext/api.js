@@ -45,8 +45,87 @@ class VruttiAPI {
                     hide: () => {},
                     dispose: () => {}
                 };
+            },
+            createWebviewPanel: (viewType, title, showOptions, options) => {
+                const id = `webview_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                this.ipcClient.sendNotification('webview/createPanel', { id, viewType, title, showOptions, options });
+                
+                let html = '';
+                const onDidReceiveMessageEmitter = new this.EventEmitter();
+                
+                this._webviews.set(id, { emitter: onDidReceiveMessageEmitter });
+                
+                const panel = {
+                    webview: {
+                        get html() { return html; },
+                        set html(val) {
+                            html = val;
+                            this._ipcClient.sendNotification('webview/setHtml', { id, html: val });
+                        },
+                        onDidReceiveMessage: onDidReceiveMessageEmitter.event,
+                        postMessage: async (msg) => {
+                            this._ipcClient.sendNotification('webview/postMessage', { id, message: msg });
+                            return true;
+                        },
+                    },
+                    dispose: () => {
+                        this._webviews.delete(id);
+                        this.ipcClient.sendNotification('webview/dispose', { id });
+                    }
+                };
+                // Bind internal ipc client for the getter/setter scope
+                panel.webview._ipcClient = this.ipcClient;
+                return panel;
+            },
+            registerWebviewViewProvider: (viewId, provider, options) => {
+                this.ipcClient.sendNotification('webviewView/register', { viewId, options });
+                this._webviewProviders.set(viewId, provider);
+                return { 
+                    dispose: () => {
+                        this._webviewProviders.delete(viewId);
+                        this.ipcClient.sendNotification('webviewView/unregister', { viewId });
+                    }
+                };
             }
         };
+
+        this._webviews = new Map();
+        this._webviewProviders = new Map();
+        
+        this.ipcClient.on('webviewView/resolve', async (payload) => {
+            const { viewId, webviewId } = payload;
+            const provider = this._webviewProviders.get(viewId);
+            if (provider) {
+                let html = '';
+                const onDidReceiveMessageEmitter = new this.EventEmitter();
+                this._webviews.set(webviewId, { emitter: onDidReceiveMessageEmitter });
+                
+                const webviewView = {
+                    webview: {
+                        get html() { return html; },
+                        set html(val) {
+                            html = val;
+                            this._ipcClient.sendNotification('webview/setHtml', { id: webviewId, html: val });
+                        },
+                        onDidReceiveMessage: onDidReceiveMessageEmitter.event,
+                        postMessage: async (msg) => {
+                            this._ipcClient.sendNotification('webview/postMessage', { id: webviewId, message: msg });
+                            return true;
+                        },
+                        _ipcClient: this.ipcClient
+                    }
+                };
+                provider.resolveWebviewView(webviewView, {}, { isCancellationRequested: false });
+            }
+        });
+
+        this.ipcClient.on('webview/receiveMessage', (payload) => {
+            const { id, message } = payload;
+            const webviewData = this._webviews.get(id);
+            if (webviewData && webviewData.emitter) {
+                webviewData.emitter.fire(message);
+            }
+        });
 
         let configurationCache = {};
         let configEmitter = null;
