@@ -305,9 +305,10 @@ export class VruttiExtensions extends LitElement {
         }
     }
 
-    private selectExtension(ext: ExtensionResult) {
+    private selectExtension(ext: ExtensionResult, isInstalled: boolean) {
+        const detailObj = { ...ext, isInstalled };
         this.dispatchEvent(new CustomEvent('extension-selected', {
-            detail: ext,
+            detail: detailObj,
             bubbles: true,
             composed: true
         }));
@@ -342,7 +343,7 @@ export class VruttiExtensions extends LitElement {
                         return iId === extId || iName === extName;
                     });
                     return html`
-                    <div class="extension-card" @click=${() => this.selectExtension(ext)}>
+                    <div class="extension-card" @click=${() => this.selectExtension(ext, isInstalled)}>
                         <img class="ext-icon" src=${ext.iconUrl || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23333"/><text x="50" y="50" fill="%23888" font-size="40" text-anchor="middle" dominant-baseline="middle">E</text></svg>'} @error=${(e: Event) => (e.target as HTMLImageElement).style.display = 'none'} />
                         <div class="ext-info">
                             <div class="ext-name">${ext.displayName}</div>
