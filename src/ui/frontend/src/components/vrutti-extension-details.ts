@@ -201,8 +201,8 @@ export class VruttiExtensionDetails extends LitElement {
                     <div class="display-name">${this.extension.displayName}</div>
                     <div class="publisher">${this.extension.publisherDisplayName} | Version: ${this.extension.version}</div>
                     <div class="description">${this.extension.description}</div>
-                    <button class="install-btn" @click=${this.install} ?disabled=${this.downloadProgress !== null}>
-                        ${this.downloadProgress !== null ? 'Installing...' : 'Install Extension'}
+                    <button class="install-btn" @click=${this.install} ?disabled=${this.downloadProgress !== null || this.extension.isInstalled}>
+                        ${this.extension.isInstalled ? 'Installed' : (this.downloadProgress !== null ? 'Installing...' : 'Install Extension')}
                     </button>
                     ${this.downloadProgress !== null ? html`
                         <div class="progress-container">
