@@ -73,6 +73,9 @@ namespace vrutti::ui {
         GetModuleFileNameA(NULL, buffer, MAX_PATH);
         exePath = std::filesystem::path(buffer);
         std::string searchPluginPath = (exePath.parent_path() / "libvrutti_search.dll").string();
+        if (!std::filesystem::exists(searchPluginPath)) {
+            searchPluginPath = (exePath.parent_path() / "vrutti_search.dll").string();
+        }
 #else
         char buffer[PATH_MAX];
         ssize_t count = readlink("/proc/self/exe", buffer, PATH_MAX);
