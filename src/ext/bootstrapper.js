@@ -119,6 +119,14 @@ class ExtensionManager {
                 try {
                     const pkgRaw = await fs.promises.readFile(pkgPath, 'utf8');
                     const pkg = JSON.parse(pkgRaw);
+                    if (pkg.contributes && pkg.contributes.viewsContainers && pkg.contributes.viewsContainers.activitybar) {
+                        for (const container of pkg.contributes.viewsContainers.activitybar) {
+                            if (container.icon) {
+                                container.iconPath = path.join(extPath, 'extension', container.icon);
+                            }
+                        }
+                    }
+                    
                     installed.push({
                         id: `${pkg.publisher || pkg.author || dir}.${pkg.name}`,
                         name: pkg.name,
