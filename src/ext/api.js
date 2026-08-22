@@ -3,17 +3,46 @@ class VruttiAPI {
         this.ipcClient = ipcClient;
         
         // This object acts as the polyfill for the extension API.
-        // It simply forwards requests to the native C++ engine via IPC.
+        // It uses a Linker approach: optionally relying on the native vrutti_bridge (N-API)
+        // or falling back to the generic IPC.
+        
+        this.nativeLinker = null;
+        try {
+            // Attempt to link to the C++ core dynamically (N-API Addon)
+            this.nativeLinker = require('./bridge/build/Release/vrutti_bridge.node');
+        } catch (e) {
+            // Fallback to standard IPC if native linker is not yet compiled
+        }
+        
+        this.sendRequest = async (method, payload) => {
+            if (this.nativeLinker && this.nativeLinker.sendRequestNative) {
+                try {
+                    const result = this.nativeLinker.sendRequestNative(method, JSON.stringify(payload || {}));
+                    return JSON.parse(result);
+                } catch (e) { }
+            }
+            return this.sendRequest(method, payload);
+        };
+
+        this.sendNotification = (method, payload) => {
+            if (this.nativeLinker && this.nativeLinker.sendNotificationNative) {
+                try {
+                    this.nativeLinker.sendNotificationNative(method, JSON.stringify(payload || {}));
+                    return;
+                } catch (e) { }
+            }
+            this.sendNotification(method, payload);
+        };
         
         this.window = {
             showInformationMessage: async (message) => {
-                return this.ipcClient.sendRequest('window/showInformationMessage', { message });
+                return this.sendRequest('window/showInformationMessage', { message });
             },
             showErrorMessage: async (message) => {
-                return this.ipcClient.sendRequest('window/showErrorMessage', { message });
+                return this.sendRequest('window/showErrorMessage', { message });
             },
             showWarningMessage: async (message) => {
-                return this.ipcClient.sendRequest('window/showInformationMessage', { message: "[Warning] " + message });
+                return this.sendRequest('window/showInformationMessage', { message: "[Warning] " + message });
             },
             setStatusBarMessage: (text, hideAfterTimeout) => {
                 return { dispose: () => {} };
@@ -21,8 +50,8 @@ class VruttiAPI {
             createOutputChannel: (name) => {
                 return {
                     name,
-                    append: (value) => this.ipcClient.sendNotification('run/output', { text: value }),
-                    appendLine: (value) => this.ipcClient.sendNotification('run/output', { text: value + '\n' }),
+                    append: (value) => this.sendNotification('run/output', { text: value }),
+                    appendLine: (value) => this.sendNotification('run/output', { text: value + '\n' }),
                     clear: () => {},
                     show: () => {},
                     hide: () => {},
@@ -39,7 +68,7 @@ class VruttiAPI {
                     name: typeof nameOrOptions === 'string' ? nameOrOptions : (nameOrOptions ? nameOrOptions.name : 'Terminal'),
                     processId: Promise.resolve(0),
                     sendText: (text, addNewLine = true) => {
-                        this.ipcClient.sendNotification('terminal/runCommand', { command: text });
+                        this.sendNotification('terminal/runCommand', { command: text });
                     },
                     show: () => {},
                     hide: () => {},
@@ -48,7 +77,7 @@ class VruttiAPI {
             },
             createWebviewPanel: (viewType, title, showOptions, options) => {
                 const id = `webview_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-                this.ipcClient.sendNotification('webview/createPanel', { id, viewType, title, showOptions, options });
+                this.sendNotification('webview/createPanel', { id, viewType, title, showOptions, options });
                 
                 let html = '';
                 const onDidReceiveMessageEmitter = new this.EventEmitter();
@@ -70,7 +99,7 @@ class VruttiAPI {
                     },
                     dispose: () => {
                         this._webviews.delete(id);
-                        this.ipcClient.sendNotification('webview/dispose', { id });
+                        this.sendNotification('webview/dispose', { id });
                     }
                 };
                 // Bind internal ipc client for the getter/setter scope
@@ -78,12 +107,12 @@ class VruttiAPI {
                 return panel;
             },
             registerWebviewViewProvider: (viewId, provider, options) => {
-                this.ipcClient.sendNotification('webviewView/register', { viewId, options });
+                this.sendNotification('webviewView/register', { viewId, options });
                 this._webviewProviders.set(viewId, provider);
                 return { 
                     dispose: () => {
                         this._webviewProviders.delete(viewId);
-                        this.ipcClient.sendNotification('webviewView/unregister', { viewId });
+                        this.sendNotification('webviewView/unregister', { viewId });
                     }
                 };
             }
@@ -137,10 +166,10 @@ class VruttiAPI {
 
         this.workspace = {
             getRootPath: async () => {
-                return this.ipcClient.sendRequest('workspace/getRootPath');
+                return this.sendRequest('workspace/getRootPath');
             },
             openTextDocument: async (uri) => {
-                return this.ipcClient.sendRequest('workspace/openTextDocument', { uri });
+                return this.sendRequest('workspace/openTextDocument', { uri });
             },
             getConfiguration: (section, scope) => {
                 const getNested = (obj, path) => {
@@ -159,7 +188,7 @@ class VruttiAPI {
                     inspect: (key) => undefined,
                     update: async (key, value, target) => {
                         const fullKey = section ? `${section}.${key}` : key;
-                        return this.ipcClient.sendRequest('workspace/updateConfiguration', { key: fullKey, value, target });
+                        return this.sendRequest('workspace/updateConfiguration', { key: fullKey, value, target });
                     }
                 };
             },
@@ -195,7 +224,7 @@ class VruttiAPI {
         const registerProvider = (type, selector, provider) => {
             const id = `${type}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
             this._providers.set(id, provider);
-            this.ipcClient.sendNotification('languages/register', { type, selector, id });
+            this.sendNotification('languages/register', { type, selector, id });
             return { dispose: () => this._providers.delete(id) };
         };
 
@@ -227,22 +256,22 @@ class VruttiAPI {
                                 relatedInformation: d.relatedInformation
                             }))
                         }));
-                        this.ipcClient.sendNotification('languages/diagnostics', {
+                        this.sendNotification('languages/diagnostics', {
                             collection: collectionName,
                             entries: serialized
                         });
                     },
                     delete: (uri) => {
-                        this.ipcClient.sendNotification('languages/diagnostics/delete', {
+                        this.sendNotification('languages/diagnostics/delete', {
                             collection: collectionName,
                             uri: uri.toString()
                         });
                     },
                     clear: () => {
-                        this.ipcClient.sendNotification('languages/diagnostics/clear', { collection: collectionName });
+                        this.sendNotification('languages/diagnostics/clear', { collection: collectionName });
                     },
                     dispose: () => {
-                        this.ipcClient.sendNotification('languages/diagnostics/clear', { collection: collectionName });
+                        this.sendNotification('languages/diagnostics/clear', { collection: collectionName });
                     }
                 };
             }
@@ -253,7 +282,7 @@ class VruttiAPI {
             const { id, reqId, method, args } = payload;
             const provider = this._providers.get(id);
             if (!provider) {
-                this.ipcClient.sendNotification('languages/response', { reqId, error: 'Provider not found' });
+                this.sendNotification('languages/response', { reqId, error: 'Provider not found' });
                 return;
             }
             try {
@@ -274,9 +303,9 @@ class VruttiAPI {
                     const pos = new this.Position(args.position.line, args.position.character);
                     result = await provider.provideDefinition(doc, pos, { isCancellationRequested: false });
                 }
-                this.ipcClient.sendNotification('languages/response', { reqId, result });
+                this.sendNotification('languages/response', { reqId, result });
             } catch (err) {
-                this.ipcClient.sendNotification('languages/response', { reqId, error: err.message });
+                this.sendNotification('languages/response', { reqId, error: err.message });
             }
         });
 
