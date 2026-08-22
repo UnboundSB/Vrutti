@@ -30,6 +30,9 @@ export class VruttiApp extends LitElement {
   @state() private showTerminal = false;
   @state() private showQuickOpen = false;
   @state() private terminalHeight = 300;
+  
+  @state() private showOpenFolderModal = false;
+  @state() private pendingFolderPath = '';
 
   private isResizingTerminal = false;
 
@@ -216,14 +219,9 @@ export class VruttiApp extends LitElement {
         try {
           const json = await (window as any).vruttiOpenFolderDialog();
           if (json && json.path && json.path !== "") {
-            let openInNewWindow = false;
             if ((window as any).currentWorkspace) {
-              openInNewWindow = window.confirm("Do you want to open this folder in a new window?");
-            }
-            if (openInNewWindow) {
-              if ((window as any).vruttiOpenNewWindow) {
-                await (window as any).vruttiOpenNewWindow(json.path);
-              }
+              this.pendingFolderPath = json.path;
+              this.showOpenFolderModal = true;
             } else {
               window.dispatchEvent(new CustomEvent('workspace-changed', {
                 detail: { path: json.path }
@@ -434,7 +432,54 @@ export class VruttiApp extends LitElement {
     }
   };
 
+  private async handleOpenFolderAction(action: 'this' | 'new' | 'cancel') {
+    this.showOpenFolderModal = false;
+    if (action === 'cancel') return;
+
+    if (action === 'new') {
+      if ((window as any).vruttiOpenNewWindow) {
+        await (window as any).vruttiOpenNewWindow(this.pendingFolderPath);
+      }
+    } else if (action === 'this') {
+      window.dispatchEvent(new CustomEvent('workspace-changed', {
+        detail: { path: this.pendingFolderPath }
+      }));
+    }
+    this.pendingFolderPath = '';
+  }
+
   static styles = [globalHoverStyle, css`
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-content {
+      background: var(--vrutti-surface, #1e1e1e);
+      border: 1px solid var(--vrutti-surface-border, #2d2d2d);
+      border-radius: 6px;
+      padding: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      width: 400px;
+      color: var(--vrutti-text-bright, #ffffff);
+    }
+    .modal-title { font-size: 14px; font-weight: 600; margin-bottom: 10px; }
+    .modal-message { font-size: 13px; color: var(--vrutti-text, #cccccc); margin-bottom: 20px; word-break: break-all; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
+    .modal-btn {
+      background: var(--vrutti-bg, #1a1a1a);
+      color: var(--vrutti-text-bright, #fff);
+      border: 1px solid var(--vrutti-surface-border, #333);
+      padding: 6px 12px; border-radius: 3px; cursor: pointer; font-size: 13px;
+    }
+    .modal-btn:hover { background: var(--vrutti-surface, #2d2d2d); }
+    .modal-btn.primary { background: var(--vrutti-accent, #007acc); border-color: var(--vrutti-accent, #007acc); }
+    .modal-btn.primary:hover { background: #005a9e; }
+
     :host {
       display: flex;
       flex-direction: column;
@@ -866,6 +911,19 @@ export class VruttiApp extends LitElement {
           ` : ''}
           <div class="context-menu-item" @click=${this.closeContextMenu}>Rename</div>
           <div class="context-menu-item" @click=${this.closeContextMenu}>Delete</div>
+        </div>
+      ` : ''}
+      ${this.showOpenFolderModal ? html`
+        <div class="modal-overlay">
+          <div class="modal-content">
+            <div class="modal-title">Open Folder</div>
+            <div class="modal-message">Do you want to open <strong>${this.pendingFolderPath}</strong> in this window, or in a new window?</div>
+            <div class="modal-actions">
+              <button class="modal-btn" @click=${() => this.handleOpenFolderAction('cancel')}>Cancel</button>
+              <button class="modal-btn" @click=${() => this.handleOpenFolderAction('this')}>This Window</button>
+              <button class="modal-btn primary" @click=${() => this.handleOpenFolderAction('new')}>New Window</button>
+            </div>
+          </div>
         </div>
       ` : ''}
       <vrutti-statusbar></vrutti-statusbar>
