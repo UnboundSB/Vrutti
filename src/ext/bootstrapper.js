@@ -128,23 +128,30 @@ class ExtensionManager {
                         } catch (e) {}
                     }
 
-                    if (nls) {
-                        const localize = (obj) => {
-                            if (typeof obj === 'string') {
-                                return obj.replace(/%([^%]+)%/g, (match, key) => {
-                                    return nls[key] !== undefined ? nls[key] : match;
-                                });
-                            } else if (Array.isArray(obj)) {
-                                return obj.map(localize);
-                            } else if (obj && typeof obj === 'object') {
-                                for (const key in obj) {
-                                    obj[key] = localize(obj[key]);
-                                }
+                    const safeNls = nls || {};
+                    const localize = (obj) => {
+                        if (typeof obj === 'string') {
+                            return obj.replace(/%([^%]+)%/g, (match, key) => {
+                                if (safeNls[key] !== undefined) return safeNls[key];
+                                if (safeNls[match] !== undefined) return safeNls[match];
+                                const stripped = key.replace(/^extension\./, '');
+                                if (safeNls[stripped] !== undefined) return safeNls[stripped];
+                                
+                                // Fallbacks if strictly missing
+                                if (key.includes('displayName')) return pkg.name;
+                                if (key.includes('description')) return '';
+                                return match;
+                            });
+                        } else if (Array.isArray(obj)) {
+                            return obj.map(localize);
+                        } else if (obj && typeof obj === 'object') {
+                            for (const k in obj) {
+                                obj[k] = localize(obj[k]);
                             }
-                            return obj;
-                        };
-                        localize(pkg);
-                    }
+                        }
+                        return obj;
+                    };
+                    localize(pkg);
 
                     if (pkg.contributes && pkg.contributes.viewsContainers && pkg.contributes.viewsContainers.activitybar) {
                         for (const container of pkg.contributes.viewsContainers.activitybar) {
