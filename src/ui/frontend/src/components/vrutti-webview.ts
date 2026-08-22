@@ -1,5 +1,5 @@
 import { LitElement, css, html } from 'lit';
-import { customElement, property, state, query } from 'lit/decorators.js';
+import { customElement, property, query } from 'lit/decorators.js';
 
 @customElement('vrutti-webview')
 export class VruttiWebview extends LitElement {
