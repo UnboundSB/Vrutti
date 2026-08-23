@@ -434,6 +434,12 @@ async function main() {
             const installedExts = await manager.getInstalledExtensions();
             ipcClient.sendNotification('extensions/installed', installedExts);
             ipcClient.sendNotification('themes/available', await manager.getAvailableThemes());
+            
+            for (const ext of installedExts) {
+                if (ext.contributes && ext.contributes.vrutti && ext.contributes.vrutti.injections) {
+                    ipcClient.sendNotification('extensions/injections', ext.contributes.vrutti.injections);
+                }
+            }
         });
 
         ipcClient.on('extensions/uninstall', async (params) => {
