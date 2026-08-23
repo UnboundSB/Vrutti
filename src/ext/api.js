@@ -17,21 +17,27 @@ class VruttiAPI {
         this.sendRequest = async (method, payload) => {
             if (this.nativeLinker && this.nativeLinker.sendRequestNative) {
                 try {
-                    const result = this.nativeLinker.sendRequestNative(method, JSON.stringify(payload || {}));
-                    return JSON.parse(result);
+                    const resultStr = this.nativeLinker.sendRequestNative(method, JSON.stringify(payload || {}));
+                    const result = JSON.parse(resultStr);
+                    if (result && result.status !== 'fallback') {
+                        return result;
+                    }
                 } catch (e) { }
             }
-            return this.sendRequest(method, payload);
+            return this.ipcClient.sendRequest(method, payload);
         };
 
         this.sendNotification = (method, payload) => {
             if (this.nativeLinker && this.nativeLinker.sendNotificationNative) {
                 try {
-                    this.nativeLinker.sendNotificationNative(method, JSON.stringify(payload || {}));
-                    return;
+                    const resultStr = this.nativeLinker.sendNotificationNative(method, JSON.stringify(payload || {}));
+                    const result = JSON.parse(resultStr);
+                    if (result && result.status !== 'fallback') {
+                        return;
+                    }
                 } catch (e) { }
             }
-            this.sendNotification(method, payload);
+            this.ipcClient.sendNotification(method, payload);
         };
         
         this.window = {
