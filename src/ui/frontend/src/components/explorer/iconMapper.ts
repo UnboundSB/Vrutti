@@ -1,4 +1,58 @@
+let activeIconTheme: any = null;
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('vrutti-icon-theme-loaded', (e: Event) => {
+    activeIconTheme = (e as CustomEvent).detail;
+    window.dispatchEvent(new CustomEvent('vrutti-icons-changed'));
+  });
+}
+
+function resolveCustomIcon(filename: string, isDirectory: boolean, isExpanded: boolean): string | null {
+  if (!activeIconTheme || !activeIconTheme.iconDefinitions) return null;
+
+  const lower = filename.toLowerCase();
+
+  if (isDirectory) {
+    if (isExpanded && activeIconTheme.folderNamesExpanded && activeIconTheme.folderNamesExpanded[lower]) {
+      const defId = activeIconTheme.folderNamesExpanded[lower];
+      return activeIconTheme.iconDefinitions[defId]?.iconPath || null;
+    }
+    if (activeIconTheme.folderNames && activeIconTheme.folderNames[lower]) {
+      const defId = activeIconTheme.folderNames[lower];
+      return activeIconTheme.iconDefinitions[defId]?.iconPath || null;
+    }
+    const folderDefId = isExpanded ? activeIconTheme.folderExpanded : activeIconTheme.folder;
+    if (folderDefId) {
+      return activeIconTheme.iconDefinitions[folderDefId]?.iconPath || null;
+    }
+    return null;
+  }
+
+  if (activeIconTheme.fileNames && activeIconTheme.fileNames[lower]) {
+    const defId = activeIconTheme.fileNames[lower];
+    return activeIconTheme.iconDefinitions[defId]?.iconPath || null;
+  }
+
+  const parts = lower.split('.');
+  for (let i = 0; i < parts.length; i++) {
+    const ext = parts.slice(i).join('.');
+    if (activeIconTheme.fileExtensions && activeIconTheme.fileExtensions[ext]) {
+      const defId = activeIconTheme.fileExtensions[ext];
+      return activeIconTheme.iconDefinitions[defId]?.iconPath || null;
+    }
+  }
+
+  if (activeIconTheme.file) {
+    return activeIconTheme.iconDefinitions[activeIconTheme.file]?.iconPath || null;
+  }
+
+  return null;
+}
+
 export function getIconForFile(filename: string, isDirectory: boolean, isExpanded: boolean): string {
+  const customIcon = resolveCustomIcon(filename, isDirectory, isExpanded);
+  if (customIcon) return customIcon;
+
   const lower = filename.toLowerCase();
 
   if (isDirectory) {
