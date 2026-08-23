@@ -85,6 +85,19 @@ export class VruttiExplorer extends LitElement {
       display: block;
     }
   `];
+  connectedCallback() {
+    super.connectedCallback();
+    window.addEventListener('vrutti-icons-changed', this.handleIconsChanged);
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    window.removeEventListener('vrutti-icons-changed', this.handleIconsChanged);
+  }
+
+  private handleIconsChanged = () => {
+    this.requestUpdate();
+  };
 
   private async toggle(e?: Event) {
     if (this.item && this.item.isDirectory) {
