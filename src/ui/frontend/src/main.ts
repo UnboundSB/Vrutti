@@ -96,7 +96,20 @@ export class VruttiApp extends LitElement {
         // Dispatch event so other components can listen to it
         window.dispatchEvent(new CustomEvent('vrutti-ipc', { detail: msg }));
         
-        if (msg.method === 'run/output') {
+        if (msg.method === 'extensions/injections') {
+            const injections = msg.params || [];
+            for (const inj of injections) {
+                if (inj.type === 'css') {
+                    const style = document.createElement('style');
+                    style.innerHTML = inj.content || '';
+                    document.head.appendChild(style);
+                } else if (inj.type === 'js') {
+                    const script = document.createElement('script');
+                    script.innerHTML = inj.content || '';
+                    document.head.appendChild(script);
+                }
+            }
+        } else if (msg.method === 'run/output') {
            if ((window as any).vruttiWriteOutput) {
                (window as any).vruttiWriteOutput('Execution', msg.params.text);
            }
