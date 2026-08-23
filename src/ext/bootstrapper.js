@@ -440,6 +440,20 @@ async function main() {
                     ipcClient.sendNotification('extensions/injections', ext.contributes.vrutti.injections);
                 }
             }
+
+            // Also check builtin themes for global injections (like live wallpapers)
+            try {
+                const pkgPath = path.join(__dirname, 'builtin-themes', 'package.json');
+                if (fs.existsSync(pkgPath)) {
+                    const pkgRaw = await fs.promises.readFile(pkgPath, 'utf8');
+                    const pkg = JSON.parse(pkgRaw);
+                    if (pkg.contributes && pkg.contributes.vrutti && pkg.contributes.vrutti.injections) {
+                        ipcClient.sendNotification('extensions/injections', pkg.contributes.vrutti.injections);
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to read builtin-themes injections:', e);
+            }
         });
 
         ipcClient.on('extensions/uninstall', async (params) => {
