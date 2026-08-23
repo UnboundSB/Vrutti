@@ -79,6 +79,11 @@ export class ThemeBridge {
     ThemeApplier.loadStartupTheme();
     window.addEventListener('vrutti-ipc', this.handleIpc as EventListener);
     window.addEventListener('setting-changed', this.handleSettingChanged as EventListener);
+    
+    // Request installed extensions/themes immediately to trigger component injections
+    if ((window as any).sendIpcMessage) {
+      (window as any).sendIpcMessage('extensions/request_installed', '{}');
+    }
   }
 
   public disconnect(): void {
