@@ -52,10 +52,15 @@ export function registerCoreContributions() {
     
     // Panel Contributions
     registry.registerPanel({ id: 'PROBLEMS', title: 'PROBLEMS', order: 10 });
-    registry.registerPanel({ id: 'OUTPUT', title: 'OUTPUT', order: 20 });
-    registry.registerPanel({ id: 'DEBUG CONSOLE', title: 'DEBUG CONSOLE', order: 30 });
-    registry.registerPanel({ id: 'TERMINAL', title: 'TERMINAL', order: 40, component: 'vrutti-terminal' });
+    registry.registerPanel({ id: 'OUTPUT', title: 'OUTPUT', order: 20, component: 'vrutti-output-view' });
+    registry.registerPanel({ id: 'DEBUG CONSOLE', title: 'DEBUG CONSOLE', order: 30, component: 'vrutti-debug-console' });
+    registry.registerPanel({ id: 'TERMINAL', title: 'TERMINAL', order: 40, component: 'vrutti-terminal-view' });
     registry.registerPanel({ id: 'PORTS', title: 'PORTS', order: 50 });
+
+    // Output Channels
+    registry.registerOutputChannel('System');
+    registry.registerOutputChannel('Extension Host');
+    registry.registerOutputChannel('Tasks');
 
     // Status Bar Contributions
     registry.registerStatusBar({
@@ -325,6 +330,13 @@ export function registerCoreContributions() {
     registry.registerKeybinding({ key: 'Ctrl+H', command: 'vrutti.action.editor.replace' });
     registry.registerKeybinding({ key: 'Ctrl+`', command: 'vrutti.action.toggleTerminal' });
     registry.registerKeybinding({ key: 'F5', command: 'vrutti.action.debug.start' });
+
+    // Settings Categories
+    registry.registerSettingsCategory({ id: 'General', title: 'General', order: 10 });
+    registry.registerSettingsCategory({ id: 'Appearance', title: 'Appearance', order: 20 });
+    registry.registerSettingsCategory({ id: 'Editor', title: 'Editor', order: 30 });
+    registry.registerSettingsCategory({ id: 'Theme', title: 'Theme', order: 40 });
+    registry.registerSettingsCategory({ id: 'Keybindings', title: 'Keybindings', order: 50 });
 
     // Configuration
     registry.registerConfiguration({
