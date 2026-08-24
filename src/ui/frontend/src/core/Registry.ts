@@ -1,4 +1,21 @@
-export type ContributionType = 'activitybar' | 'views' | 'panel' | 'statusbar' | 'menus';
+export type ContributionType = 'activitybar' | 'views' | 'panel' | 'statusbar' | 'menus' | 'paneltabs';
+
+export interface CommandContribution {
+    id: string;
+    handler: (args?: any) => void;
+}
+
+export interface KeybindingContribution {
+    key: string;
+    command: string;
+}
+
+export interface PanelTabContribution {
+    id: string;
+    title: string;
+    order?: number;
+    component?: string;
+}
 
 export interface ActivityBarContribution {
     id: string;
@@ -42,6 +59,7 @@ export interface MenuItemContribution {
     id?: string;
     label: string;
     action?: string;
+    command?: string;
     separator?: boolean;
     order?: number;
 }
@@ -50,8 +68,11 @@ class ContributionRegistry extends EventTarget {
     private activitybar: Map<string, ActivityBarContribution> = new Map();
     private views: Map<string, ViewContribution[]> = new Map(); // Key is containerId
     private panel: Map<string, PanelContribution> = new Map();
+    private panelTabs: PanelTabContribution[] = [];
     private statusbar: Map<string, StatusBarContribution> = new Map();
     private menus: Map<string, MenuContribution> = new Map();
+    private commands: Map<string, CommandContribution> = new Map();
+    private keybindings: Map<string, KeybindingContribution> = new Map();
 
     registerActivityBar(item: ActivityBarContribution) {
         this.activitybar.set(item.id, item);
@@ -90,6 +111,23 @@ class ContributionRegistry extends EventTarget {
         this.emitChange('menus');
     }
 
+    registerCommand(id: string, handler: (args?: any) => void) {
+        this.commands.set(id, { id, handler });
+    }
+
+    registerKeybinding(keybinding: KeybindingContribution) {
+        this.keybindings.set(keybinding.key, keybinding);
+    }
+
+    executeCommand(id: string, args?: any) {
+        const cmd = this.commands.get(id);
+        if (cmd) {
+            cmd.handler(args);
+        } else {
+            console.warn(`Command not found: ${id}`);
+        }
+    }
+
     // Getters
     getActivityBarItems(): ActivityBarContribution[] {
         return Array.from(this.activitybar.values()).sort((a, b) => (a.order || 0) - (b.order || 0));
@@ -126,6 +164,10 @@ class ContributionRegistry extends EventTarget {
 
     getMenus(): MenuContribution[] {
         return Array.from(this.menus.values()).sort((a, b) => (a.order || 0) - (b.order || 0));
+    }
+
+    getKeybindings(): KeybindingContribution[] {
+        return Array.from(this.keybindings.values());
     }
 
     private emitChange(type: ContributionType) {
