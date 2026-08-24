@@ -1,8 +1,7 @@
 import { LitElement, css, html } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { unsafeSVG } from 'lit/directives/unsafe-svg.js';
-import { unsafeHTML } from 'lit/directives/unsafe-html.js';
-import { icon_git_branch, icon_error, icon_warning } from './codicons';
+import { icon_error, icon_warning } from './codicons';
 import { registry, StatusBarContribution } from '../core/Registry';
 
 import { globalHoverStyle } from '../shared-styles';

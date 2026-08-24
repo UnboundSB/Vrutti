@@ -1,6 +1,5 @@
 import { LitElement, css, html } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
-import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import './vrutti-terminal';
 import './vrutti-debug-console';
 import './vrutti-webview';

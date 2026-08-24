@@ -1,6 +1,6 @@
 import { LitElement, css, html } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
-import { registry, MenuContribution } from '../core/Registry';
+import { registry, MenuContribution, MenuItemContribution } from '../core/Registry';
 
 import { globalHoverStyle } from '../shared-styles';
 
@@ -67,7 +67,7 @@ export class VruttiMenuBar extends LitElement {
     }
   }
 
-  private handleItemClick(item: MenuItem, e: MouseEvent) {
+  private handleItemClick(item: MenuItemContribution, e: MouseEvent) {
     e.stopPropagation();
     if (item.separator) return;
     

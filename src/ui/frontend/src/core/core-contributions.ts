@@ -6,9 +6,7 @@ import {
     icon_source_control, 
     icon_debug_alt, 
     icon_extensions,
-    icon_git_branch,
-    icon_error,
-    icon_warning
+    icon_git_branch
 } from '../components/codicons';
 
 export function registerCoreContributions() {
@@ -493,7 +491,7 @@ export function registerCoreContributions() {
     registry.registerQuickPickProvider({
         prefix: 'task active ',
         description: 'Active tasks...',
-        getResults: async (query: string) => {
+        getResults: async (_query: string) => {
             return [{
                 label: 'Running Terminal 1',
                 detail: '(Active)',

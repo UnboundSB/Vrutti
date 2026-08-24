@@ -2,7 +2,7 @@ import { LitElement, css, html } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { unsafeSVG } from 'lit/directives/unsafe-svg.js';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
-import { icon_files, icon_search, icon_source_control, icon_debug_alt, icon_extensions, icon_close, icon_chevron_left, icon_chevron_right } from './codicons';
+import { icon_close, icon_chevron_left, icon_chevron_right } from './codicons';
 import './explorer/vrutti-explorer';
 import './vrutti-search';
 import './scm/vrutti-scm';
@@ -128,7 +128,7 @@ export class VruttiSidebar extends LitElement {
     this.currentViews = registry.getViews(this.activeTab);
   }
 
-  private handleIpc = (e: CustomEvent) => {
+  private handleIpc = (_e: CustomEvent) => {
   };
 
   private handleWorkspaceChanged = async (e: Event) => {

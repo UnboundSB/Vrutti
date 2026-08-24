@@ -1,4 +1,4 @@
-export type ContributionType = 'activitybar' | 'views' | 'panel' | 'statusbar' | 'menus' | 'paneltabs';
+export type ContributionType = 'activitybar' | 'views' | 'panel' | 'statusbar' | 'menus' | 'paneltabs' | 'configurations' | 'editors';
 
 export interface CommandContribution {
     id: string;
