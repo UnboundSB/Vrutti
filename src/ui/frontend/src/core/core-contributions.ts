@@ -47,9 +47,32 @@ export function registerCoreContributions() {
         id: 'explorer-view',
         containerId: 'explorer',
         name: 'Explorer',
-        component: 'vrutti-explorer-view' // We will handle custom rendering based on activeTab in vrutti-sidebar for native elements first
+        component: 'vrutti-explorer-view'
     });
-    
+    registry.registerView({
+        id: 'search-view',
+        containerId: 'search',
+        name: 'Search',
+        component: 'vrutti-search'
+    });
+    registry.registerView({
+        id: 'scm-view',
+        containerId: 'scm',
+        name: 'Source Control',
+        component: 'vrutti-scm'
+    });
+    registry.registerView({
+        id: 'debug-view',
+        containerId: 'debug',
+        name: 'Run and Debug',
+        component: 'vrutti-debug-sidebar'
+    });
+    registry.registerView({
+        id: 'extensions-view',
+        containerId: 'extensions',
+        name: 'Extensions',
+        component: 'vrutti-extensions'
+    });
     // Panel Contributions
     registry.registerPanel({ id: 'PROBLEMS', title: 'PROBLEMS', order: 10 });
     registry.registerPanel({ id: 'OUTPUT', title: 'OUTPUT', order: 20, component: 'vrutti-output-view' });
