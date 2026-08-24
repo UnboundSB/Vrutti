@@ -76,13 +76,12 @@ export class VruttiMenuBar extends LitElement {
     if (item.action === 'closeWindow' && (window as any).closeWindow) {
       (window as any).closeWindow();
     } else {
-      console.log(`Action: ${item.label}`);
-      // Dispatch custom event for app to handle
-      this.dispatchEvent(new CustomEvent('menu-action', {
-        detail: { action: item.action || item.label },
-        bubbles: true,
-        composed: true
-      }));
+      console.log(`Command: ${item.command}`);
+      if (item.command) {
+        registry.executeCommand(item.command);
+      } else {
+        console.warn(`No command assigned to menu item: ${item.label}`);
+      }
     }
   }
 

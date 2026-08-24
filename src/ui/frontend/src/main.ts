@@ -152,7 +152,11 @@ export class VruttiApp extends LitElement {
                (window as any).vruttiWriteOutput('Execution', msg.params.text);
            }
         } else if (msg.method === 'menu/action') {
-           window.dispatchEvent(new CustomEvent('menu-action', { detail: msg.params }));
+           if (msg.params && msg.params.command) {
+               registry.executeCommand(msg.params.command);
+           } else if (msg.params && msg.params.action) {
+               registry.executeCommand(msg.params.action);
+           }
         }
       } catch (e) {
         console.error("Failed to parse IPC message from backend:", e);
@@ -191,7 +195,7 @@ export class VruttiApp extends LitElement {
     // Connect theme bridge to listen for IPC themes
     themeBridge.connect();
 
-    window.addEventListener('menu-action', this.handleMenuAction as EventListener);
+    this.registerCommands();
     this.addEventListener('close-settings', this.handleCloseSettings);
     this.addEventListener('setting-changed', this.handleSettingChanged);
     this.addEventListener('open-file', this.handleOpenFile as EventListener);
@@ -241,7 +245,6 @@ export class VruttiApp extends LitElement {
 
   disconnectedCallback() {
     super.disconnectedCallback();
-    window.removeEventListener('menu-action', this.handleMenuAction as EventListener);
     this.removeEventListener('close-settings', this.handleCloseSettings);
     this.removeEventListener('setting-changed', this.handleSettingChanged);
     this.removeEventListener('open-file', this.handleOpenFile as EventListener);
@@ -254,18 +257,26 @@ export class VruttiApp extends LitElement {
     this.removeEventListener('close-extension-details', this.handleCloseExtensionDetails);
   }
 
-  private handleMenuAction = async (e: Event) => {
-    const detail = (e as CustomEvent).detail;
-    if (detail.action === 'Preferences') {
+  private registerCommands() {
+    registry.registerCommand('vrutti.action.preferences', async () => {
       if (!customElements.get('vrutti-settings')) {
         await import('./components/vrutti-settings');
       }
       this.showSettings = true;
-    } else if (detail.action === 'Word Wrap') {
+    });
+
+    registry.registerCommand('vrutti.action.appearance', () => { this.showSettings = true; });
+    registry.registerCommand('vrutti.action.editorLayout', () => { this.showSettings = true; });
+
+    registry.registerCommand('vrutti.action.toggleWordWrap', () => {
       this.toggleSetting('editor.wordWrap');
-    } else if (detail.action === 'Auto Save') {
+    });
+
+    registry.registerCommand('vrutti.action.autoSave', () => {
       this.toggleSetting('files.autoSave');
-    } else if (detail.action === 'openFolder') {
+    });
+
+    registry.registerCommand('vrutti.action.openFolder', async () => {
       if ((window as any).vruttiOpenFolderDialog) {
         try {
           const json = await (window as any).vruttiOpenFolderDialog();
@@ -283,30 +294,37 @@ export class VruttiApp extends LitElement {
           console.error("Failed to open folder dialog", err);
         }
       }
-    } else if (detail.action === 'toggleTerminal') {
+    });
+
+    registry.registerCommand('vrutti.action.toggleTerminal', () => {
       this.toggleTerminal();
-    } else if (['Explorer', 'Search', 'Source Control', 'Run', 'Extensions'].includes(detail.action)) {
+    });
+
+    const showSidebarTab = (tab: string) => {
       const sidebar = this.shadowRoot?.querySelector('vrutti-sidebar') as any;
-      if (sidebar && sidebar.selectTab) {
-        const tabMap: Record<string, string> = {
-          'Explorer': 'explorer',
-          'Search': 'search',
-          'Source Control': 'scm',
-          'Run': 'debug',
-          'Extensions': 'extensions'
-        };
-        sidebar.selectTab(tabMap[detail.action]);
-      }
-    } else if (detail.action === 'Toggle Developer Tools') {
+      if (sidebar && sidebar.selectTab) sidebar.selectTab(tab);
+    };
+
+    registry.registerCommand('vrutti.action.showExplorer', () => showSidebarTab('explorer'));
+    registry.registerCommand('vrutti.action.showSearch', () => showSidebarTab('search'));
+    registry.registerCommand('vrutti.action.showScm', () => showSidebarTab('scm'));
+    registry.registerCommand('vrutti.action.showDebug', () => showSidebarTab('debug'));
+    registry.registerCommand('vrutti.action.showExtensions', () => showSidebarTab('extensions'));
+
+    registry.registerCommand('vrutti.action.toggleDevTools', () => {
       if ((window as any).vruttiToggleDevTools) {
         (window as any).vruttiToggleDevTools();
       }
-    } else if (detail.action === 'New File') {
+    });
+
+    registry.registerCommand('vrutti.action.newFile', () => {
       const layout = this.shadowRoot?.querySelector('#main-layout') as any;
       if (layout && layout.openFile) {
           layout.openFile('Untitled-1');
       }
-    } else if (detail.action === 'Open File') {
+    });
+
+    registry.registerCommand('vrutti.action.openFile', async () => {
       if ((window as any).vruttiOpenFileDialog) {
         try {
           const jsonStr = await (window as any).vruttiOpenFileDialog();
@@ -321,90 +339,156 @@ export class VruttiApp extends LitElement {
           console.error("Failed to open file dialog", err);
         }
       }
-    } else if (detail.action === 'Close Editor') {
+    });
+
+    registry.registerCommand('vrutti.action.closeEditor', () => {
       const layout = this.shadowRoot?.querySelector('#main-layout') as any;
       if (layout && layout.closeActiveEditor) {
           layout.closeActiveEditor();
       }
-    } else if (['Command Palette', 'Show All Commands', 'Open View', 'Go to File'].includes(detail.action)) {
-      this.showQuickOpen = true;
-    } else if (detail.action === 'About') {
-      window.alert('Vrutti IDE\nVersion 1.0.0\nBuilt by UnboundSB');
-    } else if (detail.action === 'Check for Updates') {
+    });
+
+    const openQuickOpen = () => { this.showQuickOpen = true; };
+    registry.registerCommand('vrutti.action.showCommands', openQuickOpen);
+    registry.registerCommand('vrutti.action.openView', openQuickOpen);
+    registry.registerCommand('vrutti.action.quickOpen', openQuickOpen);
+
+    registry.registerCommand('vrutti.action.help.about', () => {
+      window.alert('Vrutti IDE\\nVersion 1.0.0\\nBuilt by UnboundSB');
+    });
+
+    registry.registerCommand('vrutti.action.help.checkUpdates', () => {
       window.alert('There are currently no updates available.');
-    } else if (detail.action === 'Appearance' || detail.action === 'Editor Layout') {
-      this.showSettings = true;
-    } else if (['New Terminal'].includes(detail.action)) {
-      this.showTerminal = true;
-    } else if (detail.action === 'Run Task') {
+    });
+
+    registry.registerCommand('vrutti.action.terminal.new', () => { this.showTerminal = true; });
+
+    registry.registerCommand('vrutti.action.tasks.runTask', () => {
       this.taskPickerMode = 'run';
       this.showTaskPicker = true;
-    } else if (detail.action === 'Active Tasks') {
+    });
+    registry.registerCommand('vrutti.action.tasks.showActive', () => {
       this.taskPickerMode = 'active';
       this.showTaskPicker = true;
-    } else if (detail.action === 'Configure Default Build Task') {
+    });
+    registry.registerCommand('vrutti.action.tasks.configureDefault', () => {
       this.taskPickerMode = 'defaultBuild';
       this.showTaskPicker = true;
-    } else if (detail.action === 'Configure Tasks') {
+    });
+    registry.registerCommand('vrutti.action.tasks.configure', () => {
       VruttiTaskManager.ensureTasksFileExists().then(path => {
           if (path) {
               window.dispatchEvent(new CustomEvent('open-file', { detail: { path: path, name: 'tasks.json' } }));
           }
       });
-    } else if (detail.action === 'Build Task') {
+    });
+    registry.registerCommand('vrutti.action.tasks.build', () => {
       VruttiTaskManager.runDefaultBuildTask().then(ran => {
           if (!ran) {
               this.taskPickerMode = 'defaultBuild';
               this.showTaskPicker = true;
           }
       });
-    } else {
-      const editorActions = [
-        'Undo', 'Redo', 'Cut', 'Copy', 'Paste', 'Find', 'Replace', 'Select All',
-        'Expand Selection', 'Add Cursor Above', 'Add Cursor Below', 'Add Next Occurrence',
-        'Select All Occurrences', 'Toggle Line Comment', 'Toggle Block Comment', 
-        'Shrink Selection', 'Copy Line Up', 'Copy Line Down', 'Move Line Up', 
-        'Move Line Down', 'Duplicate Selection', 'Add Cursors to Line Ends', 
-        'Add Previous Occurrence', 'Save',
-        // Go Actions
-        'Back', 'Forward', 'Go to Symbol in Workspace', 'Go to Line/Column',
-        'Go to Definition', 'Go to Declaration', 'Go to Type Definition',
-        'Go to Implementations', 'Go to References', 'Next Problem', 'Previous Problem',
-        'Next Change', 'Previous Change',
-        // Run/Debug Actions
-        'Start Debugging', 'Run Without Debugging', 'Stop Debugging', 'Restart Debugging',
-        'Step Over', 'Step Into', 'Step Out', 'Continue', 'Toggle Breakpoint'
-      ];
-      
-      const externalLinks: Record<string, string> = {
-        'Welcome': 'https://github.com/UnboundSB/Vrutti',
-        'Documentation': new URL('./help.html', window.location.href).href,
-        'Editor Playground': 'https://github.com/UnboundSB/Vrutti/wiki/Playground',
-        'Release Notes': 'https://github.com/UnboundSB/Vrutti/releases',
-        'Keyboard Shortcuts Reference': 'https://github.com/UnboundSB/Vrutti/wiki/Shortcuts',
-        'Video Tutorials': 'https://youtube.com/c/VruttiIDE',
-        'Tips and Tricks': 'https://github.com/UnboundSB/Vrutti/wiki/Tips',
-        'Join Us on YouTube': 'https://youtube.com/',
-        'Search Feature Requests': 'https://github.com/UnboundSB/Vrutti/issues?q=label%3Aenhancement',
-        'Report Issue': 'https://github.com/UnboundSB/Vrutti/issues',
-        'View License': 'https://github.com/UnboundSB/Vrutti/blob/main/LICENSE',
-        'Privacy Statement': 'https://github.com/UnboundSB/Vrutti/blob/main/PRIVACY.md'
-      };
+    });
 
-      if (editorActions.includes(detail.action)) {
-        window.dispatchEvent(new CustomEvent('editor-action', { detail: { action: detail.action } }));
-      } else if (externalLinks[detail.action]) {
-        if ((window as any).vruttiOpenExternalUrl) {
-           (window as any).vruttiOpenExternalUrl(externalLinks[detail.action]);
-        }
-      } else {
-        // Fallback for not yet implemented items
-        console.warn(`Action not yet implemented: ${detail.action}`);
-        window.alert(`Feature Not Yet Implemented: ${detail.action}`);
-      }
+    registry.registerCommand('vrutti.action.closeWindow', () => {
+        if ((window as any).closeWindow) (window as any).closeWindow();
+    });
+    registry.registerCommand('vrutti.action.newWindow', () => {
+        if ((window as any).vruttiOpenNewWindow) (window as any).vruttiOpenNewWindow('');
+    });
+    registry.registerCommand('vrutti.action.saveAs', () => {
+        window.alert('Save As not implemented');
+    });
+    registry.registerCommand('vrutti.action.saveAll', () => {
+        window.alert('Save All not implemented');
+    });
+
+    const externalLinks: Record<string, string> = {
+      'vrutti.action.help.welcome': 'https://github.com/UnboundSB/Vrutti',
+      'vrutti.action.help.documentation': new URL('./help.html', window.location.href).href,
+      'vrutti.action.help.playground': 'https://github.com/UnboundSB/Vrutti/wiki/Playground',
+      'vrutti.action.help.releaseNotes': 'https://github.com/UnboundSB/Vrutti/releases',
+      'vrutti.action.help.keyboardShortcuts': 'https://github.com/UnboundSB/Vrutti/wiki/Shortcuts',
+      'vrutti.action.help.videoTutorials': 'https://youtube.com/c/VruttiIDE',
+      'vrutti.action.help.tipsAndTricks': 'https://github.com/UnboundSB/Vrutti/wiki/Tips',
+      'vrutti.action.help.youtube': 'https://youtube.com/',
+      'vrutti.action.help.featureRequests': 'https://github.com/UnboundSB/Vrutti/issues?q=label%3Aenhancement',
+      'vrutti.action.help.reportIssue': 'https://github.com/UnboundSB/Vrutti/issues',
+      'vrutti.action.help.license': 'https://github.com/UnboundSB/Vrutti/blob/main/LICENSE',
+      'vrutti.action.help.privacy': 'https://github.com/UnboundSB/Vrutti/blob/main/PRIVACY.md'
+    };
+    
+    for (const [cmd, url] of Object.entries(externalLinks)) {
+        registry.registerCommand(cmd, () => {
+            if ((window as any).vruttiOpenExternalUrl) {
+                (window as any).vruttiOpenExternalUrl(url);
+            }
+        });
     }
-  };
 
+    const editorActionMapping: Record<string, string> = {
+      'vrutti.action.editor.undo': 'Undo',
+      'vrutti.action.editor.redo': 'Redo',
+      'vrutti.action.editor.cut': 'Cut',
+      'vrutti.action.editor.copy': 'Copy',
+      'vrutti.action.editor.paste': 'Paste',
+      'vrutti.action.editor.find': 'Find',
+      'vrutti.action.editor.replace': 'Replace',
+      'vrutti.action.findInFiles': 'Find in Files',
+      'vrutti.action.replaceInFiles': 'Replace in Files',
+      'vrutti.action.editor.selectAll': 'Select All',
+      'vrutti.action.editor.expandSelection': 'Expand Selection',
+      'vrutti.action.editor.shrinkSelection': 'Shrink Selection',
+      'vrutti.action.editor.copyLineUp': 'Copy Line Up',
+      'vrutti.action.editor.copyLineDown': 'Copy Line Down',
+      'vrutti.action.editor.moveLineUp': 'Move Line Up',
+      'vrutti.action.editor.moveLineDown': 'Move Line Down',
+      'vrutti.action.editor.duplicateSelection': 'Duplicate Selection',
+      'vrutti.action.editor.addCursorAbove': 'Add Cursor Above',
+      'vrutti.action.editor.addCursorBelow': 'Add Cursor Below',
+      'vrutti.action.editor.addCursorsToLineEnds': 'Add Cursors to Line Ends',
+      'vrutti.action.editor.addNextOccurrence': 'Add Next Occurrence',
+      'vrutti.action.editor.addPreviousOccurrence': 'Add Previous Occurrence',
+      'vrutti.action.editor.selectAllOccurrences': 'Select All Occurrences',
+      'vrutti.action.editor.toggleLineComment': 'Toggle Line Comment',
+      'vrutti.action.editor.toggleBlockComment': 'Toggle Block Comment',
+      'vrutti.action.editor.gotoDefinition': 'Go to Definition',
+      'vrutti.action.editor.gotoDeclaration': 'Go to Declaration',
+      'vrutti.action.editor.gotoTypeDefinition': 'Go to Type Definition',
+      'vrutti.action.editor.gotoImplementations': 'Go to Implementations',
+      'vrutti.action.editor.gotoReferences': 'Go to References',
+      'vrutti.action.editor.nextProblem': 'Next Problem',
+      'vrutti.action.editor.previousProblem': 'Previous Problem',
+      'vrutti.action.editor.nextChange': 'Next Change',
+      'vrutti.action.editor.previousChange': 'Previous Change',
+      'vrutti.action.editor.toggleBreakpoint': 'Toggle Breakpoint',
+      'vrutti.action.save': 'Save',
+      'vrutti.action.goBack': 'Back',
+      'vrutti.action.goForward': 'Forward',
+      'vrutti.action.showAllSymbols': 'Go to Symbol in Workspace',
+      'vrutti.action.gotoLine': 'Go to Line/Column',
+      'vrutti.action.debug.start': 'Start Debugging',
+      'vrutti.action.debug.run': 'Run Without Debugging',
+      'vrutti.action.debug.stop': 'Stop Debugging',
+      'vrutti.action.debug.restart': 'Restart Debugging',
+      'vrutti.action.debug.stepOver': 'Step Over',
+      'vrutti.action.debug.stepInto': 'Step Into',
+      'vrutti.action.debug.stepOut': 'Step Out',
+      'vrutti.action.debug.continue': 'Continue',
+      'vrutti.action.debug.newBreakpoint': 'New Breakpoint',
+      'vrutti.action.debug.openConfigurations': 'Open Configurations',
+      'vrutti.action.debug.addConfiguration': 'Add Configuration',
+      'vrutti.action.editor.switchMultiCursorModifier': 'Switch to Ctrl+Click for Multi-Cursor',
+      'vrutti.action.editor.columnSelectionMode': 'Column Selection Mode',
+    };
+
+    for (const [cmd, actionLabel] of Object.entries(editorActionMapping)) {
+        registry.registerCommand(cmd, () => {
+            window.dispatchEvent(new CustomEvent('editor-action', { detail: { action: actionLabel } }));
+        });
+    }
+  }
   private handleContextMenu = (e: CustomEvent) => {
     this.contextMenu = {
       x: e.detail.x,
@@ -455,9 +539,29 @@ export class VruttiApp extends LitElement {
   };
 
   private handleGlobalKeydown = (e: KeyboardEvent) => {
-    if (e.key.toLowerCase() === 'p' && (e.ctrlKey || e.metaKey)) {
+    if (e.defaultPrevented) return;
+    if (['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) return;
+    
+    const isCtrl = e.ctrlKey || e.metaKey;
+    const isShift = e.shiftKey;
+    const isAlt = e.altKey;
+    
+    let key = e.key.toUpperCase();
+    
+    const parts = [];
+    if (isCtrl) parts.push('Ctrl');
+    if (isShift) parts.push('Shift');
+    if (isAlt) parts.push('Alt');
+    parts.push(key);
+    
+    const keyStr = parts.join('+');
+    
+    const bindings = registry.getKeybindings();
+    const match = bindings.find(b => b.key.toUpperCase() === keyStr);
+    
+    if (match) {
       e.preventDefault();
-      this.showQuickOpen = true;
+      registry.executeCommand(match.command);
     }
   };
 
