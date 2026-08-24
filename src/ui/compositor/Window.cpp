@@ -461,6 +461,40 @@ namespace vrutti::ui {
                 }
             }
             return "{\"success\":false}";
+        w->bind("vruttiDeleteFile", [this](const std::string& req) -> std::string {
+            auto parsedReq = vrutti::core::utils::JsonParser::parse(req);
+            if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
+                auto pathNode = parsedReq->arrayElements[0];
+                if (pathNode && pathNode->type == vrutti::core::utils::JsonNode::Type::String) {
+                    std::string path = vrutti::core::utils::JsonParser::unescapeString(pathNode->stringValue);
+                    try {
+                        std::filesystem::remove_all(path);
+                        return "{\"success\":true}";
+                    } catch (const std::exception& e) {
+                        std::cerr << "[UI] Failed to delete file: " << e.what() << std::endl;
+                    }
+                }
+            }
+            return "{\"success\":false}";
+        });
+
+        w->bind("vruttiRenameFile", [this](const std::string& req) -> std::string {
+            auto parsedReq = vrutti::core::utils::JsonParser::parse(req);
+            if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 2) {
+                auto oldPathNode = parsedReq->arrayElements[0];
+                auto newPathNode = parsedReq->arrayElements[1];
+                if (oldPathNode && oldPathNode->type == vrutti::core::utils::JsonNode::Type::String && newPathNode && newPathNode->type == vrutti::core::utils::JsonNode::Type::String) {
+                    std::string oldPath = vrutti::core::utils::JsonParser::unescapeString(oldPathNode->stringValue);
+                    std::string newPath = vrutti::core::utils::JsonParser::unescapeString(newPathNode->stringValue);
+                    try {
+                        std::filesystem::rename(oldPath, newPath);
+                        return "{\"success\":true}";
+                    } catch (const std::exception& e) {
+                        std::cerr << "[UI] Failed to rename file: " << e.what() << std::endl;
+                    }
+                }
+            }
+            return "{\"success\":false}";
         });
 
         w->bind("vruttiCreateFolder", [this](const std::string& req) -> std::string {
