@@ -99,6 +99,21 @@ class ContributionRegistry extends EventTarget {
         return this.views.get(containerId) || [];
     }
 
+    public registerPanelTab(tab: PanelTabContribution) {
+        this.panelTabs.push(tab);
+        this.panelTabs.sort((a, b) => (a.order || 0) - (b.order || 0));
+        this.emitChange('paneltabs');
+    }
+
+    public removePanelTab(id: string) {
+        this.panelTabs = this.panelTabs.filter(t => t.id !== id);
+        this.emitChange('paneltabs');
+    }
+
+    getPanelTabs(): PanelTabContribution[] {
+        return this.panelTabs;
+    }
+
     getPanelItems(): PanelContribution[] {
         return Array.from(this.panel.values()).sort((a, b) => (a.order || 0) - (b.order || 0));
     }
