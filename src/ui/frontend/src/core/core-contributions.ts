@@ -1,4 +1,5 @@
 import { registry } from './Registry';
+import { VruttiTaskManager } from '../components/vrutti-task-manager';
 import { 
     icon_files, 
     icon_search, 
@@ -436,6 +437,76 @@ export function registerCoreContributions() {
             }
         }
     });
+
+    registry.registerQuickPickProvider({
+        prefix: 'task ',
+        description: 'Search tasks to run...',
+        getResults: async (query: string) => {
+            const config = await VruttiTaskManager.getTasksConfig();
+            const tasks = config?.tasks || [];
+            const q = query.toLowerCase();
+            return tasks.filter(t => t.label.toLowerCase().includes(q) || t.command.toLowerCase().includes(q)).map(t => ({
+                label: t.label + (t.isDefaultBuild ? ' (Default Build)' : ''),
+                detail: t.command,
+                data: { type: 'task_run', task: t }
+            }));
+        },
+        onSelect: (item) => {
+            if (item.data && item.data.type === 'task_run') {
+                VruttiTaskManager.runTask(item.data.task);
+            }
+        }
+    });
+
+    registry.registerQuickPickProvider({
+        prefix: 'task default ',
+        description: 'Select default build task...',
+        getResults: async (query: string) => {
+            const config = await VruttiTaskManager.getTasksConfig();
+            const tasks = config?.tasks || [];
+            const q = query.toLowerCase();
+            return tasks.filter(t => t.label.toLowerCase().includes(q) || t.command.toLowerCase().includes(q)).map(t => ({
+                label: t.label + (t.isDefaultBuild ? ' (Default Build)' : ''),
+                detail: t.command,
+                data: { type: 'task_default', task: t }
+            }));
+        },
+        onSelect: async (item) => {
+            if (item.data && item.data.type === 'task_default') {
+                const config = await VruttiTaskManager.getTasksConfig();
+                if (config) {
+                    config.tasks.forEach(t => {
+                        t.isDefaultBuild = (t.label === item.data.task.label);
+                    });
+                    await VruttiTaskManager.saveTasksConfig(config);
+                    const path = await VruttiTaskManager.ensureTasksFileExists();
+                    if (path) {
+                        window.dispatchEvent(new CustomEvent('open-file', {
+                            detail: { path: path, name: 'tasks.json', line: 1 }
+                        }));
+                    }
+                }
+            }
+        }
+    });
+
+    registry.registerQuickPickProvider({
+        prefix: 'task active ',
+        description: 'Active tasks...',
+        getResults: async (query: string) => {
+            return [{
+                label: 'Running Terminal 1',
+                detail: '(Active)',
+                data: { type: 'task_active' }
+            }];
+        },
+        onSelect: (item) => {
+            if (item.data && item.data.type === 'task_active') {
+                window.alert('Viewing active task logs in Terminal');
+            }
+        }
+    });
+
     
     // Editor Types
     registry.registerEditorProvider({
