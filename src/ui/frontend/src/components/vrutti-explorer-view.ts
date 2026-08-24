@@ -12,6 +12,7 @@ export class VruttiExplorerView extends LitElement {
   async connectedCallback() {
     super.connectedCallback();
     window.addEventListener('workspace-changed', this.handleWorkspaceChanged as EventListener);
+    window.addEventListener('explorer-refresh', this.handleExplorerRefresh as EventListener);
     
     // Load initial workspace if already set
     const currentWorkspace = (window as any).currentWorkspace;
@@ -24,7 +25,16 @@ export class VruttiExplorerView extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
     window.removeEventListener('workspace-changed', this.handleWorkspaceChanged as EventListener);
+    window.removeEventListener('explorer-refresh', this.handleExplorerRefresh as EventListener);
   }
+
+  private handleExplorerRefresh = async () => {
+    if (this.explorerRoot) {
+      this.explorerRoot.childrenLoaded = false;
+      await this.explorerRoot.loadChildren();
+      this.requestUpdate();
+    }
+  };
 
   private handleWorkspaceChanged = async (e: CustomEvent) => {
     if (e.detail && e.detail.path) {
