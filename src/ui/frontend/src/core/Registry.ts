@@ -50,7 +50,7 @@ export interface StatusBarContribution {
 
 export interface MenuContribution {
     id: string;
-    title: string;
+    title?: string;
     order?: number;
     items: MenuItemContribution[];
 }
@@ -61,6 +61,14 @@ export interface MenuItemContribution {
     action?: string;
     command?: string;
     separator?: boolean;
+    order?: number;
+    when?: string; // Context condition for visibility
+}
+
+export interface SettingsCategoryContribution {
+    id: string;
+    title: string;
+    component?: string; // Optional custom UI component instead of standard schema
     order?: number;
 }
 
@@ -108,8 +116,10 @@ class ContributionRegistry extends EventTarget {
     private commands: Map<string, CommandContribution> = new Map();
     private keybindings: Map<string, KeybindingContribution> = new Map();
     private configurations: Map<string, ConfigurationSchema> = new Map();
+    private settingsCategories: Map<string, SettingsCategoryContribution> = new Map();
     private quickPickProviders: Map<string, QuickPickProvider> = new Map();
     private editors: Map<string, EditorProvider> = new Map();
+    private outputChannels: Set<string> = new Set(['System']); // Default output channel
 
     registerActivityBar(item: ActivityBarContribution) {
         this.activitybar.set(item.id, item);
@@ -170,6 +180,16 @@ class ContributionRegistry extends EventTarget {
         this.emitChange('configurations');
     }
 
+    registerSettingsCategory(category: SettingsCategoryContribution) {
+        this.settingsCategories.set(category.id, category);
+        this.emitChange('configurations');
+    }
+
+    registerOutputChannel(name: string) {
+        this.outputChannels.add(name);
+        this.emitChange('panel');
+    }
+
     registerQuickPickProvider(provider: QuickPickProvider) {
         this.quickPickProviders.set(provider.prefix, provider);
     }
@@ -190,6 +210,14 @@ class ContributionRegistry extends EventTarget {
 
     getViews(containerId: string): ViewContribution[] {
         return this.views.get(containerId) || [];
+    }
+
+    getSettingsCategories(): SettingsCategoryContribution[] {
+        return Array.from(this.settingsCategories.values()).sort((a, b) => (a.order || 0) - (b.order || 0));
+    }
+
+    getOutputChannels(): string[] {
+        return Array.from(this.outputChannels);
     }
 
     public registerPanelTab(tab: PanelTabContribution) {
@@ -235,7 +263,14 @@ class ContributionRegistry extends EventTarget {
     }
 
     getMenus(): MenuContribution[] {
-        return Array.from(this.menus.values()).sort((a, b) => (a.order || 0) - (b.order || 0));
+        // Return only top-bar menus (those with titles)
+        return Array.from(this.menus.values())
+            .filter(m => m.title !== undefined)
+            .sort((a, b) => (a.order || 0) - (b.order || 0));
+    }
+
+    getMenu(id: string): MenuContribution | undefined {
+        return this.menus.get(id);
     }
 
     getKeybindings(): KeybindingContribution[] {
