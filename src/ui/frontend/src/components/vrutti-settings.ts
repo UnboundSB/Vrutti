@@ -1,60 +1,27 @@
 import { LitElement, css, html } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
-
-interface Config {
-  'editor.fontSize': number;
-  'editor.fontFamily': string;
-  'editor.wordWrap': boolean;
-  'editor.tabSize': number;
-  'editor.insertSpaces': boolean;
-  'editor.minimap.enabled': boolean;
-  'files.autoSave': boolean;
-  'telemetry.enableTelemetry': boolean;
-  'appearance.transparencyEffects': boolean;
-  'workbench.colorTheme'?: string;
-}
-
-const DEFAULT_CONFIG: Config = {
-  'editor.fontSize': 14,
-  'editor.fontFamily': "'Fira Code', monospace",
-  'editor.wordWrap': false,
-  'editor.tabSize': 4,
-  'editor.insertSpaces': true,
-  'editor.minimap.enabled': true,
-  'files.autoSave': false,
-  'telemetry.enableTelemetry': false,
-  'appearance.transparencyEffects': false
-};
-
+import { registry, ConfigurationSchema, ConfigurationProperty } from '../core/Registry';
 import { globalHoverStyle } from '../shared-styles';
 
 @customElement('vrutti-settings')
 export class VruttiSettings extends LitElement {
-  @state()
-  private activeCategory = 'General';
+  @state() private activeCategory = 'General';
+  @state() private configValues: Record<string, any> = {};
+  @state() private configurations: ConfigurationSchema[] = [];
+  @state() private availableThemes: { id: string, label: string }[] = [];
+  @state() private appliedTheme: string = '';
+  @state() private selectedTheme: string = '';
+  @state() private showDirtyModal = false;
 
-  @state()
-  private config: Config = { ...DEFAULT_CONFIG };
-
-  @state()
-  private availableThemes: { id: string, label: string }[] = [];
-
-  @state()
-  private appliedTheme: string = '';
-
-  @state()
-  private selectedTheme: string = '';
-
-  @state()
-  private showDirtyModal = false;
-
-  private categories = ['General', 'Editor', 'Keybindings', 'Theme', 'Appearance'];
   private saveTimeout: number | null = null;
 
   connectedCallback() {
     super.connectedCallback();
     console.log('[Settings] Loaded lazy component');
     
+    this.updateFromRegistry();
+    registry.addEventListener('change', this.handleRegistryChange);
+
     // Load persisted theme state
     try {
       const applied = localStorage.getItem('vrutti-applied-theme');
@@ -74,11 +41,37 @@ export class VruttiSettings extends LitElement {
 
   disconnectedCallback() {
     super.disconnectedCallback();
+    registry.removeEventListener('change', this.handleRegistryChange);
     window.removeEventListener('vrutti-ipc', this.handleIpc as EventListener);
     if (this.saveTimeout) {
       window.clearTimeout(this.saveTimeout);
       this.saveTimeout = null;
     }
+  }
+
+  private handleRegistryChange = (e: Event) => {
+    const type = (e as CustomEvent).detail;
+    if (type === 'configurations') {
+        this.updateFromRegistry();
+    }
+  };
+
+  private updateFromRegistry() {
+      this.configurations = registry.getConfigurations();
+      if (this.configurations.length > 0 && !this.configurations.find(c => c.title === this.activeCategory) && this.activeCategory !== 'Theme' && this.activeCategory !== 'Keybindings') {
+          this.activeCategory = this.configurations[0].title;
+      }
+      
+      // Initialize defaults
+      const newConfig: Record<string, any> = { ...this.configValues };
+      for (const schema of this.configurations) {
+          for (const [key, prop] of Object.entries(schema.properties)) {
+              if (newConfig[key] === undefined) {
+                  newConfig[key] = prop.default;
+              }
+          }
+      }
+      this.configValues = newConfig;
   }
 
   private handleIpc = (e: Event) => {
@@ -109,7 +102,7 @@ export class VruttiSettings extends LitElement {
   private apply() {
     this.appliedTheme = this.selectedTheme;
     // Broadcast setting-changed so it gets saved to backend and triggers ThemeBridge
-    this.handleSettingChange('workbench.colorTheme' as keyof Config, this.selectedTheme);
+    this.handleSettingChange('workbench.colorTheme', this.selectedTheme);
   }
 
   private applyAndExit() {
@@ -117,8 +110,8 @@ export class VruttiSettings extends LitElement {
     this.dispatchEvent(new CustomEvent('close-settings', { bubbles: true, composed: true }));
   }
 
-  private handleSettingChange(key: keyof Config, value: any) {
-    this.config = { ...this.config, [key]: value };
+  private handleSettingChange(key: string, value: any) {
+    this.configValues = { ...this.configValues, [key]: value };
     
     if (key === 'workbench.colorTheme') {
       this.appliedTheme = value;
@@ -132,7 +125,7 @@ export class VruttiSettings extends LitElement {
     
     this.saveTimeout = window.setTimeout(() => {
       this.dispatchEvent(new CustomEvent('setting-changed', {
-        detail: { key, value: this.config[key] },
+        detail: { key, value: this.configValues[key] },
         bubbles: true,
         composed: true
       }));
@@ -368,12 +361,20 @@ export class VruttiSettings extends LitElement {
       
       <div class="layout">
         <div class="sidebar">
-            ${this.categories.map(c => html`
-            <div class="category-item ${this.activeCategory === c ? 'active' : ''}"
-                 @click=${() => this.activeCategory = c}>
-              ${c}
+            ${this.configurations.map(c => html`
+            <div class="category-item ${this.activeCategory === c.title ? 'active' : ''}"
+                 @click=${() => this.activeCategory = c.title}>
+              ${c.title}
             </div>
           `)}
+            <div class="category-item ${this.activeCategory === 'Theme' ? 'active' : ''}"
+                 @click=${() => this.activeCategory = 'Theme'}>
+              Theme
+            </div>
+            <div class="category-item ${this.activeCategory === 'Keybindings' ? 'active' : ''}"
+                 @click=${() => this.activeCategory = 'Keybindings'}>
+              Keybindings
+            </div>
         </div>
         
         <div class="content">
@@ -390,62 +391,53 @@ export class VruttiSettings extends LitElement {
     `;
   }
 
-  private renderCategoryContent() {
-    switch (this.activeCategory) {
-      case 'Editor':
+  private renderProperty(key: string, prop: ConfigurationProperty) {
+    if (prop.type === 'boolean') {
         return html`
-          <div class="setting-group">
-            <div class="setting-title">Font Size</div>
-            <div class="setting-desc">Controls the font size in pixels.</div>
-            <input type="number" class="input-field" .value=${this.config['editor.fontSize'].toString()} 
-                   @input=${(e: any) => this.handleSettingChange('editor.fontSize', parseInt(e.target.value))} />
-          </div>
-
-          <div class="setting-group">
-            <div class="setting-title">Font Family</div>
-            <div class="setting-desc">Controls the font family.</div>
-            <input type="text" class="input-field" .value=${this.config['editor.fontFamily']} 
-                   @input=${(e: any) => this.handleSettingChange('editor.fontFamily', e.target.value)} />
-          </div>
-
-          <div class="setting-group">
-            <div class="setting-title">Word Wrap</div>
-            <div class="setting-desc">Controls how lines should wrap in the editor.</div>
-            <div class="toggle-container">
-              <input type="checkbox" class="checkbox" .checked=${this.config['editor.wordWrap']} 
-                     @change=${(e: any) => this.handleSettingChange('editor.wordWrap', e.target.checked)} />
-              <span>Enable Word Wrap</span>
+            <div class="setting-group">
+                <div class="setting-title">${key}</div>
+                <div class="setting-desc">${prop.description}</div>
+                <div class="toggle-container">
+                    <input type="checkbox" class="checkbox" .checked=${this.configValues[key]} 
+                           @change=${(e: any) => this.handleSettingChange(key, e.target.checked)} />
+                    <span>Enable</span>
+                </div>
             </div>
-          </div>
-
-          <div class="setting-group">
-            <div class="setting-title">Tab Size</div>
-            <div class="setting-desc">The number of spaces a tab is equal to.</div>
-            <input type="number" class="input-field" .value=${this.config['editor.tabSize'].toString()} 
-                   @input=${(e: any) => this.handleSettingChange('editor.tabSize', parseInt(e.target.value))} />
-          </div>
-
-          <div class="setting-group">
-            <div class="setting-title">Insert Spaces</div>
-            <div class="setting-desc">Insert spaces when pressing Tab.</div>
-            <div class="toggle-container">
-              <input type="checkbox" class="checkbox" .checked=${this.config['editor.insertSpaces']} 
-                     @change=${(e: any) => this.handleSettingChange('editor.insertSpaces', e.target.checked)} />
-              <span>Use Spaces for Indentation</span>
-            </div>
-          </div>
-
-          <div class="setting-group">
-            <div class="setting-title">Minimap</div>
-            <div class="setting-desc">Controls whether the minimap is shown.</div>
-            <div class="toggle-container">
-              <input type="checkbox" class="checkbox" .checked=${this.config['editor.minimap.enabled']} 
-                     @change=${(e: any) => this.handleSettingChange('editor.minimap.enabled', e.target.checked)} />
-              <span>Enable Minimap</span>
-            </div>
-          </div>
         `;
-      case 'Theme':
+    } else if (prop.type === 'number') {
+        return html`
+            <div class="setting-group">
+                <div class="setting-title">${key}</div>
+                <div class="setting-desc">${prop.description}</div>
+                <input type="number" class="input-field" .value=${this.configValues[key]?.toString()} 
+                       @input=${(e: any) => this.handleSettingChange(key, parseInt(e.target.value))} />
+            </div>
+        `;
+    } else if (prop.type === 'enum' && prop.enum) {
+        return html`
+            <div class="setting-group">
+                <div class="setting-title">${key}</div>
+                <div class="setting-desc">${prop.description}</div>
+                <select class="input-field" @change=${(e: any) => this.handleSettingChange(key, e.target.value)}>
+                    ${prop.enum.map(opt => html`<option value="${opt}" ?selected=${opt === this.configValues[key]}>${opt}</option>`)}
+                </select>
+            </div>
+        `;
+    } else {
+        // string
+        return html`
+            <div class="setting-group">
+                <div class="setting-title">${key}</div>
+                <div class="setting-desc">${prop.description}</div>
+                <input type="text" class="input-field" .value=${this.configValues[key] || ''} 
+                       @input=${(e: any) => this.handleSettingChange(key, e.target.value)} />
+            </div>
+        `;
+    }
+  }
+
+  private renderCategoryContent() {
+    if (this.activeCategory === 'Theme') {
         return html`
           <div class="setting-group">
             <div class="setting-title">Color Theme</div>
@@ -456,47 +448,25 @@ export class VruttiSettings extends LitElement {
             </select>
           </div>
         `;
-      case 'Appearance':
-        return html`
-          <div class="setting-group">
-            <div class="setting-title">Enable Transparency Effects</div>
-            <div class="setting-desc">Apply premium frosted glass transparency to UI panels. (Recommended with Vrutti Glass theme)</div>
-            <div class="toggle-container">
-              <input type="checkbox" class="checkbox" .checked=${this.config['appearance.transparencyEffects']} 
-                     @change=${(e: any) => this.handleSettingChange('appearance.transparencyEffects', e.target.checked)} />
-              <span>Transparency Effects Enabled</span>
-            </div>
-          </div>
-        `;
-      case 'General':
-        return html`
-          <div class="setting-group">
-            <div class="setting-title">Auto Save</div>
-            <div class="setting-desc">Controls whether dirty files are automatically saved.</div>
-            <div class="toggle-container">
-              <input type="checkbox" class="checkbox" .checked=${this.config['files.autoSave']} 
-                     @change=${(e: any) => this.handleSettingChange('files.autoSave', e.target.checked)} />
-              <span>Enable Auto Save</span>
-            </div>
-          </div>
-
-          <div class="setting-group">
-            <div class="setting-title">Telemetry</div>
-            <div class="setting-desc">Enable crash reports and usage data collection to help improve Vrutti.</div>
-            <div class="toggle-container">
-              <input type="checkbox" class="checkbox" .checked=${this.config['telemetry.enableTelemetry']} 
-                     @change=${(e: any) => this.handleSettingChange('telemetry.enableTelemetry', e.target.checked)} />
-              <span>Send Telemetry Data</span>
-            </div>
-          </div>
-        `;
-      case 'Keybindings':
-      default:
+    } else if (this.activeCategory === 'Keybindings') {
         return html`
           <div style="color: var(--vrutti-surface-border); margin-top: 40px; text-align: center;">
             No settings found in this category.
           </div>
         `;
     }
+
+    const schema = this.configurations.find(c => c.title === this.activeCategory);
+    if (!schema) {
+        return html`
+          <div style="color: var(--vrutti-surface-border); margin-top: 40px; text-align: center;">
+            No settings found in this category.
+          </div>
+        `;
+    }
+
+    return html`
+        ${Object.entries(schema.properties).map(([key, prop]) => this.renderProperty(key, prop))}
+    `;
   }
 }
