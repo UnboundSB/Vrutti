@@ -32,6 +32,7 @@ export class VruttiStatusBar extends LitElement {
     window.addEventListener('editor-cursor-changed', this.handleCursorChange as EventListener);
     window.addEventListener('active-file-changed', this.handleActiveFileChange as EventListener);
     window.addEventListener('vrutti-statusbar-update', this.handleStatusUpdate as EventListener);
+    window.addEventListener('setting-changed', this.handleSettingChanged as EventListener);
     registry.addEventListener('change', this.handleRegistryChange);
     this.updateFromRegistry();
     this.fetchGitBranch();
@@ -42,8 +43,16 @@ export class VruttiStatusBar extends LitElement {
     window.removeEventListener('editor-cursor-changed', this.handleCursorChange as EventListener);
     window.removeEventListener('active-file-changed', this.handleActiveFileChange as EventListener);
     window.removeEventListener('vrutti-statusbar-update', this.handleStatusUpdate as EventListener);
+    window.removeEventListener('setting-changed', this.handleSettingChanged as EventListener);
     registry.removeEventListener('change', this.handleRegistryChange);
   }
+
+  private handleSettingChanged = (e: CustomEvent) => {
+    if (e.detail && e.detail.key === 'editor.tabSize') {
+      this.dynamicTexts.set('indentation', `Spaces: ${e.detail.value}`);
+      this.requestUpdate();
+    }
+  };
 
   private handleStatusUpdate = (e: CustomEvent) => {
     const detail = e.detail;
@@ -95,6 +104,9 @@ export class VruttiStatusBar extends LitElement {
       }
     }
     this.dynamicTexts.set('language', lang);
+    if (!this.dynamicTexts.has('encoding')) this.dynamicTexts.set('encoding', 'UTF-8');
+    if (!this.dynamicTexts.has('eol')) this.dynamicTexts.set('eol', 'CRLF');
+    if (!this.dynamicTexts.has('indentation')) this.dynamicTexts.set('indentation', 'Spaces: 4');
     this.requestUpdate();
   };
 
