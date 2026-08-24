@@ -326,4 +326,121 @@ export function registerCoreContributions() {
     registry.registerKeybinding({ key: 'Ctrl+H', command: 'vrutti.action.editor.replace' });
     registry.registerKeybinding({ key: 'Ctrl+`', command: 'vrutti.action.toggleTerminal' });
     registry.registerKeybinding({ key: 'F5', command: 'vrutti.action.debug.start' });
+
+    // Configuration
+    registry.registerConfiguration({
+        id: 'general',
+        title: 'General',
+        order: 10,
+        properties: {
+            'telemetry.enableTelemetry': {
+                type: 'boolean',
+                default: false,
+                description: 'Enable telemetry to send crash reports and usage data.'
+            }
+        }
+    });
+
+    registry.registerConfiguration({
+        id: 'editor',
+        title: 'Editor',
+        order: 20,
+        properties: {
+            'editor.fontSize': { type: 'number', default: 14, description: 'Controls the font size in pixels.' },
+            'editor.fontFamily': { type: 'string', default: "'Fira Code', monospace", description: 'Controls the font family.' },
+            'editor.wordWrap': { type: 'boolean', default: false, description: 'Controls whether lines should wrap.' },
+            'editor.tabSize': { type: 'number', default: 4, description: 'The number of spaces a tab is equal to.' },
+            'editor.insertSpaces': { type: 'boolean', default: true, description: 'Insert spaces when pressing Tab.' },
+            'editor.minimap.enabled': { type: 'boolean', default: true, description: 'Controls whether the minimap is shown.' },
+            'files.autoSave': { type: 'boolean', default: false, description: 'Controls auto save of dirty files.' }
+        }
+    });
+
+    registry.registerConfiguration({
+        id: 'appearance',
+        title: 'Appearance',
+        order: 30,
+        properties: {
+            'appearance.transparencyEffects': { type: 'boolean', default: false, description: 'Enable window transparency effects.' }
+        }
+    });
+
+    // Quick Pick Providers
+    registry.registerQuickPickProvider({
+        prefix: '',
+        description: 'Search files by name...',
+        getResults: async (query: string) => {
+            try {
+                let actualDir = (window as any).currentWorkspace || '.';
+                if (actualDir.startsWith('file:///')) actualDir = actualDir.substring(8);
+                else if (actualDir.startsWith('file://')) actualDir = actualDir.substring(7);
+
+                if ((window as any).vruttiSearch) {
+                    const req = { directory: actualDir };
+                    const resStr = await (window as any).vruttiSearch({ command: "find_files", ...req });
+                    let files = JSON.parse(resStr) as string[];
+                    
+                    const q = query.toLowerCase();
+                    if (q) {
+                        files = files.filter(f => {
+                            const lowerF = f.toLowerCase();
+                            if (lowerF.includes(q)) return true;
+                            let qIndex = 0;
+                            for (let i = 0; i < lowerF.length; i++) {
+                                if (lowerF[i] === q[qIndex]) {
+                                    qIndex++;
+                                    if (qIndex === q.length) return true;
+                                }
+                            }
+                            return false;
+                        });
+                    }
+                    return files.slice(0, 50).map(file => ({
+                        label: file.split(/[\\/]/).pop() || file,
+                        detail: file,
+                        data: { type: 'file', path: file }
+                    }));
+                }
+            } catch (e) {
+                console.error("Failed to fetch files:", e);
+            }
+            return [];
+        },
+        onSelect: (item) => {
+            if (item.data && item.data.type === 'file') {
+                let fullPath = item.data.path;
+                if (!fullPath.startsWith("file:///")) {
+                    fullPath = "file:///" + fullPath;
+                }
+                window.dispatchEvent(new CustomEvent('open-file', {
+                    detail: { path: fullPath, name: fullPath.split(/[\\/]/).pop(), line: 1 },
+                }));
+            }
+        }
+    });
+
+    registry.registerQuickPickProvider({
+        prefix: '>',
+        description: 'Run a command...',
+        getResults: (query: string) => {
+            const commands = registry.getCommands();
+            const q = query.toLowerCase();
+            return commands.map(c => ({
+                label: c.id,
+                data: { type: 'command', id: c.id }
+            })).filter(item => item.label.toLowerCase().includes(q));
+        },
+        onSelect: (item) => {
+            if (item.data && item.data.type === 'command') {
+                registry.executeCommand(item.data.id);
+            }
+        }
+    });
+    
+    // Editor Types
+    registry.registerEditorProvider({
+        id: 'default',
+        extensions: ['*'],
+        component: 'vrutti-editor'
+    });
 }
