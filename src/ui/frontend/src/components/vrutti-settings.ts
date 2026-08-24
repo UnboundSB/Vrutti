@@ -1,6 +1,6 @@
 import { LitElement, css, html } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
-import { registry, ConfigurationSchema, ConfigurationProperty } from '../core/Registry';
+import { registry, ConfigurationSchema, ConfigurationProperty, SettingsCategoryContribution } from '../core/Registry';
 import { globalHoverStyle } from '../shared-styles';
 
 @customElement('vrutti-settings')
@@ -8,6 +8,7 @@ export class VruttiSettings extends LitElement {
   @state() private activeCategory = 'General';
   @state() private configValues: Record<string, any> = {};
   @state() private configurations: ConfigurationSchema[] = [];
+  @state() private categories: SettingsCategoryContribution[] = [];
   @state() private availableThemes: { id: string, label: string }[] = [];
   @state() private appliedTheme: string = '';
   @state() private selectedTheme: string = '';
@@ -58,8 +59,10 @@ export class VruttiSettings extends LitElement {
 
   private updateFromRegistry() {
       this.configurations = registry.getConfigurations();
-      if (this.configurations.length > 0 && !this.configurations.find(c => c.title === this.activeCategory) && this.activeCategory !== 'Theme' && this.activeCategory !== 'Keybindings') {
-          this.activeCategory = this.configurations[0].title;
+      this.categories = registry.getSettingsCategories();
+
+      if (this.categories.length > 0 && !this.categories.find(c => c.id === this.activeCategory)) {
+          this.activeCategory = this.categories[0].id;
       }
       
       // Initialize defaults
@@ -361,20 +364,12 @@ export class VruttiSettings extends LitElement {
       
       <div class="layout">
         <div class="sidebar">
-            ${this.configurations.map(c => html`
-            <div class="category-item ${this.activeCategory === c.title ? 'active' : ''}"
-                 @click=${() => this.activeCategory = c.title}>
+            ${this.categories.map(c => html`
+            <div class="category-item ${this.activeCategory === c.id ? 'active' : ''}"
+                 @click=${() => this.activeCategory = c.id}>
               ${c.title}
             </div>
           `)}
-            <div class="category-item ${this.activeCategory === 'Theme' ? 'active' : ''}"
-                 @click=${() => this.activeCategory = 'Theme'}>
-              Theme
-            </div>
-            <div class="category-item ${this.activeCategory === 'Keybindings' ? 'active' : ''}"
-                 @click=${() => this.activeCategory = 'Keybindings'}>
-              Keybindings
-            </div>
         </div>
         
         <div class="content">
@@ -437,6 +432,12 @@ export class VruttiSettings extends LitElement {
   }
 
   private renderCategoryContent() {
+    const activeCat = this.categories.find(c => c.id === this.activeCategory);
+    if (activeCat && activeCat.component) {
+        // If a component is registered, render it
+        // (Uses unsafeHTML or similar if needed, but for now we'll support built-in ones natively)
+    }
+
     if (this.activeCategory === 'Theme') {
         return html`
           <div class="setting-group">
@@ -456,8 +457,8 @@ export class VruttiSettings extends LitElement {
         `;
     }
 
-    const schema = this.configurations.find(c => c.title === this.activeCategory);
-    if (!schema) {
+    const schema = this.configurations.find(c => c.id === this.activeCategory);
+    if (!schema || !schema.properties || Object.keys(schema.properties).length === 0) {
         return html`
           <div style="color: var(--vrutti-surface-border); margin-top: 40px; text-align: center;">
             No settings found in this category.
