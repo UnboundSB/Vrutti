@@ -5,8 +5,7 @@ import './components/vrutti-statusbar';
 import './components/vrutti-menubar';
 import './components/vrutti-panel';
 import './components/vrutti-editor-layout';
-import './components/vrutti-quick-open';
-import './components/vrutti-task-picker';
+import './components/vrutti-quick-pick';
 import './components/vrutti-extension-details';
 import { VruttiTaskManager } from './components/vrutti-task-manager';
 import { themeBridge } from './ThemeBridge';
@@ -27,10 +26,9 @@ export class VruttiApp extends LitElement {
 
   @state() private showSettings = false;
   @state() private showGitGraph = false;
-  @state() private showTaskPicker = false;
-  @state() private taskPickerMode: 'run' | 'defaultBuild' | 'active' = 'run';
+  @state() private showQuickPick = false;
+  @state() private quickPickPrefix = '';
   @state() private showTerminal = false;
-  @state() private showQuickOpen = false;
   @state() private terminalHeight = 300;
   
   @state() private showOpenFolderModal = false;
@@ -348,10 +346,9 @@ export class VruttiApp extends LitElement {
       }
     });
 
-    const openQuickOpen = () => { this.showQuickOpen = true; };
-    registry.registerCommand('vrutti.action.showCommands', openQuickOpen);
-    registry.registerCommand('vrutti.action.openView', openQuickOpen);
-    registry.registerCommand('vrutti.action.quickOpen', openQuickOpen);
+    registry.registerCommand('vrutti.action.showCommands', () => { this.quickPickPrefix = '>'; this.showQuickPick = true; });
+    registry.registerCommand('vrutti.action.openView', () => { this.quickPickPrefix = '>'; this.showQuickPick = true; });
+    registry.registerCommand('vrutti.action.quickOpen', () => { this.quickPickPrefix = ''; this.showQuickPick = true; });
 
     registry.registerCommand('vrutti.action.help.about', () => {
       window.alert('Vrutti IDE\\nVersion 1.0.0\\nBuilt by UnboundSB');
@@ -364,16 +361,16 @@ export class VruttiApp extends LitElement {
     registry.registerCommand('vrutti.action.terminal.new', () => { this.showTerminal = true; });
 
     registry.registerCommand('vrutti.action.tasks.runTask', () => {
-      this.taskPickerMode = 'run';
-      this.showTaskPicker = true;
+      this.quickPickPrefix = 'task ';
+      this.showQuickPick = true;
     });
     registry.registerCommand('vrutti.action.tasks.showActive', () => {
-      this.taskPickerMode = 'active';
-      this.showTaskPicker = true;
+      this.quickPickPrefix = 'task active ';
+      this.showQuickPick = true;
     });
     registry.registerCommand('vrutti.action.tasks.configureDefault', () => {
-      this.taskPickerMode = 'defaultBuild';
-      this.showTaskPicker = true;
+      this.quickPickPrefix = 'task default ';
+      this.showQuickPick = true;
     });
     registry.registerCommand('vrutti.action.tasks.configure', () => {
       VruttiTaskManager.ensureTasksFileExists().then(path => {
@@ -385,8 +382,8 @@ export class VruttiApp extends LitElement {
     registry.registerCommand('vrutti.action.tasks.build', () => {
       VruttiTaskManager.runDefaultBuildTask().then(ran => {
           if (!ran) {
-              this.taskPickerMode = 'defaultBuild';
-              this.showTaskPicker = true;
+              this.quickPickPrefix = 'task default ';
+              this.showQuickPick = true;
           }
       });
     });
@@ -1044,12 +1041,8 @@ export class VruttiApp extends LitElement {
               <vrutti-git-graph @close-git-graph=${() => this.showGitGraph = false}></vrutti-git-graph>
           ` : ''}
 
-          ${this.showTaskPicker ? html`
-              <vrutti-task-picker .mode=${this.taskPickerMode} @close-task-picker=${() => this.showTaskPicker = false}></vrutti-task-picker>
-          ` : ''}
-
-          ${this.showQuickOpen ? html`
-            <vrutti-quick-open @close-quick-open=${() => this.showQuickOpen = false}></vrutti-quick-open>
+          ${this.showQuickPick ? html`
+            <vrutti-quick-pick .initialPrefix=${this.quickPickPrefix} @close-quick-pick=${() => this.showQuickPick = false}></vrutti-quick-pick>
           ` : ''}
         </div>
       </div>
