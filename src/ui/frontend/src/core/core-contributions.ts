@@ -112,21 +112,18 @@ export function registerCoreContributions() {
         id: 'indentation',
         alignment: 'right',
         order: 20,
-        text: 'Spaces: 4',
         tooltip: 'Select Indentation'
     });
     registry.registerStatusBar({
         id: 'encoding',
         alignment: 'right',
         order: 30,
-        text: 'UTF-8',
         tooltip: 'Select Encoding'
     });
     registry.registerStatusBar({
         id: 'eol',
         alignment: 'right',
         order: 40,
-        text: 'CRLF',
         tooltip: 'Select End of Line Sequence'
     });
     registry.registerStatusBar({
@@ -315,29 +312,34 @@ export function registerCoreContributions() {
     registry.registerMenu({
         id: 'help',
         title: 'Help',
-        order: 80,
+        order: 50,
         items: [
-            { label: 'Welcome', command: 'vrutti.action.help.welcome' },
-            { label: 'Show All Commands', command: 'vrutti.action.showCommands' },
-            { label: 'Documentation', command: 'vrutti.action.help.documentation' },
-            { label: 'Editor Playground', command: 'vrutti.action.help.playground' },
-            { label: 'Release Notes', command: 'vrutti.action.help.releaseNotes' },
-            { label: 'sep1', separator: true },
-            { label: 'Keyboard Shortcuts Reference', command: 'vrutti.action.help.keyboardShortcuts' },
-            { label: 'Video Tutorials', command: 'vrutti.action.help.videoTutorials' },
-            { label: 'Tips and Tricks', command: 'vrutti.action.help.tipsAndTricks' },
-            { label: 'sep2', separator: true },
-            { label: 'Join Us on YouTube', command: 'vrutti.action.help.youtube' },
-            { label: 'Search Feature Requests', command: 'vrutti.action.help.featureRequests' },
-            { label: 'Report Issue', command: 'vrutti.action.help.reportIssue' },
-            { label: 'sep3', separator: true },
-            { label: 'View License', command: 'vrutti.action.help.license' },
-            { label: 'Privacy Statement', command: 'vrutti.action.help.privacy' },
-            { label: 'sep4', separator: true },
-            { label: 'Toggle Developer Tools', command: 'vrutti.action.toggleDevTools' },
-            { label: 'sep5', separator: true },
-            { label: 'Check for Updates', command: 'vrutti.action.help.checkUpdates' },
-            { label: 'About', command: 'vrutti.action.help.about' }
+            { label: 'Welcome', command: 'vrutti.action.help.welcome', order: 10 },
+            { label: 'Documentation', command: 'vrutti.action.help.documentation', order: 20 },
+            { label: 'Playground', command: 'vrutti.action.help.playground', order: 30 },
+            { label: 'Release Notes', command: 'vrutti.action.help.releaseNotes', order: 40 },
+            { separator: true, order: 45 },
+            { label: 'Keyboard Shortcuts Reference', command: 'vrutti.action.help.keyboardShortcuts', order: 50 },
+            { label: 'Video Tutorials', command: 'vrutti.action.help.videoTutorials', order: 60 },
+            { label: 'Tips and Tricks', command: 'vrutti.action.help.tipsAndTricks', order: 70 },
+            { separator: true, order: 75 },
+            { label: 'Join us on YouTube', command: 'vrutti.action.help.youtube', order: 80 },
+            { separator: true, order: 85 },
+            { label: 'Feature Request', command: 'vrutti.action.help.featureRequests', order: 90 },
+            { label: 'Report Issue', command: 'vrutti.action.help.reportIssue', order: 100 },
+            { separator: true, order: 105 },
+            { label: 'View License', command: 'vrutti.action.help.license', order: 110 },
+            { label: 'Privacy Statement', command: 'vrutti.action.help.privacy', order: 120 }
+        ]
+    });
+
+    // Explorer Context Menu
+    registry.registerMenu({
+        id: 'explorer/context',
+        items: [
+            { label: 'Open File', command: 'explorer.openFile', when: '!isDirectory', order: 10 },
+            { label: 'Rename', command: 'explorer.rename', order: 20 },
+            { label: 'Delete', command: 'explorer.delete', order: 30 }
         ]
     });
 
@@ -506,19 +508,85 @@ export function registerCoreContributions() {
         },
         onSelect: async (item) => {
             if (item.data && item.data.type === 'task_default') {
-                const config = await VruttiTaskManager.getTasksConfig();
-                if (config) {
-                    config.tasks.forEach(t => {
-                        t.isDefaultBuild = (t.label === item.data.task.label);
-                    });
-                    await VruttiTaskManager.saveTasksConfig(config);
-                    const path = await VruttiTaskManager.ensureTasksFileExists();
-                    if (path) {
-                        window.dispatchEvent(new CustomEvent('open-file', {
-                            detail: { path: path, name: 'tasks.json', line: 1 }
-                        }));
+                try {
+                    const config = await VruttiTaskManager.getTasksConfig();
+                    if (config) {
+                        config.tasks.forEach(t => {
+                            t.isDefaultBuild = (t.label === item.data.task.label);
+                        });
+                        await VruttiTaskManager.saveTasksConfig(config);
+                        const path = await VruttiTaskManager.ensureTasksFileExists();
+                        if (path) {
+                            window.dispatchEvent(new CustomEvent('open-file', {
+                                detail: { path: path, name: 'tasks.json', line: 1 }
+                            }));
+                        }
                     }
+                } catch (err) {
+                    console.error('Failed to configure default build task:', err);
                 }
+            }
+        }
+    });
+
+    // --- Dynamic Status Bar Items ---
+    registry.registerCommand('vrutti.statusbar.updateLineCol', (args) => {
+        window.dispatchEvent(new CustomEvent('vrutti-statusbar-update', {
+            detail: {
+                id: 'cursor-pos',
+                text: `Ln ${args.line}, Col ${args.col}`
+            }
+        }));
+    });
+
+    registry.registerCommand('explorer.openFile', (context) => {
+        if (context && context.path) {
+            window.dispatchEvent(new CustomEvent('open-file', {
+                detail: { path: context.path, name: context.name || '' }
+            }));
+        }
+    });
+
+    registry.registerCommand('explorer.rename', async (context) => {
+        if (!context || !context.path || !context.name) return;
+        
+        const newName = window.prompt(`Rename '${context.name}' to:`, context.name);
+        if (newName && newName !== context.name) {
+            let basePath = context.path.substring(0, context.path.lastIndexOf('/'));
+            if (!basePath.includes('/')) basePath = context.path.substring(0, context.path.lastIndexOf('\\'));
+            const newPath = basePath + '/' + newName;
+            
+            let oldPathClean = context.path;
+            if (oldPathClean.startsWith('file:///')) oldPathClean = oldPathClean.substring(8);
+            else if (oldPathClean.startsWith('file://')) oldPathClean = oldPathClean.substring(7);
+
+            let newPathClean = newPath;
+            if (newPathClean.startsWith('file:///')) newPathClean = newPathClean.substring(8);
+            else if (newPathClean.startsWith('file://')) newPathClean = newPathClean.substring(7);
+            
+            if ((window as any).vruttiRenameFile) {
+                await (window as any).vruttiRenameFile(oldPathClean, newPathClean);
+                window.dispatchEvent(new CustomEvent('explorer-refresh'));
+            } else {
+                console.warn('vruttiRenameFile not available in native backend');
+            }
+        }
+    });
+
+    registry.registerCommand('explorer.delete', async (context) => {
+        if (!context || !context.path || !context.name) return;
+        
+        const confirmStr = window.confirm(`Are you sure you want to delete '${context.name}'?`);
+        if (confirmStr) {
+            let pathClean = context.path;
+            if (pathClean.startsWith('file:///')) pathClean = pathClean.substring(8);
+            else if (pathClean.startsWith('file://')) pathClean = pathClean.substring(7);
+            
+            if ((window as any).vruttiDeleteFile) {
+                await (window as any).vruttiDeleteFile(pathClean);
+                window.dispatchEvent(new CustomEvent('explorer-refresh'));
+            } else {
+                console.warn('vruttiDeleteFile not available in native backend');
             }
         }
     });
