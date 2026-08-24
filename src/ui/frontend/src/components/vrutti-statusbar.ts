@@ -1,12 +1,20 @@
 import { LitElement, css, html } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { unsafeSVG } from 'lit/directives/unsafe-svg.js';
+import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { icon_git_branch, icon_error, icon_warning } from './codicons';
+import { registry, StatusBarContribution } from '../core/Registry';
 
 import { globalHoverStyle } from '../shared-styles';
 
 @customElement('vrutti-statusbar')
 export class VruttiStatusBar extends LitElement {
+
+  @state()
+  private leftItems: StatusBarContribution[] = [];
+
+  @state()
+  private rightItems: StatusBarContribution[] = [];
 
   @state()
   private branch = 'main';
@@ -39,6 +47,8 @@ export class VruttiStatusBar extends LitElement {
     super.connectedCallback();
     window.addEventListener('editor-cursor-changed', this.handleCursorChange as EventListener);
     window.addEventListener('active-file-changed', this.handleActiveFileChange as EventListener);
+    registry.addEventListener('change', this.handleRegistryChange);
+    this.updateFromRegistry();
     this.fetchGitBranch();
   }
 
@@ -46,6 +56,19 @@ export class VruttiStatusBar extends LitElement {
     super.disconnectedCallback();
     window.removeEventListener('editor-cursor-changed', this.handleCursorChange as EventListener);
     window.removeEventListener('active-file-changed', this.handleActiveFileChange as EventListener);
+    registry.removeEventListener('change', this.handleRegistryChange);
+  }
+
+  private handleRegistryChange = (e: Event) => {
+    const detail = (e as CustomEvent).detail;
+    if (detail && detail.type === 'statusbar') {
+      this.updateFromRegistry();
+    }
+  };
+
+  private updateFromRegistry() {
+    this.leftItems = registry.getStatusBarItems('left');
+    this.rightItems = registry.getStatusBarItems('right');
   }
 
   private handleCursorChange = (e: CustomEvent) => {
@@ -147,34 +170,39 @@ export class VruttiStatusBar extends LitElement {
     }
   `];
 
-  render() {
-    return html`
-      <div class="section left">
-        <div class="item" title="Git Branch">
-          ${unsafeSVG(icon_git_branch)}
-          <span>${this.branch}</span>
-        </div>
+  private renderItem(item: StatusBarContribution) {
+    if (item.component === 'errors-warnings') {
+      return html`
         <div class="item errors-warnings" title="0 Errors, 0 Warnings">
           ${unsafeSVG(icon_error)} <span>${this.errors}</span>
           ${unsafeSVG(icon_warning)} <span>${this.warnings}</span>
         </div>
+      `;
+    }
+    
+    let content = item.text || '';
+    if (item.id === 'git-branch') content = this.branch;
+    if (item.id === 'cursor-position') content = `Ln ${this.line}, Col ${this.col}`;
+    if (item.id === 'indentation') content = this.indent;
+    if (item.id === 'encoding') content = this.encoding;
+    if (item.id === 'eol') content = this.eol;
+    if (item.id === 'language') content = this.language;
+
+    return html`
+      <div class="item" title="${item.tooltip || ''}">
+        ${item.iconContent ? unsafeSVG(item.iconContent) : ''}
+        ${content ? html`<span>${content}</span>` : ''}
+      </div>
+    `;
+  }
+
+  render() {
+    return html`
+      <div class="section left">
+        ${this.leftItems.map(item => this.renderItem(item))}
       </div>
       <div class="section right">
-        <div class="item" title="Go to Line/Column">
-          Ln ${this.line}, Col ${this.col}
-        </div>
-        <div class="item" title="Select Indentation">
-          ${this.indent}
-        </div>
-        <div class="item" title="Select Encoding">
-          ${this.encoding}
-        </div>
-        <div class="item" title="Select End of Line Sequence">
-          ${this.eol}
-        </div>
-        <div class="item" title="Select Language Mode">
-          ${this.language}
-        </div>
+        ${this.rightItems.map(item => this.renderItem(item))}
       </div>
     `;
   }
