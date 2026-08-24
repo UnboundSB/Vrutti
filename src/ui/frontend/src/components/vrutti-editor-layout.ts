@@ -2,6 +2,7 @@ import { LitElement, html, css, TemplateResult } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import './vrutti-editor';
 import { globalHoverStyle } from '../shared-styles';
+import { registry } from '../core/Registry';
 
 type PaneId = string;
 
@@ -668,6 +669,20 @@ export class VruttiEditorLayout extends LitElement {
         }
     }
 
+    private renderEditorComponent(filePath: string) {
+        const extMatch = filePath.match(/\.([^.]+)$/);
+        const ext = extMatch ? extMatch[1].toLowerCase() : '';
+        const provider = registry.getEditorProviderForExtension(ext) || registry.getEditorProviderForExtension('*');
+        const componentName = provider?.component || 'vrutti-editor';
+        
+        const el = document.createElement(componentName) as any;
+        el.filePath = filePath;
+        el.style.flex = '1 1 0%';
+        el.style.width = '100%';
+        el.style.height = '100%';
+        return el;
+    }
+
     private renderLeaf(leaf: LeafNode): TemplateResult {
         return html`
             <div class="leaf-container" @click=${() => { this.activePaneId = leaf.id; this.requestUpdate(); }}>
@@ -717,9 +732,7 @@ export class VruttiEditorLayout extends LitElement {
                     </div>
                 </div>
                 <div class="editor-area ${this.activePaneId === leaf.id ? 'active-pane' : ''}" style="${this.activePaneId === leaf.id ? 'box-shadow: inset 0 0 0 1px var(--vrutti-surface-border);' : ''}">
-                    ${leaf.activeTab ? html`
-                        <vrutti-editor .filePath=${leaf.activeTab} style="flex: 1 1 0%;"></vrutti-editor>
-                    ` : html`
+                    ${leaf.activeTab ? this.renderEditorComponent(leaf.activeTab) : html`
                         <div class="empty-pane" style="position: relative; width: 100%; height: 100%; overflow: hidden;">
                             <img src="./vrutti-logo.png" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.15; pointer-events: none; user-select: none; width: 400px; height: 400px; object-fit: contain;" />
                         </div>
