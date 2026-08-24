@@ -16,7 +16,10 @@ export class VruttiStatusBar extends LitElement {
   private rightItems: StatusBarContribution[] = [];
 
   @state()
-  private branch = 'main';
+  private dynamicTexts: Map<string, string> = new Map();
+
+  @state()
+  private dynamicIcons: Map<string, string> = new Map();
 
   @state()
   private errors = 0;
@@ -24,28 +27,11 @@ export class VruttiStatusBar extends LitElement {
   @state()
   private warnings = 0;
 
-  @state()
-  private line = 1;
-
-  @state()
-  private col = 1;
-
-  @state()
-  private indent = 'Spaces: 4';
-
-  @state()
-  private encoding = 'UTF-8';
-
-  @state()
-  private eol = 'CRLF';
-
-  @state()
-  private language = 'TypeScript';
-
   async connectedCallback() {
     super.connectedCallback();
     window.addEventListener('editor-cursor-changed', this.handleCursorChange as EventListener);
     window.addEventListener('active-file-changed', this.handleActiveFileChange as EventListener);
+    window.addEventListener('vrutti-statusbar-update', this.handleStatusUpdate as EventListener);
     registry.addEventListener('change', this.handleRegistryChange);
     this.updateFromRegistry();
     this.fetchGitBranch();
@@ -55,8 +41,18 @@ export class VruttiStatusBar extends LitElement {
     super.disconnectedCallback();
     window.removeEventListener('editor-cursor-changed', this.handleCursorChange as EventListener);
     window.removeEventListener('active-file-changed', this.handleActiveFileChange as EventListener);
+    window.removeEventListener('vrutti-statusbar-update', this.handleStatusUpdate as EventListener);
     registry.removeEventListener('change', this.handleRegistryChange);
   }
+
+  private handleStatusUpdate = (e: CustomEvent) => {
+    const detail = e.detail;
+    if (detail && detail.id) {
+        if (detail.text !== undefined) this.dynamicTexts.set(detail.id, detail.text);
+        if (detail.iconContent !== undefined) this.dynamicIcons.set(detail.id, detail.iconContent);
+        this.requestUpdate();
+    }
+  };
 
   private handleRegistryChange = (e: Event) => {
     const detail = (e as CustomEvent).detail;
@@ -72,31 +68,34 @@ export class VruttiStatusBar extends LitElement {
 
   private handleCursorChange = (e: CustomEvent) => {
     if (e.detail) {
-      this.line = e.detail.line || 1;
-      this.col = e.detail.col || 1;
+      const line = e.detail.line || 1;
+      const col = e.detail.col || 1;
+      this.dynamicTexts.set('cursor-position', `Ln ${line}, Col ${col}`);
+      this.requestUpdate();
     }
   };
 
   private handleActiveFileChange = (e: CustomEvent) => {
+    let lang = 'Plain Text';
     if (e.detail && e.detail.path) {
       const ext = e.detail.path.split('.').pop()?.toLowerCase();
       switch (ext) {
-        case 'js': this.language = 'JavaScript'; break;
-        case 'ts': this.language = 'TypeScript'; break;
+        case 'js': lang = 'JavaScript'; break;
+        case 'ts': lang = 'TypeScript'; break;
         case 'cpp':
         case 'hpp':
         case 'c':
-        case 'h': this.language = 'C++'; break;
-        case 'json': this.language = 'JSON'; break;
-        case 'md': this.language = 'Markdown'; break;
-        case 'html': this.language = 'HTML'; break;
-        case 'css': this.language = 'CSS'; break;
-        case 'ps1': this.language = 'PowerShell'; break;
-        default: this.language = 'Plain Text'; break;
+        case 'h': lang = 'C++'; break;
+        case 'json': lang = 'JSON'; break;
+        case 'md': lang = 'Markdown'; break;
+        case 'html': lang = 'HTML'; break;
+        case 'css': lang = 'CSS'; break;
+        case 'ps1': lang = 'PowerShell'; break;
+        default: lang = 'Plain Text'; break;
       }
-    } else {
-      this.language = 'Plain Text';
     }
+    this.dynamicTexts.set('language', lang);
+    this.requestUpdate();
   };
 
   private async fetchGitBranch() {
@@ -109,7 +108,8 @@ export class VruttiStatusBar extends LitElement {
         const res = await (window as any).vruttiGitCommand(actualDir, "git rev-parse --abbrev-ref HEAD");
         const parsed = JSON.parse(res);
         if (parsed.success && parsed.output) {
-            this.branch = parsed.output.trim();
+            this.dynamicTexts.set('git-branch', parsed.output.trim());
+            this.requestUpdate();
         }
       }
     } catch (e) {
@@ -179,13 +179,8 @@ export class VruttiStatusBar extends LitElement {
       `;
     }
     
-    let content = item.text || '';
-    if (item.id === 'git-branch') content = this.branch;
-    if (item.id === 'cursor-position') content = `Ln ${this.line}, Col ${this.col}`;
-    if (item.id === 'indentation') content = this.indent;
-    if (item.id === 'encoding') content = this.encoding;
-    if (item.id === 'eol') content = this.eol;
-    if (item.id === 'language') content = this.language;
+    let content = this.dynamicTexts.has(item.id) ? this.dynamicTexts.get(item.id) : item.text;
+    let icon = this.dynamicIcons.has(item.id) ? this.dynamicIcons.get(item.id) : item.iconContent;
 
     return html`
       <div class="item" title="${item.tooltip || ''}">
