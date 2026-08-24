@@ -64,6 +64,40 @@ export interface MenuItemContribution {
     order?: number;
 }
 
+export interface ConfigurationSchema {
+    id: string;
+    title: string;
+    order?: number;
+    properties: Record<string, ConfigurationProperty>;
+}
+
+export interface ConfigurationProperty {
+    type: 'string' | 'number' | 'boolean' | 'enum';
+    default: any;
+    description: string;
+    enum?: string[];
+}
+
+export interface QuickPickItem {
+    label: string;
+    detail?: string;
+    icon?: string;
+    data?: any;
+}
+
+export interface QuickPickProvider {
+    prefix: string;
+    description: string;
+    getResults: (query: string) => Promise<QuickPickItem[]> | QuickPickItem[];
+    onSelect: (item: QuickPickItem) => void;
+}
+
+export interface EditorProvider {
+    id: string;
+    extensions: string[]; // e.g., ['.md', '.txt']
+    component: string;
+}
+
 class ContributionRegistry extends EventTarget {
     private activitybar: Map<string, ActivityBarContribution> = new Map();
     private views: Map<string, ViewContribution[]> = new Map(); // Key is containerId
@@ -73,6 +107,9 @@ class ContributionRegistry extends EventTarget {
     private menus: Map<string, MenuContribution> = new Map();
     private commands: Map<string, CommandContribution> = new Map();
     private keybindings: Map<string, KeybindingContribution> = new Map();
+    private configurations: Map<string, ConfigurationSchema> = new Map();
+    private quickPickProviders: Map<string, QuickPickProvider> = new Map();
+    private editors: Map<string, EditorProvider> = new Map();
 
     registerActivityBar(item: ActivityBarContribution) {
         this.activitybar.set(item.id, item);
@@ -128,6 +165,24 @@ class ContributionRegistry extends EventTarget {
         }
     }
 
+    registerConfiguration(schema: ConfigurationSchema) {
+        this.configurations.set(schema.id, schema);
+        this.emitChange('configurations');
+    }
+
+    registerQuickPickProvider(provider: QuickPickProvider) {
+        this.quickPickProviders.set(provider.prefix, provider);
+    }
+
+    registerEditorProvider(provider: EditorProvider) {
+        this.editors.set(provider.id, provider);
+        this.emitChange('editors');
+    }
+
+    getCommands(): CommandContribution[] {
+        return Array.from(this.commands.values());
+    }
+
     // Getters
     getActivityBarItems(): ActivityBarContribution[] {
         return Array.from(this.activitybar.values()).sort((a, b) => (a.order || 0) - (b.order || 0));
@@ -146,6 +201,23 @@ class ContributionRegistry extends EventTarget {
     public removePanelTab(id: string) {
         this.panelTabs = this.panelTabs.filter(t => t.id !== id);
         this.emitChange('paneltabs');
+    }
+
+    getConfigurations(): ConfigurationSchema[] {
+        return Array.from(this.configurations.values()).sort((a, b) => (a.order || 0) - (b.order || 0));
+    }
+
+    getQuickPickProviders(): QuickPickProvider[] {
+        return Array.from(this.quickPickProviders.values());
+    }
+
+    getEditorProviderForExtension(extension: string): EditorProvider | undefined {
+        for (const provider of this.editors.values()) {
+            if (provider.extensions.includes(extension) || provider.extensions.includes('*')) {
+                return provider;
+            }
+        }
+        return undefined;
     }
 
     getPanelTabs(): PanelTabContribution[] {
