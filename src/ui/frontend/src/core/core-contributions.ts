@@ -116,25 +116,25 @@ export function registerCoreContributions() {
         title: 'File',
         order: 10,
         items: [
-            { label: 'New File', order: 10 },
-            { label: 'New Window', order: 20 },
+            { label: 'New File', command: 'vrutti.action.newFile', order: 10 },
+            { label: 'New Window', command: 'vrutti.action.newWindow', order: 20 },
             { label: 'separator1', separator: true, order: 30 },
-            { label: 'Open File', order: 40 },
-            { label: 'Open Folder...', action: 'openFolder', order: 50 },
-            { label: 'Open Recent', order: 60 },
+            { label: 'Open File', command: 'vrutti.action.openFile', order: 40 },
+            { label: 'Open Folder...', command: 'vrutti.action.openFolder', order: 50 },
+            { label: 'Open Recent', command: 'vrutti.action.openRecent', order: 60 },
             { label: 'separator2', separator: true, order: 70 },
-            { label: 'Save', order: 80 },
-            { label: 'Save As', order: 90 },
-            { label: 'Save All', order: 100 },
+            { label: 'Save', command: 'vrutti.action.save', order: 80 },
+            { label: 'Save As', command: 'vrutti.action.saveAs', order: 90 },
+            { label: 'Save All', command: 'vrutti.action.saveAll', order: 100 },
             { label: 'separator3', separator: true, order: 110 },
-            { label: 'Auto Save', order: 120 },
-            { label: 'Preferences', order: 130 },
+            { label: 'Auto Save', command: 'vrutti.action.autoSave', order: 120 },
+            { label: 'Preferences', command: 'vrutti.action.preferences', order: 130 },
             { label: 'separator4', separator: true, order: 140 },
-            { label: 'Close Editor', order: 150 },
-            { label: 'Close Folder', order: 160 },
-            { label: 'Close Window', order: 170 },
+            { label: 'Close Editor', command: 'vrutti.action.closeEditor', order: 150 },
+            { label: 'Close Folder', command: 'vrutti.action.closeFolder', order: 160 },
+            { label: 'Close Window', command: 'vrutti.action.closeWindow', order: 170 },
             { label: 'separator5', separator: true, order: 180 },
-            { label: 'Exit', action: 'closeWindow', order: 190 }
+            { label: 'Exit', command: 'vrutti.action.exit', order: 190 }
         ]
     });
 
@@ -144,21 +144,21 @@ export function registerCoreContributions() {
         title: 'Edit',
         order: 20,
         items: [
-            { label: 'Undo', order: 10 },
-            { label: 'Redo', order: 20 },
+            { label: 'Undo', command: 'vrutti.action.editor.undo', order: 10 },
+            { label: 'Redo', command: 'vrutti.action.editor.redo', order: 20 },
             { label: 'sep1', separator: true, order: 30 },
-            { label: 'Cut', order: 40 },
-            { label: 'Copy', order: 50 },
-            { label: 'Paste', order: 60 },
+            { label: 'Cut', command: 'vrutti.action.editor.cut', order: 40 },
+            { label: 'Copy', command: 'vrutti.action.editor.copy', order: 50 },
+            { label: 'Paste', command: 'vrutti.action.editor.paste', order: 60 },
             { label: 'sep2', separator: true, order: 70 },
-            { label: 'Find', order: 80 },
-            { label: 'Replace', order: 90 },
+            { label: 'Find', command: 'vrutti.action.editor.find', order: 80 },
+            { label: 'Replace', command: 'vrutti.action.editor.replace', order: 90 },
             { label: 'sep3', separator: true, order: 100 },
-            { label: 'Find in Files', order: 110 },
-            { label: 'Replace in Files', order: 120 },
+            { label: 'Find in Files', command: 'vrutti.action.findInFiles', order: 110 },
+            { label: 'Replace in Files', command: 'vrutti.action.replaceInFiles', order: 120 },
             { label: 'sep4', separator: true, order: 130 },
-            { label: 'Toggle Line Comment', order: 140 },
-            { label: 'Toggle Block Comment', order: 150 }
+            { label: 'Toggle Line Comment', command: 'vrutti.action.editor.toggleLineComment', order: 140 },
+            { label: 'Toggle Block Comment', command: 'vrutti.action.editor.toggleBlockComment', order: 150 }
         ]
     });
 
@@ -168,25 +168,25 @@ export function registerCoreContributions() {
         title: 'Selection',
         order: 30,
         items: [
-            { label: 'Select All' },
-            { label: 'Expand Selection' },
-            { label: 'Shrink Selection' },
+            { label: 'Select All', command: 'vrutti.action.editor.selectAll' },
+            { label: 'Expand Selection', command: 'vrutti.action.editor.expandSelection' },
+            { label: 'Shrink Selection', command: 'vrutti.action.editor.shrinkSelection' },
             { label: 'sep1', separator: true },
-            { label: 'Copy Line Up' },
-            { label: 'Copy Line Down' },
-            { label: 'Move Line Up' },
-            { label: 'Move Line Down' },
-            { label: 'Duplicate Selection' },
+            { label: 'Copy Line Up', command: 'vrutti.action.editor.copyLineUp' },
+            { label: 'Copy Line Down', command: 'vrutti.action.editor.copyLineDown' },
+            { label: 'Move Line Up', command: 'vrutti.action.editor.moveLineUp' },
+            { label: 'Move Line Down', command: 'vrutti.action.editor.moveLineDown' },
+            { label: 'Duplicate Selection', command: 'vrutti.action.editor.duplicateSelection' },
             { label: 'sep2', separator: true },
-            { label: 'Add Cursor Above' },
-            { label: 'Add Cursor Below' },
-            { label: 'Add Cursors to Line Ends' },
-            { label: 'Add Next Occurrence' },
-            { label: 'Add Previous Occurrence' },
-            { label: 'Select All Occurrences' },
+            { label: 'Add Cursor Above', command: 'vrutti.action.editor.addCursorAbove' },
+            { label: 'Add Cursor Below', command: 'vrutti.action.editor.addCursorBelow' },
+            { label: 'Add Cursors to Line Ends', command: 'vrutti.action.editor.addCursorsToLineEnds' },
+            { label: 'Add Next Occurrence', command: 'vrutti.action.editor.addNextOccurrence' },
+            { label: 'Add Previous Occurrence', command: 'vrutti.action.editor.addPreviousOccurrence' },
+            { label: 'Select All Occurrences', command: 'vrutti.action.editor.selectAllOccurrences' },
             { label: 'sep3', separator: true },
-            { label: 'Switch to Ctrl+Click for Multi-Cursor' },
-            { label: 'Column Selection Mode' }
+            { label: 'Switch to Ctrl+Click for Multi-Cursor', command: 'vrutti.action.editor.switchMultiCursorModifier' },
+            { label: 'Column Selection Mode', command: 'vrutti.action.editor.columnSelectionMode' }
         ]
     });
 
@@ -196,24 +196,24 @@ export function registerCoreContributions() {
         title: 'View',
         order: 40,
         items: [
-            { label: 'Command Palette' },
-            { label: 'Open View' },
+            { label: 'Command Palette', command: 'vrutti.action.showCommands' },
+            { label: 'Open View', command: 'vrutti.action.openView' },
             { label: 'sep1', separator: true },
-            { label: 'Appearance' },
-            { label: 'Editor Layout' },
+            { label: 'Appearance', command: 'vrutti.action.appearance' },
+            { label: 'Editor Layout', command: 'vrutti.action.editorLayout' },
             { label: 'sep2', separator: true },
-            { label: 'Explorer' },
-            { label: 'Search' },
-            { label: 'Source Control' },
-            { label: 'Run' },
-            { label: 'Extensions' },
+            { label: 'Explorer', command: 'vrutti.action.showExplorer' },
+            { label: 'Search', command: 'vrutti.action.showSearch' },
+            { label: 'Source Control', command: 'vrutti.action.showScm' },
+            { label: 'Run', command: 'vrutti.action.showDebug' },
+            { label: 'Extensions', command: 'vrutti.action.showExtensions' },
             { label: 'sep3', separator: true },
-            { label: 'Problems' },
-            { label: 'Output' },
-            { label: 'Debug Console' },
-            { label: 'Terminal', action: 'toggleTerminal' },
+            { label: 'Problems', command: 'vrutti.action.showProblems' },
+            { label: 'Output', command: 'vrutti.action.showOutput' },
+            { label: 'Debug Console', command: 'vrutti.action.showDebugConsole' },
+            { label: 'Terminal', command: 'vrutti.action.toggleTerminal' },
             { label: 'sep4', separator: true },
-            { label: 'Word Wrap' }
+            { label: 'Word Wrap', command: 'vrutti.action.toggleWordWrap' }
         ]
     });
 
@@ -223,23 +223,23 @@ export function registerCoreContributions() {
         title: 'Go',
         order: 50,
         items: [
-            { label: 'Back' },
-            { label: 'Forward' },
+            { label: 'Back', command: 'vrutti.action.goBack' },
+            { label: 'Forward', command: 'vrutti.action.goForward' },
             { label: 'sep1', separator: true },
-            { label: 'Go to File' },
-            { label: 'Go to Symbol in Workspace' },
+            { label: 'Go to File', command: 'vrutti.action.quickOpen' },
+            { label: 'Go to Symbol in Workspace', command: 'vrutti.action.showAllSymbols' },
             { label: 'sep2', separator: true },
-            { label: 'Go to Line/Column' },
-            { label: 'Go to Definition' },
-            { label: 'Go to Declaration' },
-            { label: 'Go to Type Definition' },
-            { label: 'Go to Implementations' },
-            { label: 'Go to References' },
+            { label: 'Go to Line/Column', command: 'vrutti.action.gotoLine' },
+            { label: 'Go to Definition', command: 'vrutti.action.editor.gotoDefinition' },
+            { label: 'Go to Declaration', command: 'vrutti.action.editor.gotoDeclaration' },
+            { label: 'Go to Type Definition', command: 'vrutti.action.editor.gotoTypeDefinition' },
+            { label: 'Go to Implementations', command: 'vrutti.action.editor.gotoImplementations' },
+            { label: 'Go to References', command: 'vrutti.action.editor.gotoReferences' },
             { label: 'sep3', separator: true },
-            { label: 'Next Problem' },
-            { label: 'Previous Problem' },
-            { label: 'Next Change' },
-            { label: 'Previous Change' }
+            { label: 'Next Problem', command: 'vrutti.action.editor.nextProblem' },
+            { label: 'Previous Problem', command: 'vrutti.action.editor.previousProblem' },
+            { label: 'Next Change', command: 'vrutti.action.editor.nextChange' },
+            { label: 'Previous Change', command: 'vrutti.action.editor.previousChange' }
         ]
     });
 
@@ -249,21 +249,21 @@ export function registerCoreContributions() {
         title: 'Run',
         order: 60,
         items: [
-            { label: 'Start Debugging' },
-            { label: 'Run Without Debugging' },
-            { label: 'Stop Debugging' },
-            { label: 'Restart Debugging' },
+            { label: 'Start Debugging', command: 'vrutti.action.debug.start' },
+            { label: 'Run Without Debugging', command: 'vrutti.action.debug.run' },
+            { label: 'Stop Debugging', command: 'vrutti.action.debug.stop' },
+            { label: 'Restart Debugging', command: 'vrutti.action.debug.restart' },
             { label: 'sep1', separator: true },
-            { label: 'Open Configurations' },
-            { label: 'Add Configuration' },
+            { label: 'Open Configurations', command: 'vrutti.action.debug.openConfigurations' },
+            { label: 'Add Configuration', command: 'vrutti.action.debug.addConfiguration' },
             { label: 'sep2', separator: true },
-            { label: 'Step Over' },
-            { label: 'Step Into' },
-            { label: 'Step Out' },
-            { label: 'Continue' },
+            { label: 'Step Over', command: 'vrutti.action.debug.stepOver' },
+            { label: 'Step Into', command: 'vrutti.action.debug.stepInto' },
+            { label: 'Step Out', command: 'vrutti.action.debug.stepOut' },
+            { label: 'Continue', command: 'vrutti.action.debug.continue' },
             { label: 'sep3', separator: true },
-            { label: 'Toggle Breakpoint' },
-            { label: 'New Breakpoint' }
+            { label: 'Toggle Breakpoint', command: 'vrutti.action.editor.toggleBreakpoint' },
+            { label: 'New Breakpoint', command: 'vrutti.action.debug.newBreakpoint' }
         ]
     });
 
@@ -273,14 +273,14 @@ export function registerCoreContributions() {
         title: 'Terminal',
         order: 70,
         items: [
-            { label: 'New Terminal', action: 'toggleTerminal' },
+            { label: 'New Terminal', command: 'vrutti.action.terminal.new' },
             { label: 'sep1', separator: true },
-            { label: 'Run Task' },
-            { label: 'Build Task' },
-            { label: 'Active Tasks' },
+            { label: 'Run Task', command: 'vrutti.action.tasks.runTask' },
+            { label: 'Build Task', command: 'vrutti.action.tasks.build' },
+            { label: 'Active Tasks', command: 'vrutti.action.tasks.showActive' },
             { label: 'sep2', separator: true },
-            { label: 'Configure Tasks' },
-            { label: 'Configure Default Build Task' }
+            { label: 'Configure Tasks', command: 'vrutti.action.tasks.configure' },
+            { label: 'Configure Default Build Task', command: 'vrutti.action.tasks.configureDefault' }
         ]
     });
 
@@ -290,27 +290,40 @@ export function registerCoreContributions() {
         title: 'Help',
         order: 80,
         items: [
-            { label: 'Welcome' },
-            { label: 'Show All Commands' },
-            { label: 'Documentation' },
-            { label: 'Editor Playground' },
-            { label: 'Release Notes' },
+            { label: 'Welcome', command: 'vrutti.action.help.welcome' },
+            { label: 'Show All Commands', command: 'vrutti.action.showCommands' },
+            { label: 'Documentation', command: 'vrutti.action.help.documentation' },
+            { label: 'Editor Playground', command: 'vrutti.action.help.playground' },
+            { label: 'Release Notes', command: 'vrutti.action.help.releaseNotes' },
             { label: 'sep1', separator: true },
-            { label: 'Keyboard Shortcuts Reference' },
-            { label: 'Video Tutorials' },
-            { label: 'Tips and Tricks' },
+            { label: 'Keyboard Shortcuts Reference', command: 'vrutti.action.help.keyboardShortcuts' },
+            { label: 'Video Tutorials', command: 'vrutti.action.help.videoTutorials' },
+            { label: 'Tips and Tricks', command: 'vrutti.action.help.tipsAndTricks' },
             { label: 'sep2', separator: true },
-            { label: 'Join Us on YouTube' },
-            { label: 'Search Feature Requests' },
-            { label: 'Report Issue' },
+            { label: 'Join Us on YouTube', command: 'vrutti.action.help.youtube' },
+            { label: 'Search Feature Requests', command: 'vrutti.action.help.featureRequests' },
+            { label: 'Report Issue', command: 'vrutti.action.help.reportIssue' },
             { label: 'sep3', separator: true },
-            { label: 'View License' },
-            { label: 'Privacy Statement' },
+            { label: 'View License', command: 'vrutti.action.help.license' },
+            { label: 'Privacy Statement', command: 'vrutti.action.help.privacy' },
             { label: 'sep4', separator: true },
-            { label: 'Toggle Developer Tools' },
+            { label: 'Toggle Developer Tools', command: 'vrutti.action.toggleDevTools' },
             { label: 'sep5', separator: true },
-            { label: 'Check for Updates' },
-            { label: 'About' }
+            { label: 'Check for Updates', command: 'vrutti.action.help.checkUpdates' },
+            { label: 'About', command: 'vrutti.action.help.about' }
         ]
     });
+
+    // Default Keybindings
+    registry.registerKeybinding({ key: 'Ctrl+Shift+P', command: 'vrutti.action.showCommands' });
+    registry.registerKeybinding({ key: 'Ctrl+P', command: 'vrutti.action.quickOpen' });
+    registry.registerKeybinding({ key: 'Ctrl+S', command: 'vrutti.action.save' });
+    registry.registerKeybinding({ key: 'Ctrl+Shift+S', command: 'vrutti.action.saveAs' });
+    registry.registerKeybinding({ key: 'Ctrl+O', command: 'vrutti.action.openFile' });
+    registry.registerKeybinding({ key: 'Ctrl+Shift+O', command: 'vrutti.action.openFolder' });
+    registry.registerKeybinding({ key: 'Ctrl+W', command: 'vrutti.action.closeEditor' });
+    registry.registerKeybinding({ key: 'Ctrl+F', command: 'vrutti.action.editor.find' });
+    registry.registerKeybinding({ key: 'Ctrl+H', command: 'vrutti.action.editor.replace' });
+    registry.registerKeybinding({ key: 'Ctrl+`', command: 'vrutti.action.toggleTerminal' });
+    registry.registerKeybinding({ key: 'F5', command: 'vrutti.action.debug.start' });
 }
