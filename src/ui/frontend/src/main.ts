@@ -10,6 +10,8 @@ import './components/vrutti-task-picker';
 import './components/vrutti-extension-details';
 import { VruttiTaskManager } from './components/vrutti-task-manager';
 import { themeBridge } from './ThemeBridge';
+import { registry } from './core/Registry';
+import { registerCoreContributions } from './core/core-contributions';
 
 import { globalHoverStyle } from './shared-styles';
 
@@ -82,6 +84,7 @@ export class VruttiApp extends LitElement {
 
   async connectedCallback() {
     super.connectedCallback();
+    registerCoreContributions();
     
     // Expose global output writer
     (window as any).vruttiWriteOutput = (channel: string, text: string) => {
@@ -107,6 +110,41 @@ export class VruttiApp extends LitElement {
                     const script = document.createElement('script');
                     script.innerHTML = inj.content || '';
                     document.head.appendChild(script);
+                }
+            }
+        } else if (msg.method === 'extensions/installed') {
+            const exts = msg.params || [];
+            for (const ext of exts) {
+                if (ext.contributes && ext.contributes.viewsContainers && ext.contributes.viewsContainers.activitybar) {
+                    for (const container of ext.contributes.viewsContainers.activitybar) {
+                        registry.registerActivityBar({
+                            id: container.id,
+                            title: container.title,
+                            iconContent: container.iconContent || '',
+                            order: 100
+                        });
+                        if (container.iconPath && (window as any).vruttiReadFile) {
+                            (window as any).vruttiReadFile(container.iconPath).then((content: string) => {
+                                if (content) {
+                                    registry.registerActivityBar({
+                                        id: container.id,
+                                        title: container.title,
+                                        iconContent: content,
+                                        order: 100
+                                    });
+                                }
+                            }).catch(console.error);
+                        }
+                        const extViews = (ext.contributes.views && ext.contributes.views[container.id]) || [];
+                        for (const view of extViews) {
+                            registry.registerView({
+                                id: view.id,
+                                containerId: container.id,
+                                name: view.name,
+                                component: 'vrutti-webview'
+                            });
+                        }
+                    }
                 }
             }
         } else if (msg.method === 'run/output') {
