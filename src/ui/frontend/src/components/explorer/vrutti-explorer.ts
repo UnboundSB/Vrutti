@@ -124,7 +124,12 @@ export class VruttiExplorer extends LitElement {
     e.preventDefault();
     e.stopPropagation();
     this.dispatchEvent(new CustomEvent('open-context-menu', {
-      detail: { path: this.item.resource, name: this.item.name, x: e.clientX, y: e.clientY, isDirectory: this.item.isDirectory },
+      detail: { 
+          menuId: 'explorer/context', 
+          x: e.clientX, 
+          y: e.clientY, 
+          context: { path: this.item.resource, name: this.item.name, isDirectory: this.item.isDirectory }
+      },
       bubbles: true,
       composed: true
     }));
