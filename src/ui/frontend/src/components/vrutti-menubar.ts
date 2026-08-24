@@ -1,16 +1,6 @@
 import { LitElement, css, html } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
-
-interface MenuItem {
-  label: string;
-  action?: string;
-  separator?: boolean;
-}
-
-interface MenuData {
-  title: string;
-  items: MenuItem[];
-}
+import { registry, MenuContribution } from '../core/Registry';
 
 import { globalHoverStyle } from '../shared-styles';
 
@@ -22,189 +12,31 @@ export class VruttiMenuBar extends LitElement {
   @state()
   private isMenuOpen = false;
 
-  private menus: MenuData[] = [
-    {
-      title: 'File',
-      items: [
-        { label: 'New File' },
-        { label: 'New Window' },
-        { separator: true, label: '' },
-        { label: 'Open File' },
-        { label: 'Open Folder...', action: 'openFolder' },
-        { label: 'Open Recent' },
-        { separator: true, label: '' },
-        { label: 'Save' },
-        { label: 'Save As' },
-        { label: 'Save All' },
-        { separator: true, label: '' },
-        { label: 'Auto Save' },
-        { label: 'Preferences' },
-        { separator: true, label: '' },
-        { label: 'Close Editor' },
-        { label: 'Close Folder' },
-        { label: 'Close Window' },
-        { separator: true, label: '' },
-        { label: 'Exit', action: 'closeWindow' }
-      ]
-    },
-    {
-      title: 'Edit',
-      items: [
-        { label: 'Undo' },
-        { label: 'Redo' },
-        { separator: true, label: '' },
-        { label: 'Cut' },
-        { label: 'Copy' },
-        { label: 'Paste' },
-        { separator: true, label: '' },
-        { label: 'Find' },
-        { label: 'Replace' },
-        { separator: true, label: '' },
-        { label: 'Find in Files' },
-        { label: 'Replace in Files' },
-        { separator: true, label: '' },
-        { label: 'Toggle Line Comment' },
-        { label: 'Toggle Block Comment' }
-      ]
-    },
-    {
-      title: 'Selection',
-      items: [
-        { label: 'Select All' },
-        { label: 'Expand Selection' },
-        { label: 'Shrink Selection' },
-        { separator: true, label: '' },
-        { label: 'Copy Line Up' },
-        { label: 'Copy Line Down' },
-        { label: 'Move Line Up' },
-        { label: 'Move Line Down' },
-        { label: 'Duplicate Selection' },
-        { separator: true, label: '' },
-        { label: 'Add Cursor Above' },
-        { label: 'Add Cursor Below' },
-        { label: 'Add Cursors to Line Ends' },
-        { label: 'Add Next Occurrence' },
-        { label: 'Add Previous Occurrence' },
-        { label: 'Select All Occurrences' },
-        { separator: true, label: '' },
-        { label: 'Switch to Ctrl+Click for Multi-Cursor' },
-        { label: 'Column Selection Mode' }
-      ]
-    },
-    {
-      title: 'View',
-      items: [
-        { label: 'Command Palette' },
-        { label: 'Open View' },
-        { separator: true, label: '' },
-        { label: 'Appearance' },
-        { label: 'Editor Layout' },
-        { separator: true, label: '' },
-        { label: 'Explorer' },
-        { label: 'Search' },
-        { label: 'Source Control' },
-        { label: 'Run' },
-        { label: 'Extensions' },
-        { separator: true, label: '' },
-        { label: 'Problems' },
-        { label: 'Output' },
-        { label: 'Debug Console' },
-        { label: 'Terminal', action: 'toggleTerminal' },
-        { separator: true, label: '' },
-        { label: 'Word Wrap' }
-      ]
-    },
-    {
-      title: 'Go',
-      items: [
-        { label: 'Back' },
-        { label: 'Forward' },
-        { separator: true, label: '' },
-        { label: 'Go to File' },
-        { label: 'Go to Symbol in Workspace' },
-        { separator: true, label: '' },
-        { label: 'Go to Line/Column' },
-        { label: 'Go to Definition' },
-        { label: 'Go to Declaration' },
-        { label: 'Go to Type Definition' },
-        { label: 'Go to Implementations' },
-        { label: 'Go to References' },
-        { separator: true, label: '' },
-        { label: 'Next Problem' },
-        { label: 'Previous Problem' },
-        { label: 'Next Change' },
-        { label: 'Previous Change' }
-      ]
-    },
-    {
-      title: 'Run',
-      items: [
-        { label: 'Start Debugging' },
-        { label: 'Run Without Debugging' },
-        { label: 'Stop Debugging' },
-        { label: 'Restart Debugging' },
-        { separator: true, label: '' },
-        { label: 'Open Configurations' },
-        { label: 'Add Configuration' },
-        { separator: true, label: '' },
-        { label: 'Step Over' },
-        { label: 'Step Into' },
-        { label: 'Step Out' },
-        { label: 'Continue' },
-        { separator: true, label: '' },
-        { label: 'Toggle Breakpoint' },
-        { label: 'New Breakpoint' }
-      ]
-    },
-    {
-      title: 'Terminal',
-      items: [
-        { label: 'New Terminal', action: 'toggleTerminal' },
-        { separator: true, label: '' },
-        { label: 'Run Task' },
-        { label: 'Build Task' },
-        { label: 'Active Tasks' },
-        { separator: true, label: '' },
-        { label: 'Configure Tasks' },
-        { label: 'Configure Default Build Task' }
-      ]
-    },
-    {
-      title: 'Help',
-      items: [
-        { label: 'Welcome' },
-        { label: 'Show All Commands' },
-        { label: 'Documentation' },
-        { label: 'Editor Playground' },
-        { label: 'Release Notes' },
-        { separator: true, label: '' },
-        { label: 'Keyboard Shortcuts Reference' },
-        { label: 'Video Tutorials' },
-        { label: 'Tips and Tricks' },
-        { separator: true, label: '' },
-        { label: 'Join Us on YouTube' },
-        { label: 'Search Feature Requests' },
-        { label: 'Report Issue' },
-        { separator: true, label: '' },
-        { label: 'View License' },
-        { label: 'Privacy Statement' },
-        { separator: true, label: '' },
-        { label: 'Toggle Developer Tools' },
-        { separator: true, label: '' },
-        { label: 'Check for Updates' },
-        { label: 'About' }
-      ]
-    }
-  ];
+  @state()
+  private menus: MenuContribution[] = [];
 
   connectedCallback() {
     super.connectedCallback();
-    document.addEventListener('mousedown', this.handleDocumentClick);
+    document.addEventListener('click', this.handleDocumentClick);
+    registry.addEventListener('change', this.handleRegistryChange);
+    this.updateFromRegistry();
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
-    document.removeEventListener('mousedown', this.handleDocumentClick);
+    document.removeEventListener('click', this.handleDocumentClick);
+    registry.removeEventListener('change', this.handleRegistryChange);
+  }
+
+  private handleRegistryChange = (e: Event) => {
+    const detail = (e as CustomEvent).detail;
+    if (detail && detail.type === 'menus') {
+      this.updateFromRegistry();
+    }
+  };
+
+  private updateFromRegistry() {
+    this.menus = registry.getMenus();
   }
 
   private handleDocumentClick = (e: MouseEvent) => {
