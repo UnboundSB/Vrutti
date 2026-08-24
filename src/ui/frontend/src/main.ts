@@ -259,6 +259,7 @@ export class VruttiApp extends LitElement {
     registry.registerCommand('vrutti.action.preferences', async () => {
       if (!customElements.get('vrutti-settings')) {
         await import('./components/vrutti-settings');
+        import('./components/vrutti-context-menu');
       }
       this.showSettings = true;
     });
@@ -490,9 +491,8 @@ export class VruttiApp extends LitElement {
     this.contextMenu = {
       x: e.detail.x,
       y: e.detail.y,
-      path: e.detail.path,
-      name: e.detail.name,
-      isDirectory: e.detail.isDirectory
+      menuId: e.detail.menuId,
+      context: e.detail.context
     };
   };
 
@@ -1047,19 +1047,13 @@ export class VruttiApp extends LitElement {
         </div>
       </div>
       ${this.contextMenu ? html`
-        <div class="context-menu" style="left: ${this.contextMenu.x}px; top: ${this.contextMenu.y}px;">
-          ${!this.contextMenu.isDirectory ? html`
-            <div class="context-menu-item" @click=${() => {
-              const layout = this.shadowRoot?.querySelector('#main-layout') as any;
-              if (layout && layout.openFile) {
-                  layout.openFile(this.contextMenu!.path);
-              }
-              this.closeContextMenu();
-            }}>Open File</div>
-          ` : ''}
-          <div class="context-menu-item" @click=${this.closeContextMenu}>Rename</div>
-          <div class="context-menu-item" @click=${this.closeContextMenu}>Delete</div>
-        </div>
+        <vrutti-context-menu 
+            .x=${this.contextMenu.x} 
+            .y=${this.contextMenu.y} 
+            .menuId=${this.contextMenu.menuId} 
+            .context=${this.contextMenu.context}
+            @close-context-menu=${this.closeContextMenu}>
+        </vrutti-context-menu>
       ` : ''}
       ${this.showOpenFolderModal ? html`
         <div class="modal-overlay">
