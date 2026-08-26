@@ -1,8 +1,10 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { unsafeSVG } from 'lit/directives/unsafe-svg.js';
+import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { globalHoverStyle } from '../shared-styles';
-import { icon_chevron_down, icon_replace_all } from './codicons';
+import { icon_chevron_down } from './codicons';
+import { registry } from '../core/Registry';
 
 interface SearchResult {
     file: string;
@@ -45,12 +47,12 @@ export class VruttiSearch extends LitElement {
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            color: #636b95;
+            color: var(--vrutti-text-muted, #636b95);
             margin-top: 2px;
         }
 
         .toggle-chevron:hover {
-            color: #a6accd;
+            color: var(--vrutti-text, #a6accd);
         }
 
         .toggle-chevron svg {
@@ -78,8 +80,8 @@ export class VruttiSearch extends LitElement {
             position: relative;
             display: flex;
             align-items: center;
-            background: #1a1b26;
-            border: 1px solid #3b4261;
+            background: var(--vrutti-input-bg, #1a1b26);
+            border: 1px solid var(--vrutti-input-border, #3b4261);
             border-radius: 4px;
             padding-right: 70px;
         }
@@ -89,14 +91,14 @@ export class VruttiSearch extends LitElement {
         }
 
         .input-box:focus-within {
-            border-color: #7aa2f7;
+            border-color: var(--vrutti-focus-border, #7aa2f7);
         }
 
         input {
             width: 100%;
             background: transparent;
             border: none;
-            color: #c0caf5;
+            color: var(--vrutti-input-text, #c0caf5);
             padding: 4px 6px;
             font-family: inherit;
             font-size: 13px;
@@ -118,7 +120,7 @@ export class VruttiSearch extends LitElement {
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            color: #636b95;
+            color: var(--vrutti-text-muted, #636b95);
             border-radius: 3px;
             font-weight: 600;
             font-size: 11px;
@@ -131,13 +133,13 @@ export class VruttiSearch extends LitElement {
         }
 
         .action-btn:hover {
-            background: rgba(255, 255, 255, 0.1);
-            color: #a6accd;
+            background: var(--vrutti-list-hover-bg, rgba(255, 255, 255, 0.1));
+            color: var(--vrutti-text, #a6accd);
         }
 
         .action-btn.active {
-            background: rgba(122, 162, 247, 0.2);
-            color: #7aa2f7;
+            background: var(--vrutti-list-active-bg, rgba(122, 162, 247, 0.2));
+            color: var(--vrutti-accent, #7aa2f7);
         }
 
         .results-container {
@@ -154,8 +156,8 @@ export class VruttiSearch extends LitElement {
         .file-header {
             padding: 4px 8px 4px 24px;
             font-weight: 600;
-            color: #a9b1d6;
-            background: #1a1b26;
+            color: var(--vrutti-text-secondary, #a9b1d6);
+            background: var(--vrutti-side-bg, #1a1b26);
             font-size: 11px;
             display: flex;
             align-items: center;
@@ -169,31 +171,31 @@ export class VruttiSearch extends LitElement {
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            color: #c0caf5;
+            color: var(--vrutti-text, #c0caf5);
             transition: background 0.1s;
             display: flex;
             gap: 8px;
         }
 
         .result-item:hover {
-            background: #292e42;
+            background: var(--vrutti-list-hover-bg, #292e42);
         }
 
         .line-num {
-            color: #565f89;
+            color: var(--vrutti-text-muted, #565f89);
             min-width: 24px;
             text-align: right;
         }
 
         .no-results {
             padding: 12px;
-            color: #565f89;
+            color: var(--vrutti-text-muted, #565f89);
             text-align: center;
         }
 
         .highlight {
-            background-color: rgba(122, 162, 247, 0.4);
-            color: #ffffff;
+            background-color: var(--vrutti-find-match-bg, rgba(122, 162, 247, 0.4));
+            color: var(--vrutti-find-match-text, #ffffff);
             border-radius: 2px;
             padding: 0 2px;
         }
@@ -365,15 +367,35 @@ export class VruttiSearch extends LitElement {
         }, 150);
     };
 
+    private handleToggleMatchCase = () => { this.matchCase = !this.matchCase; this.performSearch(); };
+    private handleToggleWholeWord = () => { this.wholeWord = !this.wholeWord; this.performSearch(); };
+    private handleToggleRegex = () => { this.useRegex = !this.useRegex; this.performSearch(); };
+    private handleReplaceAll = () => { this.performSearch(true); };
+
     connectedCallback() {
         super.connectedCallback();
         window.addEventListener('vrutti-ipc', this.handleIpc as EventListener);
+        window.addEventListener('search-toggle-match-case', this.handleToggleMatchCase);
+        window.addEventListener('search-toggle-whole-word', this.handleToggleWholeWord);
+        window.addEventListener('search-toggle-regex', this.handleToggleRegex);
+        window.addEventListener('search-replace-all', this.handleReplaceAll);
     }
 
     disconnectedCallback() {
         super.disconnectedCallback();
         window.removeEventListener('vrutti-ipc', this.handleIpc as EventListener);
+        window.removeEventListener('search-toggle-match-case', this.handleToggleMatchCase);
+        window.removeEventListener('search-toggle-whole-word', this.handleToggleWholeWord);
+        window.removeEventListener('search-toggle-regex', this.handleToggleRegex);
+        window.removeEventListener('search-replace-all', this.handleReplaceAll);
         if (this.searchTimeout) window.clearTimeout(this.searchTimeout);
+    }
+    
+    private isActionActive(command?: string) {
+        if (command === 'search.toggleMatchCase') return this.matchCase;
+        if (command === 'search.toggleWholeWord') return this.wholeWord;
+        if (command === 'search.toggleRegex') return this.useRegex;
+        return false;
     }
 
     // @ts-expect-error unused method
@@ -458,9 +480,13 @@ export class VruttiSearch extends LitElement {
                                 @keydown=${this.handleQueryKeydown}
                             />
                             <div class="input-actions">
-                                <div class="action-btn ${this.matchCase ? 'active' : ''}" @click=${() => { this.matchCase = !this.matchCase; this.performSearch(); }} title="Match Case (Alt+C)">Aa</div>
-                                <div class="action-btn ${this.wholeWord ? 'active' : ''}" @click=${() => { this.wholeWord = !this.wholeWord; this.performSearch(); }} title="Match Whole Word (Alt+W)">ab</div>
-                                <div class="action-btn ${this.useRegex ? 'active' : ''}" @click=${() => { this.useRegex = !this.useRegex; this.performSearch(); }} title="Use Regular Expression (Alt+R)">.*</div>
+                                ${(registry.getMenu('search/inputActions')?.items || []).map(item => html`
+                                    <div class="action-btn ${this.isActionActive(item.command) ? 'active' : ''}" 
+                                         @click=${() => registry.executeCommand(item.command || '')} 
+                                         title="${item.label}">
+                                        ${item.iconContent ? (item.iconContent.startsWith('<svg') ? unsafeHTML(item.iconContent) : item.iconContent) : ''}
+                                    </div>
+                                `)}
                             </div>
                         </div>
                         
@@ -474,9 +500,11 @@ export class VruttiSearch extends LitElement {
                                     @keydown=${this.handleReplaceKeydown}
                                 />
                                 <div class="input-actions">
-                                    <div class="action-btn" @click=${() => this.performSearch(true)} title="Replace All (Ctrl+Alt+Enter)">
-                                        ${unsafeSVG(icon_replace_all)}
-                                    </div>
+                                    ${(registry.getMenu('search/replaceActions')?.items || []).map(item => html`
+                                        <div class="action-btn" @click=${() => registry.executeCommand(item.command || '')} title="${item.label}">
+                                            ${item.iconContent ? (item.iconContent.startsWith('<svg') ? unsafeHTML(item.iconContent) : item.iconContent) : ''}
+                                        </div>
+                                    `)}
                                 </div>
                             </div>
                         ` : ''}
@@ -533,7 +561,7 @@ export class VruttiSearch extends LitElement {
 
                 ${Object.entries(grouped).length > 0 ? html`
                     <div class="file-group">
-                        <div class="file-header" style="background: transparent; color: #7aa2f7; border-bottom: 1px solid #292e42; padding-left: 8px;">WORDS</div>
+                        <div class="file-header" style="background: transparent; color: var(--vrutti-accent, #7aa2f7); border-bottom: 1px solid var(--vrutti-border, #292e42); padding-left: 8px;">WORDS</div>
                     </div>
                 ` : ''}
                 
@@ -561,7 +589,7 @@ export class VruttiSearch extends LitElement {
                     </div>
                 `)}
                 ${Object.keys(grouped).length > 50 ? html`
-                    <div style="padding: 12px; text-align: center; color: #ff9e64; font-size: 11px; font-weight: 600;">
+                    <div style="padding: 12px; text-align: center; color: var(--vrutti-warning, #ff9e64); font-size: 11px; font-weight: 600;">
                         ⚠️ Showing first 50 files to keep the editor fast. <br/> Please narrow your search.
                     </div>
                 ` : ''}

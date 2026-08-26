@@ -57,12 +57,13 @@ export interface MenuContribution {
 
 export interface MenuItemContribution {
     id?: string;
-    label: string;
+    label?: string; // Optional for separators
     action?: string;
     command?: string;
     separator?: boolean;
     order?: number;
     when?: string; // Context condition for visibility
+    iconContent?: string; // SVG icon for action buttons
 }
 
 export interface SettingsCategoryContribution {

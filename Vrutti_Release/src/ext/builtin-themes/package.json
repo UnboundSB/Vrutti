@@ -30,6 +30,18 @@
         "uiTheme": "vs-light",
         "path": "./vrutti-glass-light.json"
       }
-    ]
+    ],
+    "vrutti": {
+      "injections": [
+        {
+          "type": "css",
+          "content": "#vrutti-live-wall-video { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: -1; opacity: 0; pointer-events: none; transition: opacity 0.5s ease; }\n body[style*=\"--vrutti-glass-bg\"] #vrutti-live-wall-video, body[style*=\"rgba(0, 0, 0, 0.5)\"] #vrutti-live-wall-video { opacity: 0.6; }"
+        },
+        {
+          "type": "js",
+          "content": "if (!document.getElementById('vrutti-live-wall-video')) { const v = document.createElement('video'); v.id = 'vrutti-live-wall-video'; v.src = 'https://cdn.pixabay.com/video/2018/01/29/13926-252726330_large.mp4'; v.autoplay = true; v.loop = true; v.muted = true; document.body.prepend(v); }"
+        }
+      ]
+    }
   }
 }

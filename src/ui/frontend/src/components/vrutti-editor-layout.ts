@@ -237,6 +237,15 @@ export class VruttiEditorLayout extends LitElement {
     @state()
     private openRunDropdownId: string | null = null;
 
+    @state()
+    private customBgType: 'none' | 'image' | 'video' = 'none';
+
+    @state()
+    private customBgPath: string = '';
+
+    @state()
+    private customBgOpacity: number = 0.15;
+
     // Resizing state
     private resizingNodeId: string | null = null;
     private resizeStartPos = 0;
@@ -252,16 +261,48 @@ export class VruttiEditorLayout extends LitElement {
         super.connectedCallback();
         window.addEventListener('editor-action', this.handleEditorAction as EventListener);
         window.addEventListener('workspace-loaded', this.handleWorkspaceLoaded as EventListener);
+        window.addEventListener('setting-changed', this.handleSettingChanged as EventListener);
         // Attempt initial load if workspace is already set
         if ((window as any).currentWorkspace) {
             this.loadLayoutState((window as any).currentWorkspace);
         }
+        this.loadInitialSettings();
     }
 
     disconnectedCallback() {
         super.disconnectedCallback();
         window.removeEventListener('editor-action', this.handleEditorAction as EventListener);
         window.removeEventListener('workspace-loaded', this.handleWorkspaceLoaded as EventListener);
+        window.removeEventListener('setting-changed', this.handleSettingChanged as EventListener);
+    }
+
+    private async loadInitialSettings() {
+        if ((window as any).vruttiGetSettings) {
+            try {
+                const settingsStr = await (window as any).vruttiGetSettings();
+                const settings = typeof settingsStr === 'string' ? JSON.parse(settingsStr) : settingsStr;
+                if (settings) {
+                    if (settings['appearance.customBackgroundType']) this.customBgType = settings['appearance.customBackgroundType'];
+                    if (settings['appearance.customBackgroundPath']) this.customBgPath = settings['appearance.customBackgroundPath'];
+                    if (settings['appearance.customBackgroundOpacity'] !== undefined) this.customBgOpacity = settings['appearance.customBackgroundOpacity'];
+                }
+            } catch (e) {
+                console.warn('Failed to load initial settings for editor layout', e);
+            }
+        }
+    }
+
+    private handleSettingChanged = (e: Event) => {
+        const detail = (e as CustomEvent).detail;
+        if (detail && detail.key) {
+            if (detail.key === 'appearance.customBackgroundType') {
+                this.customBgType = detail.value;
+            } else if (detail.key === 'appearance.customBackgroundPath') {
+                this.customBgPath = detail.value;
+            } else if (detail.key === 'appearance.customBackgroundOpacity') {
+                this.customBgOpacity = detail.value;
+            }
+        }
     }
 
     private handleWorkspaceLoaded = (e: Event) => {
@@ -734,7 +775,13 @@ export class VruttiEditorLayout extends LitElement {
                 <div class="editor-area ${this.activePaneId === leaf.id ? 'active-pane' : ''}" style="${this.activePaneId === leaf.id ? 'box-shadow: inset 0 0 0 1px var(--vrutti-surface-border);' : ''}">
                     ${leaf.activeTab ? this.renderEditorComponent(leaf.activeTab) : html`
                         <div class="empty-pane" style="position: relative; width: 100%; height: 100%; overflow: hidden;">
-                            <img src="./vrutti-logo.png" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.15; pointer-events: none; user-select: none; width: 400px; height: 400px; object-fit: contain;" />
+                            ${this.customBgType === 'video' && this.customBgPath ? html`
+                                <video src="${this.customBgPath}" autoplay loop muted style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); min-width: 100%; min-height: 100%; width: auto; height: auto; opacity: ${this.customBgOpacity}; pointer-events: none; user-select: none; object-fit: cover;"></video>
+                            ` : this.customBgType === 'image' && this.customBgPath ? html`
+                                <img src="${this.customBgPath}" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); min-width: 100%; min-height: 100%; width: auto; height: auto; opacity: ${this.customBgOpacity}; pointer-events: none; user-select: none; object-fit: cover;" />
+                            ` : html`
+                                <img src="./vrutti-logo.png" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: ${this.customBgOpacity}; pointer-events: none; user-select: none; width: 400px; height: 400px; object-fit: contain;" />
+                            `}
                         </div>
                     `}
                 </div>

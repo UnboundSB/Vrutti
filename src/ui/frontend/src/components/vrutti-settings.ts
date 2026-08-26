@@ -10,11 +10,15 @@ export class VruttiSettings extends LitElement {
   @state() private configurations: ConfigurationSchema[] = [];
   @state() private categories: SettingsCategoryContribution[] = [];
   @state() private availableThemes: { id: string, label: string }[] = [];
+  @state() private availableIconThemes: { id: string, label: string }[] = [];
   @state() private appliedTheme: string = '';
   @state() private selectedTheme: string = '';
+  @state() private appliedIconTheme: string = '';
+  @state() private selectedIconTheme: string = '';
   @state() private showDirtyModal = false;
 
   private saveTimeout: number | null = null;
+  private pendingChanges: Record<string, any> = {};
 
   connectedCallback() {
     super.connectedCallback();
@@ -30,6 +34,12 @@ export class VruttiSettings extends LitElement {
         const t = JSON.parse(applied);
         this.appliedTheme = t.id || t.name;
         this.selectedTheme = this.appliedTheme;
+      }
+      const appliedIcon = localStorage.getItem('vrutti-applied-icon-theme');
+      if (appliedIcon) {
+        const t = JSON.parse(appliedIcon);
+        this.appliedIconTheme = t.id || t.name;
+        this.selectedIconTheme = this.appliedIconTheme;
       }
     } catch (e) {}
 
@@ -82,10 +92,13 @@ export class VruttiSettings extends LitElement {
     if (msg && msg.method === 'themes/available' && msg.params) {
       this.availableThemes = msg.params;
     }
+    if (msg && msg.method === 'icon_themes/available' && msg.params) {
+      this.availableIconThemes = msg.params;
+    }
   };
 
   private requestClose() {
-    if (this.selectedTheme !== this.appliedTheme) {
+    if (this.selectedTheme !== this.appliedTheme || this.selectedIconTheme !== this.appliedIconTheme) {
       this.showDirtyModal = true;
       return;
     }
@@ -94,6 +107,7 @@ export class VruttiSettings extends LitElement {
 
   private confirmExit() {
     this.selectedTheme = this.appliedTheme;
+    this.selectedIconTheme = this.appliedIconTheme;
     this.showDirtyModal = false;
     this.dispatchEvent(new CustomEvent('close-settings', { bubbles: true, composed: true }));
   }
@@ -104,8 +118,10 @@ export class VruttiSettings extends LitElement {
 
   private apply() {
     this.appliedTheme = this.selectedTheme;
+    this.appliedIconTheme = this.selectedIconTheme;
     // Broadcast setting-changed so it gets saved to backend and triggers ThemeBridge
     this.handleSettingChange('workbench.colorTheme', this.selectedTheme);
+    this.handleSettingChange('workbench.iconTheme', this.selectedIconTheme);
   }
 
   private applyAndExit() {
@@ -115,10 +131,21 @@ export class VruttiSettings extends LitElement {
 
   private handleSettingChange(key: string, value: any) {
     this.configValues = { ...this.configValues, [key]: value };
+    this.pendingChanges[key] = value;
     
     if (key === 'workbench.colorTheme') {
       this.appliedTheme = value;
       this.selectedTheme = value;
+      try {
+        localStorage.setItem('vrutti-applied-theme', JSON.stringify({ id: value }));
+      } catch (e) {}
+    }
+    if (key === 'workbench.iconTheme') {
+      this.appliedIconTheme = value;
+      this.selectedIconTheme = value;
+      try {
+        localStorage.setItem('vrutti-applied-icon-theme', JSON.stringify({ id: value }));
+      } catch (e) {}
     }
 
     // Debounce the save event
@@ -127,12 +154,16 @@ export class VruttiSettings extends LitElement {
     }
     
     this.saveTimeout = window.setTimeout(() => {
-      this.dispatchEvent(new CustomEvent('setting-changed', {
-        detail: { key, value: this.configValues[key] },
-        bubbles: true,
-        composed: true
-      }));
-      console.log(`[Settings] Saved ${key} = ${value}`);
+      const changesToDispatch = { ...this.pendingChanges };
+      this.pendingChanges = {};
+      for (const [k, v] of Object.entries(changesToDispatch)) {
+        window.dispatchEvent(new CustomEvent('setting-changed', {
+          detail: { key: k, value: v },
+          bubbles: true,
+          composed: true
+        }));
+        console.log(`[Settings] Saved ${k} = ${v}`);
+      }
     }, 500);
   }
 
@@ -446,6 +477,14 @@ export class VruttiSettings extends LitElement {
             <select class="input-field" @change=${(e: any) => this.selectedTheme = e.target.value}>
               ${this.availableThemes.length === 0 ? html`<option value="${this.selectedTheme}" selected>${this.selectedTheme}</option>` : ''}
               ${this.availableThemes.map(t => html`<option value="${t.id}" ?selected=${t.id === this.selectedTheme}>${t.label}</option>`)}
+            </select>
+          </div>
+          <div class="setting-group">
+            <div class="setting-title">Icon Theme</div>
+            <div class="setting-desc">Select the active icon theme for the workspace. Applies upon clicking Apply and Exit.</div>
+            <select class="input-field" @change=${(e: any) => this.selectedIconTheme = e.target.value}>
+              <option value="default" ?selected=${this.selectedIconTheme === 'default' || !this.selectedIconTheme}>Vrutti Default</option>
+              ${this.availableIconThemes.map(t => html`<option value="${t.id}" ?selected=${t.id === this.selectedIconTheme}>${t.label}</option>`)}
             </select>
           </div>
         `;

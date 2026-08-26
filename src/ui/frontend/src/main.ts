@@ -20,7 +20,7 @@ export class VruttiApp extends LitElement {
   private isLoading = true;
 
   @state()
-  private contextMenu: { x: number, y: number, path: string, name: string, isDirectory: boolean } | null = null;
+  private contextMenu: { x: number, y: number, path?: string, name?: string, isDirectory?: boolean, menuId?: string, context?: any } | null = null;
 
   @state() private activeExtension: any = null;
 
@@ -175,10 +175,25 @@ export class VruttiApp extends LitElement {
 
     try {
       if ((window as any).vruttiGetSettings) {
-        const settings = await (window as any).vruttiGetSettings();
+        const payload = await (window as any).vruttiGetSettings();
+        const settings = typeof payload === 'string' ? JSON.parse(payload) : payload;
+        
         if (settings && settings['editor.fontFamily']) {
           this.style.setProperty('--vrutti-font', settings['editor.fontFamily']);
         }
+        
+        // Restore themes from settings
+        if (settings && settings['workbench.colorTheme']) {
+            if ((window as any).sendIpcMessage) {
+                (window as any).sendIpcMessage('theme/set', JSON.stringify({ name: settings['workbench.colorTheme'] }));
+            }
+        }
+        if (settings && settings['workbench.iconTheme']) {
+            if ((window as any).sendIpcMessage) {
+                (window as any).sendIpcMessage('icon_theme/set', JSON.stringify({ name: settings['workbench.iconTheme'] }));
+            }
+        }
+
         // Fire event to notify settings component if it's already loaded
         window.dispatchEvent(new CustomEvent('settings-loaded', { detail: settings }));
       }

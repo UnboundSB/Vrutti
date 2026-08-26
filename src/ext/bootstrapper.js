@@ -226,9 +226,10 @@ class ExtensionManager {
         return debuggers;
     }
 
-    async getAvailableThemes() {
-        if (this._cachedThemes) return this._cachedThemes;
+    async getAvailableAllThemes() {
+        if (this._cachedThemes && this._cachedIconThemes) return { themes: this._cachedThemes, iconThemes: this._cachedIconThemes };
         const themes = [];
+        const iconThemes = [];
         const pathsToScan = [
             { dir: path.join(__dirname, 'builtin-themes'), isBuiltin: true },
             { dir: this.extDirBase, isBuiltin: false }
@@ -243,16 +244,30 @@ class ExtensionManager {
                     try {
                         const pkgRaw = await fs.promises.readFile(pkgPath, 'utf8');
                         const pkg = JSON.parse(pkgRaw);
-                        if (pkg.contributes && pkg.contributes.themes) {
-                            for (const theme of pkg.contributes.themes) {
-                                const origPath = path.join(target.dir, theme.path);
-                                themes.push({
-                                    id: theme.id || theme.label,
-                                    label: theme.label || pkg.name,
-                                    uiTheme: theme.uiTheme || 'vs-dark',
-                                    extensionName: pkg.name,
-                                    themePath: origPath
-                                });
+                        if (pkg.contributes) {
+                            if (pkg.contributes.themes) {
+                                for (const theme of pkg.contributes.themes) {
+                                    const origPath = path.join(target.dir, theme.path);
+                                    themes.push({
+                                        id: theme.id || theme.label,
+                                        label: theme.label || pkg.name,
+                                        uiTheme: theme.uiTheme || 'vs-dark',
+                                        extensionName: pkg.name,
+                                        themePath: origPath
+                                    });
+                                }
+                            }
+                            if (pkg.contributes.iconThemes) {
+                                for (const theme of pkg.contributes.iconThemes) {
+                                    const origPath = path.join(target.dir, theme.path);
+                                    iconThemes.push({
+                                        id: theme.id || theme.label,
+                                        label: theme.label || pkg.name,
+                                        uiTheme: 'icon',
+                                        extensionName: pkg.name,
+                                        themePath: origPath
+                                    });
+                                }
                             }
                         }
                     } catch (e) {}
@@ -266,16 +281,30 @@ class ExtensionManager {
                         try {
                             const pkgRaw = await fs.promises.readFile(pkgPath, 'utf8');
                             const pkg = JSON.parse(pkgRaw);
-                            if (pkg.contributes && pkg.contributes.themes) {
-                                for (const theme of pkg.contributes.themes) {
-                                    const origPath = path.join(extPath, 'extension', theme.path);
-                                    themes.push({
-                                        id: `${pkg.name}.${theme.id || theme.label}`,
-                                        label: theme.label || pkg.name,
-                                        uiTheme: theme.uiTheme || 'vs-dark',
-                                        extensionName: pkg.name,
-                                        themePath: origPath
-                                    });
+                            if (pkg.contributes) {
+                                if (pkg.contributes.themes) {
+                                    for (const theme of pkg.contributes.themes) {
+                                        const origPath = path.join(extPath, 'extension', theme.path);
+                                        themes.push({
+                                            id: `${pkg.name}.${theme.id || theme.label}`,
+                                            label: theme.label || pkg.name,
+                                            uiTheme: theme.uiTheme || 'vs-dark',
+                                            extensionName: pkg.name,
+                                            themePath: origPath
+                                        });
+                                    }
+                                }
+                                if (pkg.contributes.iconThemes) {
+                                    for (const theme of pkg.contributes.iconThemes) {
+                                        const origPath = path.join(extPath, 'extension', theme.path);
+                                        iconThemes.push({
+                                            id: `${pkg.name}.${theme.id || theme.label}`,
+                                            label: theme.label || pkg.name,
+                                            uiTheme: 'icon',
+                                            extensionName: pkg.name,
+                                            themePath: origPath
+                                        });
+                                    }
                                 }
                             }
                         } catch (e) {}
@@ -284,8 +313,18 @@ class ExtensionManager {
             }
         }
         this._cachedThemes = themes;
-        return themes;
+        this._cachedIconThemes = iconThemes;
+        return { themes, iconThemes };
     }
+
+    async getAvailableThemes() {
+        return (await this.getAvailableAllThemes()).themes;
+    }
+
+    async getAvailableIconThemes() {
+        return (await this.getAvailableAllThemes()).iconThemes;
+    }
+
 
     async downloadExtension(url, name, progressCallback) {
         const extDir = path.join(this.extDirBase, name);
@@ -312,6 +351,7 @@ class ExtensionManager {
     async invalidateCache() {
         this._installedExtensionsCache = null;
         this._cachedThemes = null;
+        this._cachedIconThemes = null;
     }
 
     _downloadFile(url, dest, progressCallback) {
@@ -428,12 +468,12 @@ async function main() {
         log('Bootstrapper started');
 
         const manager = new ExtensionManager(ipcClient, vruttiApi);
-        await manager.indexExtensions();
         
         ipcClient.on('extensions/request_installed', async () => {
             const installedExts = await manager.getInstalledExtensions();
             ipcClient.sendNotification('extensions/installed', installedExts);
             ipcClient.sendNotification('themes/available', await manager.getAvailableThemes());
+            ipcClient.sendNotification('icon_themes/available', await manager.getAvailableIconThemes());
             
             for (const ext of installedExts) {
                 if (ext.contributes && ext.contributes.vrutti && ext.contributes.vrutti.injections) {
@@ -466,6 +506,7 @@ async function main() {
                 await manager.invalidateCache();
                 ipcClient.sendNotification('extensions/installed', await manager.getInstalledExtensions());
                 ipcClient.sendNotification('themes/available', await manager.getAvailableThemes());
+                ipcClient.sendNotification('icon_themes/available', await manager.getAvailableIconThemes());
             } catch (err) {
                 log(`Failed to uninstall extension ${params.name}: ${err.message}`);
             }
@@ -478,8 +519,10 @@ async function main() {
                     ipcClient.sendNotification('extensions/progress', { name: params.name, percentage });
                 });
                 ipcClient.sendNotification('extensions/progress', { name: params.name, percentage: 100 });
+                await manager.invalidateCache();
                 ipcClient.sendNotification('extensions/installed', await manager.getInstalledExtensions());
                 ipcClient.sendNotification('themes/available', await manager.getAvailableThemes());
+                ipcClient.sendNotification('icon_themes/available', await manager.getAvailableIconThemes());
             } catch (err) {
                 log(`Failed to install extension ${params.name}: ${err.message}\n${err.stack}`);
             }
@@ -518,10 +561,70 @@ async function main() {
             }
         });
 
+        ipcClient.on('icon_theme/set', async (params) => {
+            const themeLabelOrExtName = params.name;
+            log(`Setting icon theme to ${themeLabelOrExtName}`);
+            
+            if (themeLabelOrExtName === 'default') {
+                ipcClient.sendNotification('icon_theme/load', null);
+                return;
+            }
+            
+            try {
+                const themes = await manager.getAvailableIconThemes();
+                let targetTheme = themes.find(t => t.id === params.id) || 
+                                  themes.find(t => t.id === themeLabelOrExtName) ||
+                                  themes.find(t => t.label === themeLabelOrExtName) || 
+                                  themes.find(t => t.extensionName === themeLabelOrExtName);
+                
+                if (targetTheme && fs.existsSync(targetTheme.themePath)) {
+                    try {
+                        const { loadThemeRecursive } = require('./theme-resolver');
+                        const originalThemeData = await loadThemeRecursive(targetTheme.themePath);
+                        
+                        log(`Loading icon theme: ${targetTheme.label}`);
+                        originalThemeData.name = targetTheme.label;
+                        originalThemeData.id = targetTheme.id;
+                        
+                        const themeDir = path.dirname(targetTheme.themePath);
+                        if (originalThemeData.iconDefinitions) {
+                            for (const key in originalThemeData.iconDefinitions) {
+                                const def = originalThemeData.iconDefinitions[key];
+                                if (def.iconPath) {
+                                    const absPath = path.resolve(themeDir, def.iconPath);
+                                    try {
+                                        let resStr = absPath.replace(/\\/g, '/');
+                                        if (resStr.startsWith('/')) {
+                                            def.iconPath = `file://${resStr}`;
+                                        } else {
+                                            def.iconPath = `file:///${resStr}`;
+                                        }
+                                    } catch(e) {
+                                        def.iconPath = require('url').pathToFileURL(absPath).href;
+                                    }
+                                }
+                            }
+                        }
+                        
+                        ipcClient.sendNotification('icon_theme/load', originalThemeData);
+                    } catch (e) {
+                        console.error(`Failed to parse icon theme JSON: ${targetTheme.themePath}`, e);
+                    }
+                } else {
+                    log(`Icon theme not found or missing path for ${themeLabelOrExtName}`);
+                }
+            } catch (err) {
+                log(`Failed to set icon theme ${themeLabelOrExtName}: ${err.message}`);
+            }
+        });
+
         ipcClient.on('debuggers/available', async () => {
             const debuggers = await manager.getAvailableDebuggers();
             ipcClient.sendNotification('debuggers/available', debuggers);
         });
+
+        // Start indexing after listeners are bound so we don't drop events in the meantime
+        await manager.indexExtensions();
 
         // Register default internal command
         vruttiApi.commands.registerCommand('vrutti.action.run', async (file, mode, userParams) => {

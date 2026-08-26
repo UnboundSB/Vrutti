@@ -22,6 +22,17 @@ function log(msg) {
     console.log(`[Bootstrapper] ${msg}`);
 }
 
+// Memory Optimization: soft garbage collection if memory footprint exceeds 256MB
+setInterval(() => {
+    const memory = process.memoryUsage();
+    if (memory.heapUsed > 256 * 1024 * 1024) {
+        if (global.gc) {
+            log(`Memory threshold exceeded (Heap: ${Math.round(memory.heapUsed / 1024 / 1024)}MB). Triggering soft GC.`);
+            global.gc();
+        }
+    }
+}, 30000);
+
 class ExtensionManager {
     constructor(ipcClient, api) {
         this.ipcClient = ipcClient;
@@ -108,6 +119,48 @@ class ExtensionManager {
                 try {
                     const pkgRaw = await fs.promises.readFile(pkgPath, 'utf8');
                     const pkg = JSON.parse(pkgRaw);
+                    let nls = null;
+                    const nlsPath = path.join(extPath, 'extension', 'package.nls.json');
+                    if (fs.existsSync(nlsPath)) {
+                        try {
+                            const nlsRaw = await fs.promises.readFile(nlsPath, 'utf8');
+                            nls = JSON.parse(nlsRaw);
+                        } catch (e) {}
+                    }
+
+                    const safeNls = nls || {};
+                    const localize = (obj) => {
+                        if (typeof obj === 'string') {
+                            return obj.replace(/%([^%]+)%/g, (match, key) => {
+                                if (safeNls[key] !== undefined) return safeNls[key];
+                                if (safeNls[match] !== undefined) return safeNls[match];
+                                const stripped = key.replace(/^extension\./, '');
+                                if (safeNls[stripped] !== undefined) return safeNls[stripped];
+                                
+                                // Fallbacks if strictly missing
+                                if (key.includes('displayName')) return pkg.name;
+                                if (key.includes('description')) return '';
+                                return match;
+                            });
+                        } else if (Array.isArray(obj)) {
+                            return obj.map(localize);
+                        } else if (obj && typeof obj === 'object') {
+                            for (const k in obj) {
+                                obj[k] = localize(obj[k]);
+                            }
+                        }
+                        return obj;
+                    };
+                    localize(pkg);
+
+                    if (pkg.contributes && pkg.contributes.viewsContainers && pkg.contributes.viewsContainers.activitybar) {
+                        for (const container of pkg.contributes.viewsContainers.activitybar) {
+                            if (container.icon) {
+                                container.iconPath = path.join(extPath, 'extension', container.icon);
+                            }
+                        }
+                    }
+                    
                     installed.push({
                         id: `${pkg.publisher || pkg.author || dir}.${pkg.name}`,
                         name: pkg.name,
@@ -115,7 +168,7 @@ class ExtensionManager {
                         publisherDisplayName: pkg.publisher || pkg.author || dir,
                         description: pkg.description || '',
                         version: pkg.version || '1.0.0',
-                        isTheme: pkg.contributes && pkg.contributes.themes ? true : false,
+                        isTheme: pkg.contributes && (pkg.contributes.themes || pkg.contributes.iconThemes) ? true : false,
                         localPath: extPath,
                         main: pkg.main,
                         contributes: pkg.contributes,
@@ -173,9 +226,10 @@ class ExtensionManager {
         return debuggers;
     }
 
-    async getAvailableThemes() {
-        if (this._cachedThemes) return this._cachedThemes;
+    async getAvailableAllThemes() {
+        if (this._cachedThemes && this._cachedIconThemes) return { themes: this._cachedThemes, iconThemes: this._cachedIconThemes };
         const themes = [];
+        const iconThemes = [];
         const pathsToScan = [
             { dir: path.join(__dirname, 'builtin-themes'), isBuiltin: true },
             { dir: this.extDirBase, isBuiltin: false }
@@ -190,16 +244,30 @@ class ExtensionManager {
                     try {
                         const pkgRaw = await fs.promises.readFile(pkgPath, 'utf8');
                         const pkg = JSON.parse(pkgRaw);
-                        if (pkg.contributes && pkg.contributes.themes) {
-                            for (const theme of pkg.contributes.themes) {
-                                const origPath = path.join(target.dir, theme.path);
-                                themes.push({
-                                    id: theme.id || theme.label,
-                                    label: theme.label || pkg.name,
-                                    uiTheme: theme.uiTheme || 'vs-dark',
-                                    extensionName: pkg.name,
-                                    themePath: origPath
-                                });
+                        if (pkg.contributes) {
+                            if (pkg.contributes.themes) {
+                                for (const theme of pkg.contributes.themes) {
+                                    const origPath = path.join(target.dir, theme.path);
+                                    themes.push({
+                                        id: theme.id || theme.label,
+                                        label: theme.label || pkg.name,
+                                        uiTheme: theme.uiTheme || 'vs-dark',
+                                        extensionName: pkg.name,
+                                        themePath: origPath
+                                    });
+                                }
+                            }
+                            if (pkg.contributes.iconThemes) {
+                                for (const theme of pkg.contributes.iconThemes) {
+                                    const origPath = path.join(target.dir, theme.path);
+                                    iconThemes.push({
+                                        id: theme.id || theme.label,
+                                        label: theme.label || pkg.name,
+                                        uiTheme: 'icon',
+                                        extensionName: pkg.name,
+                                        themePath: origPath
+                                    });
+                                }
                             }
                         }
                     } catch (e) {}
@@ -213,16 +281,30 @@ class ExtensionManager {
                         try {
                             const pkgRaw = await fs.promises.readFile(pkgPath, 'utf8');
                             const pkg = JSON.parse(pkgRaw);
-                            if (pkg.contributes && pkg.contributes.themes) {
-                                for (const theme of pkg.contributes.themes) {
-                                    const origPath = path.join(extPath, 'extension', theme.path);
-                                    themes.push({
-                                        id: `${pkg.name}.${theme.id || theme.label}`,
-                                        label: theme.label || pkg.name,
-                                        uiTheme: theme.uiTheme || 'vs-dark',
-                                        extensionName: pkg.name,
-                                        themePath: origPath
-                                    });
+                            if (pkg.contributes) {
+                                if (pkg.contributes.themes) {
+                                    for (const theme of pkg.contributes.themes) {
+                                        const origPath = path.join(extPath, 'extension', theme.path);
+                                        themes.push({
+                                            id: `${pkg.name}.${theme.id || theme.label}`,
+                                            label: theme.label || pkg.name,
+                                            uiTheme: theme.uiTheme || 'vs-dark',
+                                            extensionName: pkg.name,
+                                            themePath: origPath
+                                        });
+                                    }
+                                }
+                                if (pkg.contributes.iconThemes) {
+                                    for (const theme of pkg.contributes.iconThemes) {
+                                        const origPath = path.join(extPath, 'extension', theme.path);
+                                        iconThemes.push({
+                                            id: `${pkg.name}.${theme.id || theme.label}`,
+                                            label: theme.label || pkg.name,
+                                            uiTheme: 'icon',
+                                            extensionName: pkg.name,
+                                            themePath: origPath
+                                        });
+                                    }
                                 }
                             }
                         } catch (e) {}
@@ -231,8 +313,18 @@ class ExtensionManager {
             }
         }
         this._cachedThemes = themes;
-        return themes;
+        this._cachedIconThemes = iconThemes;
+        return { themes, iconThemes };
     }
+
+    async getAvailableThemes() {
+        return (await this.getAvailableAllThemes()).themes;
+    }
+
+    async getAvailableIconThemes() {
+        return (await this.getAvailableAllThemes()).iconThemes;
+    }
+
 
     async downloadExtension(url, name, progressCallback) {
         const extDir = path.join(this.extDirBase, name);
@@ -259,6 +351,7 @@ class ExtensionManager {
     async invalidateCache() {
         this._installedExtensionsCache = null;
         this._cachedThemes = null;
+        this._cachedIconThemes = null;
     }
 
     _downloadFile(url, dest, progressCallback) {
@@ -375,12 +468,32 @@ async function main() {
         log('Bootstrapper started');
 
         const manager = new ExtensionManager(ipcClient, vruttiApi);
-        await manager.indexExtensions();
         
         ipcClient.on('extensions/request_installed', async () => {
             const installedExts = await manager.getInstalledExtensions();
             ipcClient.sendNotification('extensions/installed', installedExts);
             ipcClient.sendNotification('themes/available', await manager.getAvailableThemes());
+            ipcClient.sendNotification('icon_themes/available', await manager.getAvailableIconThemes());
+            
+            for (const ext of installedExts) {
+                if (ext.contributes && ext.contributes.vrutti && ext.contributes.vrutti.injections) {
+                    ipcClient.sendNotification('extensions/injections', ext.contributes.vrutti.injections);
+                }
+            }
+
+            // Also check builtin themes for global injections (like live wallpapers)
+            try {
+                const pkgPath = path.join(__dirname, 'builtin-themes', 'package.json');
+                if (fs.existsSync(pkgPath)) {
+                    const pkgRaw = await fs.promises.readFile(pkgPath, 'utf8');
+                    const pkg = JSON.parse(pkgRaw);
+                    if (pkg.contributes && pkg.contributes.vrutti && pkg.contributes.vrutti.injections) {
+                        ipcClient.sendNotification('extensions/injections', pkg.contributes.vrutti.injections);
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to read builtin-themes injections:', e);
+            }
         });
 
         ipcClient.on('extensions/uninstall', async (params) => {
@@ -393,6 +506,7 @@ async function main() {
                 await manager.invalidateCache();
                 ipcClient.sendNotification('extensions/installed', await manager.getInstalledExtensions());
                 ipcClient.sendNotification('themes/available', await manager.getAvailableThemes());
+                ipcClient.sendNotification('icon_themes/available', await manager.getAvailableIconThemes());
             } catch (err) {
                 log(`Failed to uninstall extension ${params.name}: ${err.message}`);
             }
@@ -405,8 +519,10 @@ async function main() {
                     ipcClient.sendNotification('extensions/progress', { name: params.name, percentage });
                 });
                 ipcClient.sendNotification('extensions/progress', { name: params.name, percentage: 100 });
+                await manager.invalidateCache();
                 ipcClient.sendNotification('extensions/installed', await manager.getInstalledExtensions());
                 ipcClient.sendNotification('themes/available', await manager.getAvailableThemes());
+                ipcClient.sendNotification('icon_themes/available', await manager.getAvailableIconThemes());
             } catch (err) {
                 log(`Failed to install extension ${params.name}: ${err.message}\n${err.stack}`);
             }
@@ -445,10 +561,70 @@ async function main() {
             }
         });
 
+        ipcClient.on('icon_theme/set', async (params) => {
+            const themeLabelOrExtName = params.name;
+            log(`Setting icon theme to ${themeLabelOrExtName}`);
+            
+            if (themeLabelOrExtName === 'default') {
+                ipcClient.sendNotification('icon_theme/load', null);
+                return;
+            }
+            
+            try {
+                const themes = await manager.getAvailableIconThemes();
+                let targetTheme = themes.find(t => t.id === params.id) || 
+                                  themes.find(t => t.id === themeLabelOrExtName) ||
+                                  themes.find(t => t.label === themeLabelOrExtName) || 
+                                  themes.find(t => t.extensionName === themeLabelOrExtName);
+                
+                if (targetTheme && fs.existsSync(targetTheme.themePath)) {
+                    try {
+                        const { loadThemeRecursive } = require('./theme-resolver');
+                        const originalThemeData = await loadThemeRecursive(targetTheme.themePath);
+                        
+                        log(`Loading icon theme: ${targetTheme.label}`);
+                        originalThemeData.name = targetTheme.label;
+                        originalThemeData.id = targetTheme.id;
+                        
+                        const themeDir = path.dirname(targetTheme.themePath);
+                        if (originalThemeData.iconDefinitions) {
+                            for (const key in originalThemeData.iconDefinitions) {
+                                const def = originalThemeData.iconDefinitions[key];
+                                if (def.iconPath) {
+                                    const absPath = path.resolve(themeDir, def.iconPath);
+                                    try {
+                                        let resStr = absPath.replace(/\\/g, '/');
+                                        if (resStr.startsWith('/')) {
+                                            def.iconPath = `file://${resStr}`;
+                                        } else {
+                                            def.iconPath = `file:///${resStr}`;
+                                        }
+                                    } catch(e) {
+                                        def.iconPath = require('url').pathToFileURL(absPath).href;
+                                    }
+                                }
+                            }
+                        }
+                        
+                        ipcClient.sendNotification('icon_theme/load', originalThemeData);
+                    } catch (e) {
+                        console.error(`Failed to parse icon theme JSON: ${targetTheme.themePath}`, e);
+                    }
+                } else {
+                    log(`Icon theme not found or missing path for ${themeLabelOrExtName}`);
+                }
+            } catch (err) {
+                log(`Failed to set icon theme ${themeLabelOrExtName}: ${err.message}`);
+            }
+        });
+
         ipcClient.on('debuggers/available', async () => {
             const debuggers = await manager.getAvailableDebuggers();
             ipcClient.sendNotification('debuggers/available', debuggers);
         });
+
+        // Start indexing after listeners are bound so we don't drop events in the meantime
+        await manager.indexExtensions();
 
         // Register default internal command
         vruttiApi.commands.registerCommand('vrutti.action.run', async (file, mode, userParams) => {

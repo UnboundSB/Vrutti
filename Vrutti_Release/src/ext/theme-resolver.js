@@ -32,11 +32,15 @@ async function loadThemeRecursive(themePath) {
             return {};
         }
         
-        const result = { colors: {}, tokenColors: [] };
+        const result = { ...themeObj, colors: {}, tokenColors: [] };
         
         if (themeObj.include) {
             const includePath = path.resolve(path.dirname(currentPath), themeObj.include);
             const parentTheme = await load(includePath);
+            
+            // Merge parent properties first, then overwrite with current theme properties
+            Object.assign(result, parentTheme, result);
+
             Object.assign(result.colors, parentTheme.colors || {});
             if (parentTheme.tokenColors) {
                 result.tokenColors = result.tokenColors.concat(parentTheme.tokenColors);

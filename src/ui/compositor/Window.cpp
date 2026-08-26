@@ -461,6 +461,8 @@ namespace vrutti::ui {
                 }
             }
             return "{\"success\":false}";
+        });
+
         w->bind("vruttiDeleteFile", [this](const std::string& req) -> std::string {
             auto parsedReq = vrutti::core::utils::JsonParser::parse(req);
             if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {

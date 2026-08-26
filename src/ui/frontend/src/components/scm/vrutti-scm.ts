@@ -2,11 +2,10 @@ import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { globalHoverStyle } from '../../shared-styles';
+import { registry } from '../../core/Registry';
+import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { 
     icon_check, 
-    icon_sync, 
-    icon_cloud_upload, 
-    icon_cloud_download, 
     icon_add, 
     icon_remove,
     icon_chevron_down,
@@ -207,6 +206,50 @@ export class VruttiScm extends LitElement {
         await this.refresh();
     }
 
+    private handleRefresh = () => this.refresh();
+    private handlePull = () => this.pull();
+    private handlePush = () => this.push();
+    private handleCommit = () => this.commit();
+    private handleStageAll = () => this.stageAll();
+    private handleUnstageAll = () => this.unstageAll();
+    private handleStageFile = (e: Event) => {
+        const detail = (e as CustomEvent).detail;
+        if (detail && detail.path) this.stageFile(detail.path);
+    };
+    private handleUnstageFile = (e: Event) => {
+        const detail = (e as CustomEvent).detail;
+        if (detail && detail.path) this.unstageFile(detail.path);
+    };
+    private handleViewGraph = () => {
+        this.dispatchEvent(new CustomEvent('open-git-graph', { bubbles: true, composed: true }));
+    };
+
+    connectedCallback() {
+        super.connectedCallback();
+        window.addEventListener('scm-refresh', this.handleRefresh);
+        window.addEventListener('scm-pull', this.handlePull);
+        window.addEventListener('scm-push', this.handlePush);
+        window.addEventListener('scm-commit', this.handleCommit);
+        window.addEventListener('scm-stage-all', this.handleStageAll);
+        window.addEventListener('scm-unstage-all', this.handleUnstageAll);
+        window.addEventListener('scm-stage-file', this.handleStageFile);
+        window.addEventListener('scm-unstage-file', this.handleUnstageFile);
+        window.addEventListener('scm-view-graph', this.handleViewGraph);
+    }
+
+    disconnectedCallback() {
+        super.disconnectedCallback();
+        window.removeEventListener('scm-refresh', this.handleRefresh);
+        window.removeEventListener('scm-pull', this.handlePull);
+        window.removeEventListener('scm-push', this.handlePush);
+        window.removeEventListener('scm-commit', this.handleCommit);
+        window.removeEventListener('scm-stage-all', this.handleStageAll);
+        window.removeEventListener('scm-unstage-all', this.handleUnstageAll);
+        window.removeEventListener('scm-stage-file', this.handleStageFile);
+        window.removeEventListener('scm-unstage-file', this.handleUnstageFile);
+        window.removeEventListener('scm-view-graph', this.handleViewGraph);
+    }
+
     private async runGit(args: string): Promise<{stdout: string, exitCode: number}> {
         const wp = (window as any).currentWorkspace || '';
         if (!wp) return {stdout: '', exitCode: -1};
@@ -248,6 +291,18 @@ export class VruttiScm extends LitElement {
         this.unstagedFiles = unstaged;
     }
 
+
+
+    private async pull() {
+        await this.runGit('pull');
+        await this.refresh();
+    }
+
+    private async push() {
+        await this.runGit('push');
+        await this.refresh();
+    }
+
     private async stageFile(path: string) {
         await this.runGit(`add "${path}"`);
         await this.refresh();
@@ -280,15 +335,7 @@ export class VruttiScm extends LitElement {
         }
     }
 
-    private async push() {
-        await this.runGit('push');
-        await this.refresh();
-    }
 
-    private async pull() {
-        await this.runGit('pull');
-        await this.refresh();
-    }
 
     private openFile(path: string) {
         const wp = (window as any).currentWorkspace || '';
@@ -301,9 +348,7 @@ export class VruttiScm extends LitElement {
         this.dispatchEvent(e);
     }
 
-    private openGraph() {
-        this.dispatchEvent(new CustomEvent('open-git-graph', { bubbles: true, composed: true }));
-    }
+
 
     private renderStatus(status: string) {
         let cls = 'status-M';
@@ -319,12 +364,11 @@ export class VruttiScm extends LitElement {
             <div class="header">
                 <span>Source Control</span>
                 <div class="actions">
-                    <div class="icon-btn" title="View Git Graph" @click=${this.openGraph}>
-                        <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M4 2a2 2 0 1 1-1.85 2.75l-1.01.505a.75.75 0 0 1-.673-1.343l1.01-.505A2 2 0 0 1 4 2Zm10 12a2 2 0 1 1-1.85-2.75l-1.01-.505a.75.75 0 0 1 .673-1.343l1.01.505A2 2 0 0 1 14 14ZM4 10a2 2 0 1 1-1.85 2.75l-1.01.505a.75.75 0 0 1-.673-1.343l1.01-.505A2 2 0 0 1 4 10Zm5-5a2 2 0 1 1-1.85 2.75l-3.02 1.51a.75.75 0 0 1-.673-1.343l3.02-1.51A2 2 0 0 1 9 5Z"/></svg>
-                    </div>
-                    <div class="icon-btn" title="Refresh" @click=${this.refresh} .innerHTML=${icon_sync}></div>
-                    <div class="icon-btn" title="Pull" @click=${this.pull} .innerHTML=${icon_cloud_download}></div>
-                    <div class="icon-btn" title="Push" @click=${this.push} .innerHTML=${icon_cloud_upload}></div>
+                    ${(registry.getMenu('scm/title')?.items || []).map(item => html`
+                        <div class="icon-btn" title="${item.label}" @click=${() => registry.executeCommand(item.command || '')}>
+                            ${item.iconContent ? unsafeHTML(item.iconContent) : ''}
+                        </div>
+                    `)}
                 </div>
             </div>
 
@@ -353,7 +397,11 @@ export class VruttiScm extends LitElement {
                         ${this.renderStatus(f.status)}
                         <span class="file-name" title="${f.path}">${f.path}</span>
                         <div class="file-actions">
-                            <div class="icon-btn" title="Unstage Changes" @click=${(e: Event) => { e.stopPropagation(); this.unstageFile(f.path); }} .innerHTML=${icon_remove}></div>
+                            ${(registry.getMenu('scm/resourceState/staged')?.items || []).map(item => html`
+                                <div class="icon-btn" title="${item.label}" @click=${(e: Event) => { e.stopPropagation(); registry.executeCommand(item.command || '', { path: f.path }); }}>
+                                    ${item.iconContent ? unsafeHTML(item.iconContent) : ''}
+                                </div>
+                            `)}
                         </div>
                     </div>
                 `) : ''}
@@ -371,7 +419,11 @@ export class VruttiScm extends LitElement {
                         ${this.renderStatus(f.status)}
                         <span class="file-name" title="${f.path}">${f.path}</span>
                         <div class="file-actions">
-                            <div class="icon-btn" title="Stage Changes" @click=${(e: Event) => { e.stopPropagation(); this.stageFile(f.path); }} .innerHTML=${icon_add}></div>
+                            ${(registry.getMenu('scm/resourceState/unstaged')?.items || []).map(item => html`
+                                <div class="icon-btn" title="${item.label}" @click=${(e: Event) => { e.stopPropagation(); registry.executeCommand(item.command || '', { path: f.path }); }}>
+                                    ${item.iconContent ? unsafeHTML(item.iconContent) : ''}
+                                </div>
+                            `)}
                         </div>
                     </div>
                 `) : ''}

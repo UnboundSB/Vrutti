@@ -1,6 +1,5 @@
 import { LitElement, css, html } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
-import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import './vrutti-terminal-view';
 import './vrutti-output-view';
 import './vrutti-debug-console';
@@ -14,6 +13,12 @@ export class VruttiPanel extends LitElement {
 
   @state()
   private panelTabs: PanelTabContribution[] = [];
+
+  @state()
+  private outputChannels: string[] = ['System'];
+
+  @state()
+  private activeOutputChannel = 'System';
 
   connectedCallback() {
     super.connectedCallback();
@@ -44,6 +49,13 @@ export class VruttiPanel extends LitElement {
   private handleSwitchToDebugConsole = () => {
     this.activePanelTab = 'DEBUG CONSOLE';
   };
+
+  private focusActiveTerminal() {
+    const terminal = this.renderRoot.querySelector('vrutti-terminal-view') as any;
+    if (terminal && terminal.focusTerminal) {
+      terminal.focusTerminal();
+    }
+  }
 
   private handleIpc = (e: Event) => {
     const msg = (e as CustomEvent).detail;
@@ -170,8 +182,16 @@ export class VruttiPanel extends LitElement {
             <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M3 3h10v10H3V3zm1-1a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1H4z"/></svg>
           </button>
           <button title="Close Panel" @click=${() => this.dispatchEvent(new Event('close-panel', { bubbles: true, composed: true }))}>
-          </div>
+            <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M4.28 3.22a.75.75 0 0 0-1.06 1.06L6.94 8l-3.72 3.72a.75.75 0 1 0 1.06 1.06L8 9.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L9.06 8l3.72-3.72a.75.75 0 0 0-1.06-1.06L8 6.94 4.28 3.22Z"/></svg>
+          </button>
         </div>
+      </div>
+      
+      <div class="panel-content">
+        ${this.activePanelTab === 'TERMINAL' ? html`
+          <vrutti-terminal-view></vrutti-terminal-view>
+        ` : this.activePanelTab === 'OUTPUT' ? html`
+          <vrutti-output-view .channel=${this.activeOutputChannel}></vrutti-output-view>
       ` : this.activePanelTab === 'DEBUG CONSOLE' ? html`
         <vrutti-debug-console></vrutti-debug-console>
       ` : this.activePanelTab === 'PORTS' ? html`

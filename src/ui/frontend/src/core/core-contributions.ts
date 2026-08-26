@@ -6,7 +6,13 @@ import {
     icon_source_control, 
     icon_debug_alt, 
     icon_extensions,
-    icon_git_branch
+    icon_git_branch,
+    icon_sync,
+    icon_cloud_upload,
+    icon_cloud_download,
+    icon_add,
+    icon_remove,
+    icon_replace_all
 } from '../components/codicons';
 
 export function registerCoreContributions() {
@@ -343,6 +349,32 @@ export function registerCoreContributions() {
         ]
     });
 
+    // SCM Title Menu
+    registry.registerMenu({
+        id: 'scm/title',
+        items: [
+            { label: 'View Git Graph', command: 'scm.viewGraph', order: 10, iconContent: '<svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M4 2a2 2 0 1 1-1.85 2.75l-1.01.505a.75.75 0 0 1-.673-1.343l1.01-.505A2 2 0 0 1 4 2Zm10 12a2 2 0 1 1-1.85-2.75l-1.01-.505a.75.75 0 0 1 .673-1.343l1.01.505A2 2 0 0 1 14 14ZM4 10a2 2 0 1 1-1.85 2.75l-1.01.505a.75.75 0 0 1-.673-1.343l1.01-.505A2 2 0 0 1 4 10Zm5-5a2 2 0 1 1-1.85 2.75l-3.02 1.51a.75.75 0 0 1-.673-1.343l3.02-1.51A2 2 0 0 1 9 5Z"/></svg>' },
+            { label: 'Refresh', command: 'scm.refresh', order: 20, iconContent: icon_sync },
+            { label: 'Pull', command: 'scm.pull', order: 30, iconContent: icon_cloud_download },
+            { label: 'Push', command: 'scm.push', order: 40, iconContent: icon_cloud_upload }
+        ]
+    });
+
+    // SCM Resource State Menus
+    registry.registerMenu({
+        id: 'scm/resourceState/staged',
+        items: [
+            { label: 'Unstage Changes', command: 'scm.unstageFile', order: 10, iconContent: icon_remove }
+        ]
+    });
+
+    registry.registerMenu({
+        id: 'scm/resourceState/unstaged',
+        items: [
+            { label: 'Stage Changes', command: 'scm.stageFile', order: 10, iconContent: icon_add }
+        ]
+    });
+
     // Default Keybindings
     registry.registerKeybinding({ key: 'Ctrl+Shift+P', command: 'vrutti.action.showCommands' });
     registry.registerKeybinding({ key: 'Ctrl+P', command: 'vrutti.action.quickOpen' });
@@ -365,7 +397,7 @@ export function registerCoreContributions() {
 
     // Configuration
     registry.registerConfiguration({
-        id: 'general',
+        id: 'General',
         title: 'General',
         order: 10,
         properties: {
@@ -378,7 +410,7 @@ export function registerCoreContributions() {
     });
 
     registry.registerConfiguration({
-        id: 'editor',
+        id: 'Editor',
         title: 'Editor',
         order: 20,
         properties: {
@@ -393,11 +425,24 @@ export function registerCoreContributions() {
     });
 
     registry.registerConfiguration({
-        id: 'appearance',
+        id: 'Appearance',
         title: 'Appearance',
         order: 30,
         properties: {
-            'appearance.transparencyEffects': { type: 'boolean', default: false, description: 'Enable window transparency effects.' }
+            'appearance.transparencyEffects': { type: 'boolean', default: false, description: 'Enable window transparency effects.' },
+            'appearance.customBackgroundType': { type: 'enum', enum: ['none', 'image', 'video'], default: 'none', description: 'Type of custom background for empty editor (none, image, video).' },
+            'appearance.customBackgroundPath': { type: 'string', default: '', description: 'File path or URL for the custom background image/video.' },
+            'appearance.customBackgroundOpacity': { type: 'number', default: 0.15, description: 'Opacity of the custom background (0.0 to 1.0).' }
+        }
+    });
+
+    registry.registerConfiguration({
+        id: 'Theme',
+        title: 'Theme',
+        order: 40,
+        properties: {
+            'workbench.colorTheme': { type: 'string', default: 'Default Dark+', description: 'Specifies the color theme used in the workbench.' },
+            'workbench.iconTheme': { type: 'string', default: 'Material Icon Theme', description: 'Specifies the file icon theme used in the workbench or "default" to use built-in.' }
         }
     });
 
@@ -614,5 +659,64 @@ export function registerCoreContributions() {
         id: 'default',
         extensions: ['*'],
         component: 'vrutti-editor'
+    });
+
+    // SCM Commands
+    registry.registerCommand('scm.viewGraph', () => {
+        window.dispatchEvent(new CustomEvent('scm-view-graph'));
+    });
+    registry.registerCommand('scm.refresh', () => {
+        window.dispatchEvent(new CustomEvent('scm-refresh'));
+    });
+    registry.registerCommand('scm.pull', () => {
+        window.dispatchEvent(new CustomEvent('scm-pull'));
+    });
+    registry.registerCommand('scm.push', () => {
+        window.dispatchEvent(new CustomEvent('scm-push'));
+    });
+    registry.registerCommand('scm.commit', () => {
+        window.dispatchEvent(new CustomEvent('scm-commit'));
+    });
+    registry.registerCommand('scm.stageAll', () => {
+        window.dispatchEvent(new CustomEvent('scm-stage-all'));
+    });
+    registry.registerCommand('scm.unstageAll', () => {
+        window.dispatchEvent(new CustomEvent('scm-unstage-all'));
+    });
+    registry.registerCommand('scm.stageFile', (context) => {
+        window.dispatchEvent(new CustomEvent('scm-stage-file', { detail: context }));
+    });
+    registry.registerCommand('scm.unstageFile', (context) => {
+        window.dispatchEvent(new CustomEvent('scm-unstage-file', { detail: context }));
+    });
+
+    // Search Commands
+    registry.registerCommand('search.toggleMatchCase', () => {
+        window.dispatchEvent(new CustomEvent('search-toggle-match-case'));
+    });
+    registry.registerCommand('search.toggleWholeWord', () => {
+        window.dispatchEvent(new CustomEvent('search-toggle-whole-word'));
+    });
+    registry.registerCommand('search.toggleRegex', () => {
+        window.dispatchEvent(new CustomEvent('search-toggle-regex'));
+    });
+    registry.registerCommand('search.replaceAll', () => {
+        window.dispatchEvent(new CustomEvent('search-replace-all'));
+    });
+
+    registry.registerMenu({
+        id: 'search/inputActions',
+        items: [
+            { label: 'Match Case (Alt+C)', command: 'search.toggleMatchCase', order: 10, iconContent: 'Aa' },
+            { label: 'Match Whole Word (Alt+W)', command: 'search.toggleWholeWord', order: 20, iconContent: 'ab' },
+            { label: 'Use Regular Expression (Alt+R)', command: 'search.toggleRegex', order: 30, iconContent: '.*' }
+        ]
+    });
+
+    registry.registerMenu({
+        id: 'search/replaceActions',
+        items: [
+            { label: 'Replace All (Ctrl+Alt+Enter)', command: 'search.replaceAll', order: 10, iconContent: icon_replace_all }
+        ]
     });
 }

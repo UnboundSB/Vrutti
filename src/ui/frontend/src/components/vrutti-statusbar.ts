@@ -196,7 +196,7 @@ export class VruttiStatusBar extends LitElement {
 
     return html`
       <div class="item" title="${item.tooltip || ''}">
-        ${item.iconContent ? unsafeSVG(item.iconContent) : ''}
+        ${icon ? unsafeSVG(icon) : ''}
         ${content ? html`<span>${content}</span>` : ''}
       </div>
     `;

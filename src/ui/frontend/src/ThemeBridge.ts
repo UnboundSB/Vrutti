@@ -11,10 +11,15 @@ class ThemeApplier {
     const root = document.documentElement;
     const colors = themeData.colors;
 
-    for (const key of Array.from(root.style)) {
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < root.style.length; i++) {
+      const key = root.style[i];
       if (key.startsWith('--vrutti-')) {
-        root.style.removeProperty(key);
+        keysToRemove.push(key);
       }
+    }
+    for (const key of keysToRemove) {
+      root.style.removeProperty(key);
     }
     document.body.style.backgroundColor = '';
 
@@ -77,6 +82,15 @@ export class ThemeBridge {
   public connect(): void {
     console.log('[ThemeBridge] Connecting to Extension Host via IPC...');
     ThemeApplier.loadStartupTheme();
+    
+    try {
+      const stored = localStorage.getItem('vrutti-icon-theme-data');
+      if (stored) {
+        const theme = JSON.parse(stored);
+        window.dispatchEvent(new CustomEvent('vrutti-icon-theme-loaded', { detail: theme }));
+      }
+    } catch (e) {}
+
     window.addEventListener('vrutti-ipc', this.handleIpc as EventListener);
     window.addEventListener('setting-changed', this.handleSettingChanged as EventListener);
     
@@ -98,12 +112,30 @@ export class ThemeBridge {
         (window as any).sendIpcMessage('theme/set', JSON.stringify({ name: detail.value }));
       }
     }
+    if (detail && detail.key === 'workbench.iconTheme') {
+      if ((window as any).sendIpcMessage) {
+        (window as any).sendIpcMessage('icon_theme/set', JSON.stringify({ name: detail.value }));
+      }
+    }
   };
 
   private handleIpc = (e: Event) => {
     const msg = (e as CustomEvent).detail;
     if (msg && msg.method === 'theme/load' && msg.params) {
       ThemeApplier.apply(msg.params);
+    }
+    if (msg && msg.method === 'icon_theme/load') {
+      if (msg.params) {
+        try {
+          localStorage.setItem('vrutti-icon-theme-data', JSON.stringify(msg.params));
+        } catch (e) {
+          console.warn('[ThemeBridge] Could not save icon theme to localStorage (likely QuotaExceededError).', e);
+        }
+        window.dispatchEvent(new CustomEvent('vrutti-icon-theme-loaded', { detail: msg.params }));
+      } else {
+        localStorage.removeItem('vrutti-icon-theme-data');
+        window.dispatchEvent(new CustomEvent('vrutti-icon-theme-loaded', { detail: null }));
+      }
     }
   };
 }
