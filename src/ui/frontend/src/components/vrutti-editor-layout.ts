@@ -252,6 +252,16 @@ export class VruttiEditorLayout extends LitElement {
     private resizeStartRatio = 0.5;
     private resizeTotalSize = 0;
 
+    private getProcessedBgPath(): string {
+        if (!this.customBgPath) return '';
+        if (this.customBgPath.match(/^[a-zA-Z]:\\/) || this.customBgPath.match(/^[a-zA-Z]:\//)) {
+            let p = this.customBgPath.replace(/\\/g, '/');
+            if (!p.startsWith('/')) p = '/' + p;
+            return `file://${p}`;
+        }
+        return this.customBgPath;
+    }
+
     constructor() {
         super();
         this.activePaneId = this.rootNode.id;
@@ -387,6 +397,10 @@ export class VruttiEditorLayout extends LitElement {
     public closeActiveEditor() {
         const leaf = this.findNode(this.rootNode, this.activePaneId) as LeafNode;
         if (leaf && leaf.activeTab) {
+            const cacheKey = leaf.id + ':' + leaf.activeTab;
+            const cachedEl = this.editorCache.get(cacheKey) as any;
+            if (cachedEl && cachedEl.dispose) cachedEl.dispose();
+            this.editorCache.delete(cacheKey);
             const newTabs = leaf.tabs.filter(t => t !== leaf.activeTab);
             let newActive = newTabs.length > 0 ? newTabs[newTabs.length - 1] : null;
             
@@ -518,6 +532,16 @@ export class VruttiEditorLayout extends LitElement {
     }
 
     private closePane(leafId: string) {
+        const leaf = this.findNode(this.rootNode, leafId) as LeafNode;
+        if (leaf && leaf.tabs) {
+            leaf.tabs.forEach(tab => {
+                const cacheKey = leafId + ':' + tab;
+                const cachedEl = this.editorCache.get(cacheKey) as any;
+                if (cachedEl && cachedEl.dispose) cachedEl.dispose();
+                this.editorCache.delete(cacheKey);
+            });
+        }
+
         if (this.rootNode.id === leafId) {
             // Cannot close root, just empty it
             (this.rootNode as LeafNode).tabs = [];
@@ -547,6 +571,11 @@ export class VruttiEditorLayout extends LitElement {
         e.stopPropagation();
         const leaf = this.findNode(this.rootNode, leafId) as LeafNode;
         if (!leaf) return;
+
+        const cacheKey = leafId + ':' + filePath;
+        const cachedEl = this.editorCache.get(cacheKey) as any;
+        if (cachedEl && cachedEl.dispose) cachedEl.dispose();
+        this.editorCache.delete(cacheKey);
 
         const newTabs = leaf.tabs.filter(t => t !== filePath);
         let newActive = leaf.activeTab;
@@ -680,6 +709,13 @@ export class VruttiEditorLayout extends LitElement {
         const targetLeaf = this.findNode(this.rootNode, targetLeafId) as LeafNode;
         if (!sourceLeaf || !targetLeaf) return;
 
+        const sourceCacheKey = sourceLeafId + ':' + filePath;
+        const targetCacheKey = targetLeafId + ':' + filePath;
+        if (this.editorCache.has(sourceCacheKey)) {
+            this.editorCache.set(targetCacheKey, this.editorCache.get(sourceCacheKey)!);
+            this.editorCache.delete(sourceCacheKey);
+        }
+
         const newSourceTabs = sourceLeaf.tabs.filter(t => t !== filePath);
         let newSourceActive = sourceLeaf.activeTab;
         if (sourceLeaf.activeTab === filePath) {
@@ -710,18 +746,24 @@ export class VruttiEditorLayout extends LitElement {
         }
     }
 
-    private renderEditorComponent(filePath: string) {
-        const extMatch = filePath.match(/\.([^.]+)$/);
-        const ext = extMatch ? extMatch[1].toLowerCase() : '';
-        const provider = registry.getEditorProviderForExtension(ext) || registry.getEditorProviderForExtension('*');
-        const componentName = provider?.component || 'vrutti-editor';
-        
-        const el = document.createElement(componentName) as any;
-        el.filePath = filePath;
-        el.style.flex = '1 1 0%';
-        el.style.width = '100%';
-        el.style.height = '100%';
-        return el;
+    private editorCache = new Map<string, HTMLElement>();
+
+    private renderEditorComponent(filePath: string, leafId: string) {
+        const cacheKey = leafId + ':' + filePath;
+        if (!this.editorCache.has(cacheKey)) {
+            const extMatch = filePath.match(/\.([^.]+)$/);
+            const ext = extMatch ? extMatch[1].toLowerCase() : '';
+            const provider = registry.getEditorProviderForExtension(ext) || registry.getEditorProviderForExtension('*');
+            const componentName = provider?.component || 'vrutti-editor';
+            
+            const el = document.createElement(componentName) as any;
+            el.filePath = filePath;
+            el.style.flex = '1 1 0%';
+            el.style.width = '100%';
+            el.style.height = '100%';
+            this.editorCache.set(cacheKey, el);
+        }
+        return this.editorCache.get(cacheKey);
     }
 
     private renderLeaf(leaf: LeafNode): TemplateResult {
@@ -773,12 +815,12 @@ export class VruttiEditorLayout extends LitElement {
                     </div>
                 </div>
                 <div class="editor-area ${this.activePaneId === leaf.id ? 'active-pane' : ''}" style="${this.activePaneId === leaf.id ? 'box-shadow: inset 0 0 0 1px var(--vrutti-surface-border);' : ''}">
-                    ${leaf.activeTab ? this.renderEditorComponent(leaf.activeTab) : html`
+                    ${leaf.activeTab ? this.renderEditorComponent(leaf.activeTab, leaf.id) : html`
                         <div class="empty-pane" style="position: relative; width: 100%; height: 100%; overflow: hidden;">
                             ${this.customBgType === 'video' && this.customBgPath ? html`
-                                <video src="${this.customBgPath}" autoplay loop muted style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); min-width: 100%; min-height: 100%; width: auto; height: auto; opacity: ${this.customBgOpacity}; pointer-events: none; user-select: none; object-fit: cover;"></video>
+                                <video src="${this.getProcessedBgPath()}" autoplay loop muted style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); min-width: 100%; min-height: 100%; width: auto; height: auto; opacity: ${this.customBgOpacity}; pointer-events: none; user-select: none; object-fit: cover;"></video>
                             ` : this.customBgType === 'image' && this.customBgPath ? html`
-                                <img src="${this.customBgPath}" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); min-width: 100%; min-height: 100%; width: auto; height: auto; opacity: ${this.customBgOpacity}; pointer-events: none; user-select: none; object-fit: cover;" />
+                                <img src="${this.getProcessedBgPath()}" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); min-width: 100%; min-height: 100%; width: auto; height: auto; opacity: ${this.customBgOpacity}; pointer-events: none; user-select: none; object-fit: cover;" />
                             ` : html`
                                 <img src="./vrutti-logo.png" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: ${this.customBgOpacity}; pointer-events: none; user-select: none; width: 400px; height: 400px; object-fit: contain;" />
                             `}

@@ -43,3 +43,13 @@ The root directory of the Vrutti IDE workspace, containing the main build config
 - **package_release.ps1**: Component implementation.
 - **rebase_editor.ps1**: Component implementation.
 
+## Roadmap & Planned Architecture
+To match modern IDE capabilities (like VS Code), the following features are planned for future development. Here is the current implementation status:
+1. **Problems / Diagnostics Panel**: Exists: Yes, Dynamic: Yes
+2. **Split Editors**: Exists: Yes, Dynamic: Yes
+3. **Search & Replace**: Exists: Yes, Dynamic: Yes
+4. **LSP (Language Server Protocol)**: Exists: No, Dynamic: No
+5. **Diff Editor**: Exists: No, Dynamic: No
+6. **Minimap & Breadcrumbs**: Exists: No, Dynamic: No
+
+- **Dynamic Backgrounds**: An ultra-lightweight dynamic media renderer for the IDE background that aggressively unmounts/flushes cache when an editor opens, ensuring zero performance impact.

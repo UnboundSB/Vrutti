@@ -80,7 +80,7 @@ export function registerCoreContributions() {
         component: 'vrutti-extensions'
     });
     // Panel Contributions
-    registry.registerPanel({ id: 'PROBLEMS', title: 'PROBLEMS', order: 10 });
+    registry.registerPanel({ id: 'PROBLEMS', title: 'PROBLEMS', order: 10, component: 'vrutti-problems-view' });
     registry.registerPanel({ id: 'OUTPUT', title: 'OUTPUT', order: 20, component: 'vrutti-output-view' });
     registry.registerPanel({ id: 'DEBUG CONSOLE', title: 'DEBUG CONSOLE', order: 30, component: 'vrutti-debug-console' });
     registry.registerPanel({ id: 'TERMINAL', title: 'TERMINAL', order: 40, component: 'vrutti-terminal-view' });

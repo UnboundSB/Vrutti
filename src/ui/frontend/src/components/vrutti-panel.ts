@@ -4,6 +4,7 @@ import './vrutti-terminal-view';
 import './vrutti-output-view';
 import './vrutti-debug-console';
 import './vrutti-webview';
+import './vrutti-problems-view';
 import { registry, PanelTabContribution } from '../core/Registry';
 
 @customElement('vrutti-panel')
@@ -188,7 +189,9 @@ export class VruttiPanel extends LitElement {
       </div>
       
       <div class="panel-content">
-        ${this.activePanelTab === 'TERMINAL' ? html`
+        ${this.activePanelTab === 'PROBLEMS' ? html`
+          <vrutti-problems-view></vrutti-problems-view>
+        ` : this.activePanelTab === 'TERMINAL' ? html`
           <vrutti-terminal-view></vrutti-terminal-view>
         ` : this.activePanelTab === 'OUTPUT' ? html`
           <vrutti-output-view .channel=${this.activeOutputChannel}></vrutti-output-view>

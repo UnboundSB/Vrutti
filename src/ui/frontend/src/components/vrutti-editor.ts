@@ -306,10 +306,6 @@ export class VruttiEditor extends LitElement {
 
     constructor() {
         super();
-        window.addEventListener('setting-changed', this._settingsHandler as EventListener);
-        window.addEventListener('editor-action', this._editorActionHandler as EventListener);
-        window.addEventListener('theme-loaded', this._themeHandler as EventListener);
-        window.addEventListener('vrutti-ipc', this._ipcHandler as EventListener);
         try {
             const applied = localStorage.getItem('vrutti-applied-theme');
             if (applied) {
@@ -317,6 +313,14 @@ export class VruttiEditor extends LitElement {
                 this._isDarkTheme = t.uiTheme === 'vs-dark';
             }
         } catch(e) {}
+    }
+
+    connectedCallback() {
+        super.connectedCallback();
+        window.addEventListener('setting-changed', this._settingsHandler as EventListener);
+        window.addEventListener('editor-action', this._editorActionHandler as EventListener);
+        window.addEventListener('theme-loaded', this._themeHandler as EventListener);
+        window.addEventListener('vrutti-ipc', this._ipcHandler as EventListener);
     }
 
     private _editorActionHandler = (e: Event) => {
@@ -697,12 +701,16 @@ export class VruttiEditor extends LitElement {
         window.removeEventListener('editor-action', this._editorActionHandler as EventListener);
         window.removeEventListener('theme-loaded', this._themeHandler as EventListener);
         window.removeEventListener('vrutti-ipc', this._ipcHandler as EventListener);
+    }
+
+    public dispose() {
         if (this._saveTimeout) {
             clearTimeout(this._saveTimeout);
             this._saveTimeout = undefined;
         }
         if (this._editorView) {
             this._editorView.destroy();
+            this._editorView = undefined;
         }
     }
 
