@@ -343,6 +343,55 @@ class VruttiAPI {
             onDidChange: () => ({ dispose: () => {} })
         };
 
+        const self = this;
+        this.lsp = {
+            LanguageClient: class LanguageClient {
+                constructor(id, name, serverOptions, clientOptions) {
+                    this.id = id;
+                    this.name = name;
+                    this.serverOptions = serverOptions;
+                    this.clientOptions = clientOptions;
+                }
+                
+                start() {
+                    const executable = this.serverOptions.run ? this.serverOptions.run.command : this.serverOptions.command;
+                    const args = (this.serverOptions.run ? this.serverOptions.run.args : this.serverOptions.args) || [];
+                    self.ipcClient.sendNotification('lsp/start', { executable, args, cwd: process.cwd() });
+                }
+                
+                stop() {
+                    self.ipcClient.sendNotification('lsp/stop', {});
+                }
+                
+                async sendRequest(method, params) {
+                    const id = Date.now() + Math.floor(Math.random() * 1000);
+                    return new Promise((resolve, reject) => {
+                        const handler = (payload) => {
+                            if (payload.id === id) {
+                                self.ipcClient.removeListener('lsp/response', handler);
+                                if (payload.success) resolve(payload.result);
+                                else reject(new Error(payload.error));
+                            }
+                        };
+                        self.ipcClient.on('lsp/response', handler);
+                        self.ipcClient.sendNotification('lsp/client_request', { method, params, id });
+                    });
+                }
+                
+                sendNotification(method, params) {
+                    self.ipcClient.sendNotification('lsp/client_notification', { method, params });
+                }
+                
+                onNotification(method, callback) {
+                    self.ipcClient.on('lsp/notification', (msg) => {
+                        if (msg.method === method) {
+                            callback(msg.params);
+                        }
+                    });
+                }
+            }
+        };
+
         // Basic types
         this.Disposable = class Disposable {
             constructor(callOnDispose) {

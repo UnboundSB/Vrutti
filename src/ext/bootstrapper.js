@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { DapClient } = require('./dap-client');
+const { LspClient } = require('./lsp-client');
 function parseArgs() {
     const args = process.argv.slice(2);
     const config = {};
@@ -786,6 +787,48 @@ async function main() {
                 }
             } catch (err) {
                 ipcClient.sendNotification('dap/response', { command: payload.command, seq: payload.seq, success: false, message: err.message });
+            }
+        });
+        
+        // Language Server Protocol (LSP) Bindings
+        const lspClient = new LspClient(ipcClient);
+        
+        lspClient.on('notification', (msg) => {
+            ipcClient.sendNotification('lsp/notification', msg);
+        });
+
+        lspClient.on('request', (msg) => {
+            ipcClient.sendNotification('lsp/request', msg);
+        });
+
+        ipcClient.on('lsp/start', (payload) => {
+            log(`[LSP Start] ${JSON.stringify(payload)}`);
+            try {
+                if (payload.executable) {
+                    lspClient.start(payload.executable, payload.args || [], payload.cwd);
+                    ipcClient.sendNotification('lsp/event', { event: 'started' });
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        });
+
+        ipcClient.on('lsp/stop', () => lspClient.stop());
+
+        ipcClient.on('lsp/client_request', async (payload) => {
+            try {
+                if (payload && payload.method) {
+                    const result = await lspClient.sendRequest(payload.method, payload.params || {});
+                    ipcClient.sendNotification('lsp/response', { method: payload.method, id: payload.id, success: true, result });
+                }
+            } catch (err) {
+                ipcClient.sendNotification('lsp/response', { method: payload.method, id: payload.id, success: false, error: err.message });
+            }
+        });
+
+        ipcClient.on('lsp/client_notification', (payload) => {
+            if (payload && payload.method) {
+                lspClient.sendNotification(payload.method, payload.params || {});
             }
         });
         
