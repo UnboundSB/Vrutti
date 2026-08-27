@@ -3,8 +3,9 @@
 #include <filesystem>
 #include <fstream>
 #include <regex>
+#include <cstdio>
+#include <memory>
 #include "../../core/utils/Json.h"
-#include "../../core/concurrency/ThreadPool.h"
 
 #ifdef _WIN32
 #define PLUGIN_EXPORT __declspec(dllexport)
@@ -22,72 +23,7 @@ extern "C" {
     }
 }
 
-#include <cctype>
-#include <thread>
-#include <mutex>
-#include <atomic>
-#include <vector>
-#include <algorithm>
-
 namespace vrutti::plugins::search {
-
-    struct CacheEntry {
-        std::string path;
-        std::string name;
-        bool isDirectory;
-    };
-
-    static std::vector<CacheEntry> g_cache;
-    static std::string g_currentDir = "";
-    static std::mutex g_cacheMutex;
-    static std::atomic<bool> g_isIndexing = false;
-
-    static void buildIndexSync(std::string dir) {
-        g_isIndexing = true;
-        std::vector<CacheEntry> localCache;
-        try {
-            auto it = std::filesystem::recursive_directory_iterator(dir, std::filesystem::directory_options::skip_permission_denied);
-            auto end = std::filesystem::recursive_directory_iterator();
-            for (; it != end; ++it) {
-                const auto& entry = *it;
-                std::string name = entry.path().filename().string();
-                if (entry.is_directory()) {
-                    if (name == ".git" || name == "build" || name == "build-linux" || name == "node_modules" || name == "dist" || name == "out" || name == ".vscode" || name == ".idea") {
-                        it.disable_recursion_pending();
-                    }
-                    localCache.push_back({entry.path().string(), name, true});
-                } else if (entry.is_regular_file()) {
-                    localCache.push_back({entry.path().string(), name, false});
-                }
-            }
-        } catch (...) {
-        }
-        
-        {
-            std::lock_guard<std::mutex> lock(g_cacheMutex);
-            g_cache = std::move(localCache);
-            g_currentDir = dir;
-        }
-        g_isIndexing = false;
-        std::cout << "[SearchPlugin] Indexing complete for " << dir << ". Found " << g_cache.size() << " items.\n";
-    }
-
-    static void buildIndexAsync(std::string dir) {
-        buildIndexSync(dir);
-    }
-
-    static bool fuzzyMatch(const std::string& query, const std::string& target, bool matchCase = false) {
-        if (query.empty()) return true;
-        size_t qIndex = 0;
-        for (char c : target) {
-            bool matches = matchCase ? (c == query[qIndex]) : (std::tolower(static_cast<unsigned char>(c)) == std::tolower(static_cast<unsigned char>(query[qIndex])));
-            if (matches) {
-                qIndex++;
-                if (qIndex == query.length()) return true;
-            }
-        }
-        return false;
-    }
 
     SearchPlugin::SearchPlugin() {
         std::cout << "[SearchPlugin] Constructor called.\n";
@@ -114,7 +50,6 @@ namespace vrutti::plugins::search {
         if (command == "search") {
             auto req = vrutti::core::utils::JsonParser::parse(payload);
             
-            // IPC routing fix: Window.cpp hardcodes executeCommand("search"), so we check the payload for "command"
             if (req && req->type == vrutti::core::utils::JsonNode::Type::Object) {
                 auto cmdNode = req->get("command");
                 if (cmdNode && cmdNode->type == vrutti::core::utils::JsonNode::Type::String && cmdNode->stringValue == "find_files") {
@@ -174,20 +109,10 @@ namespace vrutti::plugins::search {
             
             if (query.empty() || dir.empty()) return "[]";
 
-            {
-                std::lock_guard<std::mutex> lock(g_cacheMutex);
-                if (g_currentDir != dir && !g_isIndexing) {
-                    g_currentDir = dir;
-                    g_cache.clear();
-                    std::thread(buildIndexAsync, dir).detach();
-                }
-            }
-            
             auto results = performSearch(query, dir, options);
             
             std::string json = "{";
             
-            // Serialize files
             json += "\"files\":[";
             for (size_t i = 0; i < results.fileMatches.size(); ++i) {
                 if (i > 0) json += ",";
@@ -195,7 +120,6 @@ namespace vrutti::plugins::search {
             }
             json += "],";
             
-            // Serialize folders
             json += "\"folders\":[";
             for (size_t i = 0; i < results.folderMatches.size(); ++i) {
                 if (i > 0) json += ",";
@@ -203,7 +127,6 @@ namespace vrutti::plugins::search {
             }
             json += "],";
             
-            // Serialize words
             json += "\"words\":[";
             for (size_t i = 0; i < results.wordMatches.size(); ++i) {
                 if (i > 0) json += ",";
@@ -223,248 +146,196 @@ namespace vrutti::plugins::search {
 
     SearchResponse SearchPlugin::performSearch(const std::string& query, const std::string& directory, const SearchOptions& options) {
         SearchResponse response;
-        std::cout << "[SearchPlugin] Searching for '" << query << "' in " << directory << "...\n";
+        std::cout << "[SearchPlugin] Ripgrep Searching for '" << query << "' in " << directory << "...\n";
         
-        std::string searchPattern = query;
-        if (!options.useRegex && (options.wholeWord || !options.matchCase)) {
-            std::string escaped;
-            for (char c : searchPattern) {
-                if (c == '^' || c == '$' || c == '\\' || c == '.' || c == '*' || c == '+' || c == '?' || c == '(' || c == ')' || c == '[' || c == ']' || c == '{' || c == '}' || c == '|') {
-                    escaped += '\\';
-                }
-                escaped += c;
-            }
-            searchPattern = escaped;
+        std::string cmd = "rg --json ";
+        if (!options.matchCase) cmd += "-i ";
+        if (options.wholeWord) cmd += "-w ";
+        if (!options.useRegex) cmd += "-F ";
+        
+        std::string tempPatternFile = (std::filesystem::temp_directory_path() / "rg_pattern.txt").string();
+        std::ofstream pFile(tempPatternFile);
+        pFile << query;
+        pFile.close();
+        
+        cmd += "-f \"" + tempPatternFile + "\" ";
+        cmd += "\"" + directory + "\"";
+
+#ifdef _WIN32
+        FILE* pipe = _popen(cmd.c_str(), "r");
+#else
+        FILE* pipe = popen(cmd.c_str(), "r");
+#endif
+        if (!pipe) {
+            std::cerr << "[SearchPlugin] Failed to run ripgrep.\n";
+            return response;
         }
 
-        if (options.wholeWord && !options.useRegex) {
-            searchPattern = "\\b" + searchPattern + "\\b";
-        }
-        
-        std::regex::flag_type regexFlags = std::regex::ECMAScript;
-        if (!options.matchCase) {
-            regexFlags |= std::regex::icase;
-        }
-        
-        std::regex re;
-        bool useRegexEngine = options.useRegex || options.wholeWord;
-        bool caseInsensitiveSubstring = !options.useRegex && !options.wholeWord && !options.matchCase;
-        
-        if (useRegexEngine) {
-            try {
-                re = std::regex(searchPattern, regexFlags);
-            } catch (const std::regex_error& e) {
-                std::cerr << "[SearchPlugin] Invalid regex pattern: " << e.what() << "\n";
-                return response;
-            }
-        }
-        
-        std::string lowerQuery = query;
-        if (caseInsensitiveSubstring) {
-            for (char& c : lowerQuery) c = std::tolower(static_cast<unsigned char>(c));
-        }
-        
-        bool isFuzzy = false; // We don't use fuzzy matching for text search
-        
-        std::vector<CacheEntry> localCache;
-        {
-            std::lock_guard<std::mutex> lock(g_cacheMutex);
-            if (g_currentDir == directory && !g_cache.empty()) {
-                localCache = g_cache;
-            } else if (g_currentDir != directory && !g_isIndexing) {
-                g_currentDir = directory;
-                g_cache.clear();
-            }
-        }
-        
-        if (localCache.empty()) {
-            buildIndexSync(directory);
-            std::lock_guard<std::mutex> lock(g_cacheMutex);
-            localCache = g_cache;
-        }
-        
-        try {
-            std::atomic<size_t> resultCount = 0;
-            std::mutex resultsMutex;
-            vrutti::core::concurrency::ThreadPool pool;
-            std::vector<std::future<void>> futures;
-            
-            size_t batchSize = 100;
-            for (size_t i = 0; i < localCache.size(); i += batchSize) {
-                size_t end = std::min(i + batchSize, localCache.size());
-                std::vector<CacheEntry> batch(localCache.begin() + i, localCache.begin() + end);
-                
-                futures.push_back(pool.enqueue([&, batch]() {
-                    std::vector<SearchResult> threadWordMatches;
-                    
-                    for (const auto& entry : batch) {
-                        if (resultCount >= 2000 && !options.isReplace) break;
-                        if (entry.isDirectory) continue;
-                        
-                        std::error_code ec;
-                        auto fsize = std::filesystem::file_size(entry.path, ec);
-                        if (ec || fsize > 2 * 1024 * 1024 || fsize == 0) continue;
-                        
-                        std::ifstream file(entry.path, std::ios::binary);
-                        if (!file.is_open()) continue;
-                        
-                        std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-                        file.close();
-                        
-                        if (content.find('\0') != std::string::npos) continue;
-                        
-                        bool fileMatched = false;
-                        if (useRegexEngine) {
-                            fileMatched = std::regex_search(content, re);
-                        } else if (caseInsensitiveSubstring) {
-                            auto it = std::search(content.begin(), content.end(), lowerQuery.begin(), lowerQuery.end(), 
-                                [](char ch1, char ch2) { return std::tolower(static_cast<unsigned char>(ch1)) == ch2; });
-                            fileMatched = (it != content.end());
-                        } else {
-                            fileMatched = (content.find(query) != std::string::npos);
-                        }
-                        
-                        if (fileMatched) {
-                            std::istringstream stream(content);
-                            std::string line;
-                            std::string lowerLine;
-                            int lineNumber = 1;
-                            bool fileModified = false;
-                            std::vector<std::string> newLines;
-                            
-                            while (std::getline(stream, line)) {
-                                bool matched = false;
-                                
-                                if (useRegexEngine) {
-                                    if (std::regex_search(line, re)) {
-                                        matched = true;
-                                        if (options.isReplace) {
-                                            line = std::regex_replace(line, re, options.replaceString);
-                                            fileModified = true;
-                                        }
-                                    }
-                                } else if (caseInsensitiveSubstring) {
-                                    lowerLine.resize(line.size());
-                                    for (size_t k = 0; k < line.size(); ++k) lowerLine[k] = std::tolower(static_cast<unsigned char>(line[k]));
-                                    if (lowerLine.find(lowerQuery) != std::string::npos) {
-                                        matched = true;
-                                        if (options.isReplace) {
-                                            size_t pos = 0;
-                                            while ((pos = lowerLine.find(lowerQuery, pos)) != std::string::npos) {
-                                                line.replace(pos, lowerQuery.length(), options.replaceString);
-                                                lowerLine.replace(pos, lowerQuery.length(), options.replaceString);
-                                                for (size_t k = pos; k < pos + options.replaceString.length(); ++k) {
-                                                    lowerLine[k] = std::tolower(static_cast<unsigned char>(lowerLine[k]));
-                                                }
-                                                pos += options.replaceString.length();
-                                            }
-                                            fileModified = true;
-                                        }
-                                    }
-                                } else {
-                                    if (line.find(query) != std::string::npos) {
-                                        matched = true;
-                                        if (options.isReplace) {
-                                            size_t pos = 0;
-                                            while ((pos = line.find(query, pos)) != std::string::npos) {
-                                                line.replace(pos, query.length(), options.replaceString);
-                                                pos += options.replaceString.length();
-                                            }
-                                            fileModified = true;
-                                        }
-                                    }
-                                }
-                                
-                                if (matched) {
-                                    std::string snippet = line;
-                                    if (snippet.length() > 200) {
-                                        size_t qPos = std::string::npos;
-                                        if (useRegexEngine) {
-                                            std::smatch m;
-                                            if (std::regex_search(snippet, m, re)) qPos = m.position();
-                                        } else if (caseInsensitiveSubstring) {
-                                            std::string snippetLower = snippet;
-                                            for (char& c : snippetLower) c = std::tolower(static_cast<unsigned char>(c));
-                                            qPos = snippetLower.find(lowerQuery);
-                                        } else {
-                                            qPos = snippet.find(query);
-                                        }
-                                        if (qPos != std::string::npos) {
-                                            size_t start = (qPos > 50) ? (qPos - 50) : 0;
-                                            snippet = (start > 0 ? "..." : "") + snippet.substr(start, 200) + (start + 200 < snippet.length() ? "..." : "");
-                                        } else {
-                                            snippet = snippet.substr(0, 200) + "...";
-                                        }
-                                    }
-                                    threadWordMatches.push_back({entry.path, lineNumber, snippet});
-                                }
-                                
-                                if (options.isReplace) {
-                                    newLines.push_back(line);
-                                }
-                                lineNumber++;
+        char buffer[4096];
+        std::string resultLine;
+        std::vector<std::string> filesToReplace;
+
+        while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
+            resultLine += buffer;
+            if (!resultLine.empty() && resultLine.back() == '\n') {
+                auto node = vrutti::core::utils::JsonParser::parse(resultLine);
+                if (node && node->type == vrutti::core::utils::JsonNode::Type::Object) {
+                    auto typeNode = node->get("type");
+                    if (typeNode && typeNode->type == vrutti::core::utils::JsonNode::Type::String && typeNode->stringValue == "match") {
+                        auto dataNode = node->get("data");
+                        if (dataNode) {
+                            auto pathNode = dataNode->get("path");
+                            std::string filePath = "";
+                            if (pathNode) {
+                                auto textNode = pathNode->get("text");
+                                if (textNode) filePath = vrutti::core::utils::JsonParser::unescapeString(textNode->stringValue);
                             }
                             
-                            if (options.isReplace && fileModified) {
-                                std::ofstream out(entry.path);
-                                for (size_t k = 0; k < newLines.size(); ++k) {
-                                    out << newLines[k];
-                                    if (k < newLines.size() - 1) out << "\n";
+                            int lineNum = 1;
+                            auto lineNode = dataNode->get("line_number");
+                            if (lineNode && lineNode->type == vrutti::core::utils::JsonNode::Type::Number) {
+                                lineNum = (int)lineNode->numberValue;
+                            }
+                            
+                            std::string lineText = "";
+                            auto linesNode = dataNode->get("lines");
+                            if (linesNode) {
+                                auto textNode = linesNode->get("text");
+                                if (textNode) {
+                                    lineText = vrutti::core::utils::JsonParser::unescapeString(textNode->stringValue);
+                                    if (!lineText.empty() && lineText.back() == '\n') lineText.pop_back();
+                                    if (!lineText.empty() && lineText.back() == '\r') lineText.pop_back();
+                                }
+                            }
+                            
+                            if (!filePath.empty()) {
+                                response.wordMatches.push_back({filePath, lineNum, lineText});
+                                if (options.isReplace && std::find(filesToReplace.begin(), filesToReplace.end(), filePath) == filesToReplace.end()) {
+                                    filesToReplace.push_back(filePath);
                                 }
                             }
                         }
                     }
-                    
-                    if (!threadWordMatches.empty()) {
-                        std::lock_guard<std::mutex> lock(resultsMutex);
-                        for (const auto& wm : threadWordMatches) {
-                            if (resultCount >= 2000 && !options.isReplace) break;
-                            response.wordMatches.push_back(wm);
-                            resultCount++;
+                }
+                resultLine.clear();
+            }
+        }
+#ifdef _WIN32
+        _pclose(pipe);
+#else
+        pclose(pipe);
+#endif
+        std::filesystem::remove(tempPatternFile);
+
+        if (options.isReplace && !filesToReplace.empty()) {
+            std::regex::flag_type regexFlags = std::regex::ECMAScript;
+            if (!options.matchCase) regexFlags |= std::regex::icase;
+            std::regex re;
+            std::string searchPattern = query;
+            
+            bool useRegexEngine = options.useRegex || options.wholeWord;
+            bool caseInsensitiveSubstring = !options.useRegex && !options.wholeWord && !options.matchCase;
+            
+            if (!options.useRegex && (options.wholeWord || !options.matchCase)) {
+                std::string escaped;
+                for (char c : searchPattern) {
+                    if (c == '^' || c == '$' || c == '\\' || c == '.' || c == '*' || c == '+' || c == '?' || c == '(' || c == ')' || c == '[' || c == ']' || c == '{' || c == '}' || c == '|') escaped += '\\';
+                    escaped += c;
+                }
+                searchPattern = escaped;
+            }
+            if (options.wholeWord && !options.useRegex) searchPattern = "\\b" + searchPattern + "\\b";
+            if (useRegexEngine) re = std::regex(searchPattern, regexFlags);
+            
+            std::string lowerQuery = query;
+            if (caseInsensitiveSubstring) {
+                for (char& c : lowerQuery) c = std::tolower(static_cast<unsigned char>(c));
+            }
+
+            for (const auto& file : filesToReplace) {
+                std::ifstream in(file);
+                if (!in.is_open()) continue;
+                std::string content((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+                in.close();
+
+                std::istringstream stream(content);
+                std::string line;
+                std::vector<std::string> newLines;
+                bool modified = false;
+
+                while (std::getline(stream, line)) {
+                    if (useRegexEngine) {
+                        if (std::regex_search(line, re)) {
+                            line = std::regex_replace(line, re, options.replaceString);
+                            modified = true;
+                        }
+                    } else if (caseInsensitiveSubstring) {
+                        std::string lowerLine = line;
+                        for (char& c : lowerLine) c = std::tolower(static_cast<unsigned char>(c));
+                        size_t pos = 0;
+                        while ((pos = lowerLine.find(lowerQuery, pos)) != std::string::npos) {
+                            line.replace(pos, lowerQuery.length(), options.replaceString);
+                            lowerLine.replace(pos, lowerQuery.length(), options.replaceString);
+                            for (size_t k = pos; k < pos + options.replaceString.length(); ++k) {
+                                lowerLine[k] = std::tolower(static_cast<unsigned char>(lowerLine[k]));
+                            }
+                            pos += options.replaceString.length();
+                            modified = true;
+                        }
+                    } else {
+                        size_t pos = 0;
+                        while ((pos = line.find(query, pos)) != std::string::npos) {
+                            line.replace(pos, query.length(), options.replaceString);
+                            pos += options.replaceString.length();
+                            modified = true;
                         }
                     }
-                }));
+                    newLines.push_back(line);
+                }
+
+                if (modified) {
+                    std::ofstream out(file);
+                    for (size_t i = 0; i < newLines.size(); ++i) {
+                        out << newLines[i];
+                        if (i < newLines.size() - 1) out << "\n";
+                    }
+                }
             }
-            
-            for (auto& f : futures) {
-                f.get();
-            }
-            
-        } catch (const std::exception& e) {
-            std::cerr << "[SearchPlugin] Exception: " << e.what() << "\n";
         }
-        
+
         return response;
     }
 
     std::vector<std::string> SearchPlugin::findFiles(const std::string& directory) {
         std::vector<std::string> files;
-        std::cout << "[SearchPlugin] Finding files in " << directory << "...\n";
+        std::cout << "[SearchPlugin] Ripgrep Finding files in " << directory << "...\n";
         
-        std::vector<CacheEntry> localCache;
-        bool useCache = false;
-        {
-            std::lock_guard<std::mutex> lock(g_cacheMutex);
-            if (g_currentDir == directory && !g_cache.empty()) {
-                localCache = g_cache;
-                useCache = true;
-            } else if (g_currentDir != directory && !g_isIndexing) {
-                g_currentDir = directory;
-                g_cache.clear();
+        std::string cmd = "rg --files \"" + directory + "\"";
+#ifdef _WIN32
+        FILE* pipe = _popen(cmd.c_str(), "r");
+#else
+        FILE* pipe = popen(cmd.c_str(), "r");
+#endif
+        if (!pipe) return files;
+        
+        char buffer[4096];
+        std::string resultLine;
+        while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
+            resultLine += buffer;
+            if (!resultLine.empty() && resultLine.back() == '\n') {
+                resultLine.pop_back(); // remove \n
+                if (!resultLine.empty() && resultLine.back() == '\r') resultLine.pop_back(); // remove \r
+                if (!resultLine.empty()) {
+                    files.push_back(resultLine);
+                }
+                resultLine.clear();
             }
         }
-        
-        if (!useCache) {
-            buildIndexSync(directory);
-            std::lock_guard<std::mutex> lock(g_cacheMutex);
-            localCache = g_cache;
-        }
-        
-        for (const auto& entry : localCache) {
-            if (!entry.isDirectory) {
-                files.push_back(entry.path);
-            }
-        }
+#ifdef _WIN32
+        _pclose(pipe);
+#else
+        pclose(pipe);
+#endif
         return files;
     }
 
