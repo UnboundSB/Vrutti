@@ -13,7 +13,7 @@ import { javascript } from '@codemirror/lang-javascript';
 import { cpp } from '@codemirror/lang-cpp';
 import { json } from '@codemirror/lang-json';
 import { python } from '@codemirror/lang-python';
-
+import { showMinimap } from '@replit/codemirror-minimap';
 const breakpointEffect = StateEffect.define<{pos: number, on: boolean}>({
     map: (val, mapping) => ({pos: mapping.mapPos(val.pos), on: val.on})
 });
@@ -677,7 +677,18 @@ export class VruttiEditor extends LitElement {
             saveKeymap,
             updateListener,
             executionLineState,
-            this.getLanguageExtension()
+            this.getLanguageExtension(),
+            showMinimap.compute(['doc'], () => {
+                return {
+                    create: () => {
+                        const dom = document.createElement('div');
+                        dom.style.cssText = 'width: 120px; height: 100%; border-left: 1px solid var(--vrutti-surface-border); background: var(--vrutti-surface); overflow: hidden; position: absolute; right: 0; top: 0; bottom: 0; opacity: 0.8; z-index: 10;';
+                        return { dom };
+                    },
+                    displayText: 'blocks',
+                    showOverlay: 'mouse-over'
+                };
+            })
         ];
 
         if (this._wordWrap) {

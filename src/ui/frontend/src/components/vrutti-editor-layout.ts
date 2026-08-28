@@ -1,6 +1,7 @@
 import { LitElement, html, css, TemplateResult } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import './vrutti-editor';
+import './vrutti-diff-editor';
 import { globalHoverStyle } from '../shared-styles';
 import { registry } from '../core/Registry';
 
@@ -394,6 +395,29 @@ export class VruttiEditorLayout extends LitElement {
         }
     }
 
+    public openDiff(modifiedPath: string, originalPath: string) {
+        const diffId = `diff|${modifiedPath}|${originalPath}`;
+        let targetLeaf = this.findNode(this.rootNode, this.activePaneId) as LeafNode;
+        if (!targetLeaf || targetLeaf.type !== 'leaf') {
+            targetLeaf = this.findFirstLeaf(this.rootNode)!;
+            if (targetLeaf) this.activePaneId = targetLeaf.id;
+        }
+        
+        if (targetLeaf) {
+            const newTabs = targetLeaf.tabs.includes(diffId) 
+                ? targetLeaf.tabs 
+                : [...targetLeaf.tabs, diffId];
+                
+            this.replaceNode(targetLeaf.id, {
+                ...targetLeaf,
+                tabs: newTabs,
+                activeTab: diffId
+            });
+            this.dispatchActiveFile(diffId);
+            this.requestUpdate();
+        }
+    }
+
     public closeActiveEditor() {
         const leaf = this.findNode(this.rootNode, this.activePaneId) as LeafNode;
         if (leaf && leaf.activeTab) {
@@ -660,6 +684,11 @@ export class VruttiEditorLayout extends LitElement {
     // --- Rendering ---
 
     private getBasename(path: string) {
+        if (path.startsWith('diff|')) {
+            const parts = path.split('|');
+            const modName = parts[1].split(/[\\/]/).pop() || parts[1];
+            return `Diff: ${modName}`;
+        }
         return path.split(/[\\/]/).pop() || path;
     }
     
@@ -751,19 +780,56 @@ export class VruttiEditorLayout extends LitElement {
     private renderEditorComponent(filePath: string, leafId: string) {
         const cacheKey = leafId + ':' + filePath;
         if (!this.editorCache.has(cacheKey)) {
-            const extMatch = filePath.match(/\.([^.]+)$/);
-            const ext = extMatch ? extMatch[1].toLowerCase() : '';
-            const provider = registry.getEditorProviderForExtension(ext) || registry.getEditorProviderForExtension('*');
-            const componentName = provider?.component || 'vrutti-editor';
-            
-            const el = document.createElement(componentName) as any;
-            el.filePath = filePath;
-            el.style.flex = '1 1 0%';
-            el.style.width = '100%';
-            el.style.height = '100%';
-            this.editorCache.set(cacheKey, el);
+            if (filePath.startsWith('diff|')) {
+                const parts = filePath.split('|');
+                const modifiedPath = parts[1];
+                const originalPath = parts[2] || '';
+                
+                const el = document.createElement('vrutti-diff-editor') as any;
+                el.modifiedPath = modifiedPath;
+                el.originalPath = originalPath;
+                el.style.flex = '1 1 0%';
+                el.style.width = '100%';
+                el.style.height = '100%';
+                this.editorCache.set(cacheKey, el);
+            } else {
+                const extMatch = filePath.match(/\.([^.]+)$/);
+                const ext = extMatch ? extMatch[1].toLowerCase() : '';
+                const provider = registry.getEditorProviderForExtension(ext) || registry.getEditorProviderForExtension('*');
+                const componentName = provider?.component || 'vrutti-editor';
+                
+                const el = document.createElement(componentName) as any;
+                el.filePath = filePath;
+                el.style.flex = '1 1 0%';
+                el.style.width = '100%';
+                el.style.height = '100%';
+                this.editorCache.set(cacheKey, el);
+            }
         }
         return this.editorCache.get(cacheKey);
+    }
+
+    private renderBreadcrumbs(filePath: string) {
+        if (filePath.startsWith('diff|')) {
+            const parts = filePath.split('|');
+            return html`<span style="opacity:0.8;">Working Tree</span> <span style="margin: 0 4px; opacity:0.5;">&gt;</span> <span>${parts[1].split(/[\\/]/).pop()}</span>`;
+        }
+        let p = filePath.replace(/\\/g, '/');
+        const workspace = (window as any).currentWorkspace;
+        if (workspace) {
+            const w = workspace.replace(/\\/g, '/');
+            if (p.toLowerCase().startsWith(w.toLowerCase())) {
+                p = p.substring(w.length);
+                if (p.startsWith('/')) p = p.substring(1);
+            }
+        }
+        const segments = p.split('/');
+        return html`
+            ${segments.map((seg, i) => html`
+                <span style="${i === segments.length - 1 ? 'font-weight: 500; color: var(--vrutti-text-bright);' : 'opacity: 0.8;'}">${seg}</span>
+                ${i < segments.length - 1 ? html`<span style="margin: 0 4px; opacity: 0.5;">&gt;</span>` : ''}
+            `)}
+        `;
     }
 
     private renderLeaf(leaf: LeafNode): TemplateResult {
@@ -814,6 +880,11 @@ export class VruttiEditorLayout extends LitElement {
                         ` : ''}
                     </div>
                 </div>
+                ${leaf.activeTab ? html`
+                    <div class="breadcrumb-bar" style="display: flex; align-items: center; padding: 4px 12px; font-size: 13px; background: var(--vrutti-bg); color: var(--vrutti-text); opacity: 0.8; border-bottom: 1px solid var(--vrutti-surface-border); min-height: 22px;">
+                        ${this.renderBreadcrumbs(leaf.activeTab)}
+                    </div>
+                ` : ''}
                 <div class="editor-area ${this.activePaneId === leaf.id ? 'active-pane' : ''}" style="${this.activePaneId === leaf.id ? 'box-shadow: inset 0 0 0 1px var(--vrutti-surface-border);' : ''}">
                     ${leaf.activeTab ? this.renderEditorComponent(leaf.activeTab, leaf.id) : html`
                         <div class="empty-pane" style="position: relative; width: 100%; height: 100%; overflow: hidden;">
