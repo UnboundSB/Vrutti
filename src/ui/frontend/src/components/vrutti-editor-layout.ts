@@ -357,6 +357,18 @@ export class VruttiEditorLayout extends LitElement {
         if (changedProperties.has('rootNode') || changedProperties.has('activePaneId')) {
             this.saveLayoutState();
         }
+        
+        const hosts = this.renderRoot.querySelectorAll('.editor-host');
+        hosts.forEach(host => {
+            const key = host.getAttribute('data-cache-key');
+            if (key && this.editorCache.has(key)) {
+                const el = this.editorCache.get(key)!;
+                if (el.parentElement !== host) {
+                    host.innerHTML = '';
+                    host.appendChild(el);
+                }
+            }
+        });
     }
 
     private handleEditorAction = (e: Event) => {
@@ -806,7 +818,7 @@ export class VruttiEditorLayout extends LitElement {
                 this.editorCache.set(cacheKey, el);
             }
         }
-        return this.editorCache.get(cacheKey);
+        return html`<div class="editor-host" data-cache-key="${cacheKey}" style="flex: 1; min-width: 0; min-height: 0; display: flex;"></div>`;
     }
 
     private renderBreadcrumbs(filePath: string) {
