@@ -47,43 +47,69 @@ class ExtensionManager {
         
         // Map of command ID -> { extensionPath: string, main: string }
         this.commandIndex = new Map();
+        // Map of activationEvent -> Array<{ id: string, path: string, main: string }>
+        this.activationIndex = new Map();
         // Set of active extension IDs
         this.activeExtensions = new Set();
     }
 
     async indexExtensions() {
         this.commandIndex.clear();
+        this.activationIndex.clear();
         const extensions = await this.getInstalledExtensions();
         
         for (const ext of extensions) {
-            if (ext.main && ext.contributes && ext.contributes.commands) {
-                // Determine if we need lazy loading via activationEvents
-                // or if we just blindly activate on commands (VS Code does onCommand:id)
-                for (const cmd of ext.contributes.commands) {
-                    if (cmd.command) {
-                        this.commandIndex.set(cmd.command, {
-                            id: ext.id,
-                            path: ext.localPath,
-                            main: path.join(ext.localPath, 'extension', ext.main)
-                        });
+            if (ext.main) {
+                const extInfo = {
+                    id: ext.id,
+                    path: ext.localPath,
+                    main: path.join(ext.localPath, 'extension', ext.main)
+                };
+                
+                // Index by commands for implicit 'onCommand:' activation
+                if (ext.contributes && ext.contributes.commands) {
+                    for (const cmd of ext.contributes.commands) {
+                        if (cmd.command) {
+                            this.commandIndex.set(cmd.command, extInfo);
+                            this.addActivationEvent(`onCommand:${cmd.command}`, extInfo);
+                        }
+                    }
+                }
+                
+                // Index explicit activation events
+                if (ext.activationEvents) {
+                    for (const event of ext.activationEvents) {
+                        this.addActivationEvent(event, extInfo);
                     }
                 }
             }
         }
     }
+    
+    addActivationEvent(event, extInfo) {
+        if (!this.activationIndex.has(event)) {
+            this.activationIndex.set(event, []);
+        }
+        this.activationIndex.get(event).push(extInfo);
+    }
 
-    async activateExtensionForCommand(commandId) {
-        if (this.commandIndex.has(commandId)) {
-            const extInfo = this.commandIndex.get(commandId);
+    async activateByEvent(event) {
+        const exts = this.activationIndex.get(event) || [];
+        // Also always trigger '*' if it's the first time we're firing an event (or just rely on the frontend sending '*')
+        for (const extInfo of exts) {
             await this.activateExtension(extInfo);
         }
+    }
+
+    async activateExtensionForCommand(commandId) {
+        await this.activateByEvent(`onCommand:${commandId}`);
     }
 
     async activateExtension(extInfo) {
         if (this.activeExtensions.has(extInfo.id)) {
             return; // Already active
         }
-        log(`Lazy activating extension: ${extInfo.id}`);
+        log(`Activating extension: ${extInfo.id}`);
         try {
             if (fs.existsSync(extInfo.main)) {
                 const extModule = require(extInfo.main);
@@ -494,6 +520,12 @@ async function main() {
                 }
             } catch (e) {
                 console.error('Failed to read builtin-themes injections:', e);
+            }
+        });
+
+        ipcClient.on('extensions/activateEvent', async (params) => {
+            if (params && params.event) {
+                await manager.activateByEvent(params.event);
             }
         });
 
