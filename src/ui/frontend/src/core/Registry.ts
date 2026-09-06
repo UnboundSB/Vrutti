@@ -154,6 +154,21 @@ class ContributionRegistry extends EventTarget {
         this.emitChange('statusbar');
     }
 
+    updateStatusBar(id: string, updates: Partial<StatusBarContribution>) {
+        const item = this.statusbar.get(id);
+        if (item) {
+            this.statusbar.set(id, { ...item, ...updates });
+            this.emitChange('statusbar');
+        }
+    }
+
+    removeStatusBar(id: string) {
+        if (this.statusbar.has(id)) {
+            this.statusbar.delete(id);
+            this.emitChange('statusbar');
+        }
+    }
+
     registerMenu(item: MenuContribution) {
         this.menus.set(item.id, item);
         this.emitChange('menus');

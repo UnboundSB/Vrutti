@@ -7,6 +7,7 @@ import './components/vrutti-panel';
 import './components/vrutti-editor-layout';
 import './components/vrutti-quick-pick';
 import './components/vrutti-extension-details';
+import './components/vrutti-tree-view';
 import { VruttiTaskManager } from './components/vrutti-task-manager';
 import { themeBridge } from './ThemeBridge';
 import { registry } from './core/Registry';
@@ -133,11 +134,16 @@ export class VruttiApp extends LitElement {
                                 }
                             }).catch(console.error);
                         }
-                        const extViews = (ext.contributes.views && ext.contributes.views[container.id]) || [];
+                    }
+                }
+                
+                if (ext.contributes && ext.contributes.views) {
+                    for (const containerId of Object.keys(ext.contributes.views)) {
+                        const extViews = ext.contributes.views[containerId] || [];
                         for (const view of extViews) {
                             registry.registerView({
                                 id: view.id,
-                                containerId: container.id,
+                                containerId: containerId,
                                 name: view.name,
                                 component: 'vrutti-webview'
                             });
@@ -155,6 +161,44 @@ export class VruttiApp extends LitElement {
            } else if (msg.params && msg.params.action) {
                registry.executeCommand(msg.params.action);
            }
+        } else if (msg.method === 'statusbar/show') {
+           registry.registerStatusBar({
+               id: msg.params.id,
+               text: msg.params.text,
+               tooltip: msg.params.tooltip,
+               alignment: msg.params.alignment === 2 ? 'right' : 'left', // 1=Left, 2=Right in VS Code API
+               order: msg.params.priority || 0
+           });
+           if (msg.params.command) {
+               registry.registerCommand(`statusbar.cmd.${msg.params.id}`, () => {
+                   if ((window as any).sendIpcMessage) {
+                       (window as any).sendIpcMessage('command/execute', JSON.stringify({ command: msg.params.command }));
+                   }
+               });
+           }
+        } else if (msg.method === 'statusbar/update') {
+           registry.updateStatusBar(msg.params.id, {
+               text: msg.params.text,
+               tooltip: msg.params.tooltip
+           });
+        } else if (msg.method === 'statusbar/hide') {
+           registry.removeStatusBar(msg.params.id);
+        } else if (msg.method === 'treeview/register') {
+           const { id } = msg.params;
+           
+           // We might need to find the container this view belongs to.
+           // For now, let's look up the package.json to see if it's contributed there.
+           // If it's dynamically created, we can just put it in a default container like 'explorer'
+           let containerId = 'explorer';
+           let name = id;
+           
+           // Register a view contribution that uses our generic vrutti-tree-view component
+           registry.registerView({
+               id: id,
+               containerId: containerId,
+               name: name,
+               component: 'vrutti-tree-view'
+           });
         }
       } catch (e) {
         console.error("Failed to parse IPC message from backend:", e);
@@ -203,6 +247,12 @@ export class VruttiApp extends LitElement {
 
     setTimeout(() => {
       this.isLoading = false;
+      
+      // Trigger startup activation events
+      if ((window as any).sendIpcMessage) {
+        (window as any).sendIpcMessage('extensions/activateEvent', JSON.stringify({ event: '*' }));
+        (window as any).sendIpcMessage('extensions/activateEvent', JSON.stringify({ event: 'onStartupFinished' }));
+      }
     }, 2500);
 
     // Connect theme bridge to listen for IPC themes
