@@ -64,14 +64,47 @@ class VruttiAPI {
                     dispose: () => {}
                 };
             },
+            createStatusBarItem: (idOrAlignment, alignmentOrPriority, priorityOrUndefined) => {
+                let id = typeof idOrAlignment === 'string' ? idOrAlignment : `statusbar_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                let alignment = typeof idOrAlignment === 'string' ? alignmentOrPriority : idOrAlignment;
+                let priority = typeof idOrAlignment === 'string' ? priorityOrUndefined : alignmentOrPriority;
+                
+                let text = '';
+                let tooltip = '';
+                let command = '';
+                
+                const item = {
+                    get text() { return text; },
+                    set text(val) { text = val; update(); },
+                    get tooltip() { return tooltip; },
+                    set tooltip(val) { tooltip = val; update(); },
+                    get command() { return command; },
+                    set command(val) { command = val; update(); },
+                    show: () => {
+                        this.sendNotification('statusbar/show', { id, text, tooltip, command, alignment, priority });
+                    },
+                    hide: () => {
+                        this.sendNotification('statusbar/hide', { id });
+                    },
+                    dispose: () => {
+                        this.sendNotification('statusbar/hide', { id });
+                    }
+                };
+                
+                const update = () => {
+                    this.sendNotification('statusbar/update', { id, text, tooltip, command, alignment, priority });
+                };
+                return item;
+            },
             activeTextEditor: undefined,
             visibleTextEditors: [],
             onDidChangeActiveTextEditor: () => ({ dispose: () => {} }),
             onDidChangeTextEditorSelection: () => ({ dispose: () => {} }),
             onDidChangeVisibleTextEditors: () => ({ dispose: () => {} }),
             createTerminal: (nameOrOptions) => {
+                const name = typeof nameOrOptions === 'string' ? nameOrOptions : (nameOrOptions ? nameOrOptions.name : 'Terminal');
                 return {
-                    name: typeof nameOrOptions === 'string' ? nameOrOptions : (nameOrOptions ? nameOrOptions.name : 'Terminal'),
+                    name,
                     processId: Promise.resolve(0),
                     sendText: (text, addNewLine = true) => {
                         this.sendNotification('terminal/runCommand', { command: text });
@@ -80,6 +113,37 @@ class VruttiAPI {
                     hide: () => {},
                     dispose: () => {}
                 };
+            },
+            createTreeView: (viewId, options) => {
+                const treeView = {
+                    onDidExpandElement: () => ({ dispose: () => {} }),
+                    onDidCollapseElement: () => ({ dispose: () => {} }),
+                    onDidChangeSelection: () => ({ dispose: () => {} }),
+                    onDidChangeVisibility: () => ({ dispose: () => {} }),
+                    reveal: async (element, options) => {},
+                    dispose: () => {}
+                };
+                
+                if (options.treeDataProvider) {
+                    this._treeProviders.set(viewId, options.treeDataProvider);
+                    this.sendNotification('treeview/register', { id: viewId });
+                }
+                
+                return treeView;
+            },
+            registerTreeDataProvider: (viewId, treeDataProvider) => {
+                this._treeProviders.set(viewId, treeDataProvider);
+                this.sendNotification('treeview/register', { id: viewId });
+                
+                if (treeDataProvider.onDidChangeTreeData) {
+                    treeDataProvider.onDidChangeTreeData((element) => {
+                        this.sendNotification('treeview/update', { id: viewId, element: element ? element.id : undefined });
+                    });
+                }
+                
+                return { dispose: () => {
+                    this._treeProviders.delete(viewId);
+                }};
             },
             createWebviewPanel: (viewType, title, showOptions, options) => {
                 const id = `webview_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -126,6 +190,7 @@ class VruttiAPI {
 
         this._webviews = new Map();
         this._webviewProviders = new Map();
+        this._treeProviders = new Map();
         
         this.ipcClient.on('webviewView/resolve', async (payload) => {
             const { viewId, webviewId } = payload;
@@ -159,6 +224,52 @@ class VruttiAPI {
             const webviewData = this._webviews.get(id);
             if (webviewData && webviewData.emitter) {
                 webviewData.emitter.fire(message);
+            }
+        });
+
+        const _treeNodeMap = new Map();
+        let _treeNodeCounter = 1;
+
+        this.ipcClient.on('treeview/request', async (payload) => {
+            const { reqId, viewId, method, nodeHandle } = payload;
+            const provider = this._treeProviders.get(viewId);
+            if (!provider) {
+                this.sendNotification('treeview/response', { reqId, error: 'Provider not found' });
+                return;
+            }
+            try {
+                if (method === 'getChildren') {
+                    const element = nodeHandle ? _treeNodeMap.get(nodeHandle) : undefined;
+                    const children = await provider.getChildren(element);
+                    
+                    if (!children) {
+                        this.sendNotification('treeview/response', { reqId, result: [] });
+                        return;
+                    }
+
+                    const result = [];
+                    for (const child of children) {
+                        let handle = child.__vruttiHandle;
+                        if (!handle) {
+                            handle = `tree_${viewId}_${_treeNodeCounter++}`;
+                            child.__vruttiHandle = handle;
+                            _treeNodeMap.set(handle, child);
+                        }
+                        
+                        const item = await provider.getTreeItem(child);
+                        result.push({
+                            handle,
+                            label: typeof item.label === 'string' ? item.label : (item.label ? item.label.label : 'Unknown'),
+                            collapsibleState: item.collapsibleState || 0, // 0=None, 1=Collapsed, 2=Expanded
+                            contextValue: item.contextValue,
+                            iconPath: item.iconPath,
+                            command: item.command
+                        });
+                    }
+                    this.sendNotification('treeview/response', { reqId, result });
+                }
+            } catch (err) {
+                this.sendNotification('treeview/response', { reqId, error: err.message });
             }
         });
 
@@ -204,7 +315,45 @@ class VruttiAPI {
             },
             onDidSaveTextDocument: () => ({ dispose: () => {} }),
             onDidOpenTextDocument: () => ({ dispose: () => {} }),
-            onDidCloseTextDocument: () => ({ dispose: () => {} })
+            onDidCloseTextDocument: () => ({ dispose: () => {} }),
+            fs: {
+                stat: async (uri) => {
+                    return this.sendRequest('workspace/fs/stat', { uri: uri.toString() });
+                },
+                readDirectory: async (uri) => {
+                    return this.sendRequest('workspace/fs/readDirectory', { uri: uri.toString() });
+                },
+                createDirectory: async (uri) => {
+                    return this.sendRequest('workspace/fs/createDirectory', { uri: uri.toString() });
+                },
+                readFile: async (uri) => {
+                    const result = await this.sendRequest('workspace/fs/readFile', { uri: uri.toString() });
+                    if (result && result.data) {
+                        return Uint8Array.from(atob(result.data), c => c.charCodeAt(0));
+                    }
+                    return new Uint8Array(0);
+                },
+                writeFile: async (uri, content) => {
+                    let base64 = '';
+                    if (content instanceof Uint8Array) {
+                        const chunks = [];
+                        for (let i = 0; i < content.length; i += 8192) {
+                            chunks.push(String.fromCharCode.apply(null, content.subarray(i, i + 8192)));
+                        }
+                        base64 = btoa(chunks.join(''));
+                    }
+                    return this.sendRequest('workspace/fs/writeFile', { uri: uri.toString(), content: base64 });
+                },
+                delete: async (uri, options) => {
+                    return this.sendRequest('workspace/fs/delete', { uri: uri.toString(), options });
+                },
+                rename: async (source, target, options) => {
+                    return this.sendRequest('workspace/fs/rename', { source: source.toString(), target: target.toString(), options });
+                },
+                copy: async (source, target, options) => {
+                    return this.sendRequest('workspace/fs/copy', { source: source.toString(), target: target.toString(), options });
+                }
+            }
         };
 
         this._commandRegistry = new Map();
