@@ -1,5 +1,6 @@
 import { LitElement, css, html } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
+import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import './vrutti-terminal-view';
 import './vrutti-output-view';
 import './vrutti-debug-console';
@@ -189,25 +190,25 @@ export class VruttiPanel extends LitElement {
       </div>
       
       <div class="panel-content">
-        ${this.activePanelTab === 'PROBLEMS' ? html`
-          <vrutti-problems-view></vrutti-problems-view>
-        ` : this.activePanelTab === 'TERMINAL' ? html`
-          <vrutti-terminal-view></vrutti-terminal-view>
-        ` : this.activePanelTab === 'OUTPUT' ? html`
-          <vrutti-output-view .channel=${this.activeOutputChannel}></vrutti-output-view>
-      ` : this.activePanelTab === 'DEBUG CONSOLE' ? html`
-        <vrutti-debug-console></vrutti-debug-console>
-      ` : this.activePanelTab === 'PORTS' ? html`
-        <div style="padding: 15px; opacity: 0.5;">Ports panel not yet implemented.</div>
-      ` : this.panelTabs.find(p => p.id === this.activePanelTab)?.component === 'vrutti-webview' ? html`
-        <div style="flex: 1; display: flex; flex-direction: column; background: var(--vscode-editor-background, #1a1b26);">
-          <vrutti-webview .webviewId=${this.activePanelTab}></vrutti-webview>
-        </div>
-      ` : html`
-        <div style="flex: 1; display: flex; align-items: center; justify-content: center; color: #717cb4; font-size: 13px;">
-          ${this.activePanelTab} - Not yet implemented
-        </div>
-      `}
+        ${(() => {
+          const tab = this.panelTabs.find(p => p.id === this.activePanelTab);
+          if (!tab) return html`<div style="flex: 1; display: flex; align-items: center; justify-content: center; color: #717cb4; font-size: 13px;">Panel not found.</div>`;
+
+          if (tab.component === 'vrutti-webview') {
+             return html`<div style="flex: 1; display: flex; flex-direction: column; background: var(--vscode-editor-background, #1a1b26);">
+               <vrutti-webview .webviewId=${this.activePanelTab}></vrutti-webview>
+             </div>`;
+          } else if (tab.component === 'vrutti-output-view') {
+             return html`<vrutti-output-view .channel=${this.activeOutputChannel}></vrutti-output-view>`;
+          } else if (tab.component) {
+             return html`${unsafeHTML('<' + tab.component + '></' + tab.component + '>')}`;
+          } else {
+             return html`<div style="flex: 1; display: flex; align-items: center; justify-content: center; color: #717cb4; font-size: 13px;">
+               ${tab.title} panel not yet implemented.
+             </div>`;
+          }
+        })()}
+      </div>
     `;
   }
 }

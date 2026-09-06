@@ -396,6 +396,13 @@ export class VruttiSidebar extends LitElement {
       this.isOpen = true;
     }
     this.updateFromRegistry();
+    
+    // Trigger onView activation events
+    if (this.isOpen && (window as any).sendIpcMessage) {
+        for (const view of this.currentViews) {
+            (window as any).sendIpcMessage('extensions/activateEvent', JSON.stringify({ event: `onView:${view.id}` }));
+        }
+    }
   }
 
   @state()
@@ -449,7 +456,9 @@ export class VruttiSidebar extends LitElement {
                         ${view.name}
                       </div>
                       <div class="custom-view-content" style="flex: 1; position: relative; min-height: 0;">
-                        ${view.component === 'vrutti-webview' ? html`<vrutti-webview .viewId=${view.id}></vrutti-webview>` : unsafeHTML(`<${view.component}></${view.component}>`)}
+                        ${view.component === 'vrutti-webview' ? html`<vrutti-webview .viewId=${view.id}></vrutti-webview>` : 
+                          view.component === 'vrutti-tree-view' ? html`<vrutti-tree-view .viewId=${view.id}></vrutti-tree-view>` :
+                          unsafeHTML(`<${view.component}></${view.component}>`)}
                       </div>
                     </div>
                   `)}
