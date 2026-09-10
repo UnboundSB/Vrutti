@@ -117,9 +117,38 @@ class ExtensionManager {
                     const context = {
                         subscriptions: [],
                         extensionPath: extInfo.path,
-                        globalState: { get: () => undefined, update: () => {} }
+                        globalState: { 
+                            get: () => undefined, 
+                            update: () => {},
+                            setKeysForSync: () => {}
+                        },
+                        workspaceState: {
+                            get: () => undefined, 
+                            update: () => {}
+                        },
+                        secrets: {
+                            get: async () => undefined,
+                            store: async () => {},
+                            delete: async () => {},
+                            onDidChange: () => ({ dispose: () => {} })
+                        },
+                        extension: {
+                            packageJSON: require(path.join(extInfo.path, 'extension', 'package.json'))
+                        },
+                        asAbsolutePath: (p) => path.join(extInfo.path, 'extension', p)
                     };
-                    await extModule.activate(context);
+                    const proxiedContext = new Proxy(context, {
+                        get: (obj, prop) => {
+                            if (prop in obj) return obj[prop];
+                            if (typeof prop === 'symbol') return undefined;
+                            console.warn(`[Vrutti API Stub] Called unimplemented context property: ${String(prop)}`);
+                            return function(...args) {
+                                console.warn(`[Vrutti API Stub] Called unimplemented context method: ${String(prop)}`);
+                                return { dispose: () => {} };
+                            };
+                        }
+                    });
+                    await extModule.activate(proxiedContext);
                     this.activeExtensions.add(extInfo.id);
                     log(`Successfully activated ${extInfo.id}`);
                 } else {

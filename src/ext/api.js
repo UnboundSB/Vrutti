@@ -432,6 +432,29 @@ class VruttiAPI {
             }
         };
 
+        this.UIKind = {
+            Desktop: 1,
+            Web: 2
+        };
+
+        this.env = {
+            appHost: 'desktop',
+            appName: 'Vrutti IDE',
+            appRoot: process.cwd(),
+            language: 'en',
+            machineId: 'vrutti-machine-id',
+            sessionId: 'vrutti-session-id',
+            uiKind: this.UIKind.Desktop,
+            uriScheme: 'vscode',
+            isNewAppInstall: false,
+            isTelemetryEnabled: false,
+            clipboard: {
+                readText: async () => '',
+                writeText: async (text) => {}
+            },
+            openExternal: async (uri) => true
+        };
+
         // Listen for requests from C++ core and dispatch to JS providers
         this.ipcClient.on('languages/request', async (payload) => {
             const { id, reqId, method, args } = payload;
@@ -739,6 +762,7 @@ class VruttiAPI {
         };
 
         this.workspace.textDocuments = [];
+        this.workspace.workspaceFolders = undefined; // Undefined if no folders are open, or [] if empty workspace
         this.workspace.onDidChangeTextDocument = onDidChangeDoc.event;
         this.workspace.onDidOpenTextDocument = onDidOpenDoc.event;
         this.workspace.onDidCloseTextDocument = onDidCloseDoc.event;
@@ -773,5 +797,66 @@ class VruttiAPI {
 }
 
 module.exports = {
-    createApi: (ipcClient) => new VruttiAPI(ipcClient)
+    createApi: (ipcClient) => {
+        const api = new VruttiAPI(ipcClient);
+
+        const createProxy = (target, path = 'vscode') => {
+            return new Proxy(target, {
+                get: (obj, prop) => {
+                    if (prop in obj) {
+                        const val = obj[prop];
+                        if (typeof val === 'object' && val !== null && !Array.isArray(val) && !(val instanceof Promise)) {
+                            // Don't proxy native types or classes like Map, Set, Uint8Array etc.
+                            if (val.constructor && val.constructor.name !== 'Object' && val.constructor.name !== 'Array') return val;
+                            return createProxy(val, `${path}.${String(prop)}`);
+                        }
+                        if (typeof val === 'function') {
+                            return new Proxy(val, {
+                                apply: (targetFn, thisArg, argumentsList) => {
+                                    const result = Reflect.apply(targetFn, thisArg, argumentsList);
+                                    if (typeof result === 'object' && result !== null && !Array.isArray(result) && !(result instanceof Promise)) {
+                                        if (result.constructor && result.constructor.name !== 'Object' && result.constructor.name !== 'Array') return result;
+                                        return createProxy(result, `${path}.${String(prop)}_Result`);
+                                    }
+                                    return result;
+                                },
+                                get: (targetFn, subProp) => {
+                                    if (subProp in targetFn) return targetFn[subProp];
+                                    if (typeof subProp === 'symbol') return undefined;
+                                    if (subProp === 'toJSON' || subProp === 'inspect' || subProp === 'then' || subProp === 'catch' || subProp === 'constructor') return undefined;
+                                    const stubFunction = function(...args) {
+                                        console.warn(`[Vrutti API Stub] Called unimplemented method: ${path}.${String(prop)}.${String(subProp)}`);
+                                        return createProxy({ dispose: () => {} }, `${path}.${String(prop)}.${String(subProp)}_Result`);
+                                    };
+                                    return createProxy(stubFunction, `${path}.${String(prop)}.${String(subProp)}`);
+                                }
+                            });
+                        }
+                        return val;
+                    }
+                    if (typeof prop === 'symbol') return undefined;
+                    if (prop === 'toJSON' || prop === 'inspect' || prop === 'then' || prop === 'catch' || prop === 'constructor') return undefined;
+
+                    // Stub unimplemented properties
+                    const stubFunction = function(...args) {
+                        console.warn(`[Vrutti API Stub] Called unimplemented method: ${path}.${String(prop)}`);
+                        return createProxy({ dispose: () => {} }, `${path}.${String(prop)}_Result`);
+                    };
+                    return createProxy(stubFunction, `${path}.${String(prop)}`);
+                },
+                apply: (target, thisArg, argumentsList) => {
+                    if (typeof target === 'function') {
+                        const result = Reflect.apply(target, thisArg, argumentsList);
+                        if (typeof result === 'object' && result !== null && !Array.isArray(result) && !(result instanceof Promise)) {
+                            if (result.constructor && result.constructor.name !== 'Object' && result.constructor.name !== 'Array') return result;
+                            return createProxy(result, `${path}_Result`);
+                        }
+                        return result;
+                    }
+                }
+            });
+        };
+
+        return createProxy(api);
+    }
 };
