@@ -1,0 +1,917 @@
+const IPCClient = require('./ipc');
+const { createApi } = require('./api');
+const Module = require('module');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
+const { DapClient } = require('./dap-client');
+const { LspClient } = require('./lsp-client');
+function parseArgs() {
+    const args = process.argv.slice(2);
+    const config = {};
+    for (const arg of args) {
+        if (arg.startsWith('--pipe=')) {
+            config.pipeName = arg.split('=')[1];
+        } else if (arg.startsWith('--ext=')) {
+            config.extensionPath = arg.split('=')[1];
+        }
+    }
+    return config;
+}
+
+function log(msg) {
+    console.log(`[Bootstrapper] ${msg}`);
+}
+
+// Memory Optimization: soft garbage collection if memory footprint exceeds 256MB
+setInterval(() => {
+    const memory = process.memoryUsage();
+    if (memory.heapUsed > 256 * 1024 * 1024) {
+        if (global.gc) {
+            log(`Memory threshold exceeded (Heap: ${Math.round(memory.heapUsed / 1024 / 1024)}MB). Triggering soft GC.`);
+            global.gc();
+        }
+    }
+}, 30000);
+
+class ExtensionManager {
+    constructor(ipcClient, api) {
+        this.ipcClient = ipcClient;
+        this.api = api;
+        this.extDirBase = path.join(os.homedir(), '.vrutti', 'extensions');
+        if (!fs.existsSync(this.extDirBase)) {
+            fs.mkdirSync(this.extDirBase, { recursive: true });
+        }
+        this._cachedThemes = null;
+        this._installedExtensionsCache = null;
+        
+        // Map of command ID -> { extensionPath: string, main: string }
+        this.commandIndex = new Map();
+        // Map of activationEvent -> Array<{ id: string, path: string, main: string }>
+        this.activationIndex = new Map();
+        // Set of active extension IDs
+        this.activeExtensions = new Set();
+    }
+
+    async indexExtensions() {
+        this.commandIndex.clear();
+        this.activationIndex.clear();
+        const extensions = await this.getInstalledExtensions();
+        
+        for (const ext of extensions) {
+            if (ext.main) {
+                const extInfo = {
+                    id: ext.id,
+                    path: ext.localPath,
+                    main: path.join(ext.localPath, 'extension', ext.main)
+                };
+                
+                // Index by commands for implicit 'onCommand:' activation
+                if (ext.contributes && ext.contributes.commands) {
+                    for (const cmd of ext.contributes.commands) {
+                        if (cmd.command) {
+                            this.commandIndex.set(cmd.command, extInfo);
+                            this.addActivationEvent(`onCommand:${cmd.command}`, extInfo);
+                        }
+                    }
+                }
+                
+                // Index explicit activation events
+                if (ext.activationEvents) {
+                    for (const event of ext.activationEvents) {
+                        this.addActivationEvent(event, extInfo);
+                    }
+                }
+            }
+        }
+    }
+    
+    addActivationEvent(event, extInfo) {
+        if (!this.activationIndex.has(event)) {
+            this.activationIndex.set(event, []);
+        }
+        this.activationIndex.get(event).push(extInfo);
+    }
+
+    async activateByEvent(event) {
+        const exts = this.activationIndex.get(event) || [];
+        // Also always trigger '*' if it's the first time we're firing an event (or just rely on the frontend sending '*')
+        for (const extInfo of exts) {
+            await this.activateExtension(extInfo);
+        }
+    }
+
+    async activateExtensionForCommand(commandId) {
+        await this.activateByEvent(`onCommand:${commandId}`);
+    }
+
+    async activateExtension(extInfo) {
+        if (this.activeExtensions.has(extInfo.id)) {
+            return; // Already active
+        }
+        log(`Activating extension: ${extInfo.id}`);
+        try {
+            if (fs.existsSync(extInfo.main)) {
+                const extModule = require(extInfo.main);
+                if (extModule && typeof extModule.activate === 'function') {
+                    const context = {
+                        subscriptions: [],
+                        extensionPath: extInfo.path,
+                        globalState: { 
+                            get: () => undefined, 
+                            update: () => {},
+                            setKeysForSync: () => {}
+                        },
+                        workspaceState: {
+                            get: () => undefined, 
+                            update: () => {}
+                        },
+                        secrets: {
+                            get: async () => undefined,
+                            store: async () => {},
+                            delete: async () => {},
+                            onDidChange: () => ({ dispose: () => {} })
+                        },
+                        extension: {
+                            packageJSON: require(path.join(extInfo.path, 'extension', 'package.json'))
+                        },
+                        asAbsolutePath: (p) => path.join(extInfo.path, 'extension', p)
+                    };
+                    const proxiedContext = new Proxy(context, {
+                        get: (obj, prop) => {
+                            if (prop in obj) return obj[prop];
+                            if (typeof prop === 'symbol') return undefined;
+                            console.warn(`[Vrutti API Stub] Called unimplemented context property: ${String(prop)}`);
+                            return function(...args) {
+                                console.warn(`[Vrutti API Stub] Called unimplemented context method: ${String(prop)}`);
+                                return { dispose: () => {} };
+                            };
+                        }
+                    });
+                    await extModule.activate(proxiedContext);
+                    this.activeExtensions.add(extInfo.id);
+                    log(`Successfully activated ${extInfo.id}`);
+                } else {
+                    this.activeExtensions.add(extInfo.id); // Mark as active anyway so we don't retry loop
+                }
+            }
+        } catch (err) {
+            log(`Failed to activate extension ${extInfo.id}: ${err.message}`);
+            this.activeExtensions.add(extInfo.id);
+        }
+    }
+
+    async getInstalledExtensions() {
+        if (this._installedExtensionsCache) return this._installedExtensionsCache;
+
+        const installed = [];
+        if (!fs.existsSync(this.extDirBase)) return installed;
+        
+        const dirs = await fs.promises.readdir(this.extDirBase);
+        for (const dir of dirs) {
+            const extPath = path.join(this.extDirBase, dir);
+            const pkgPath = path.join(extPath, 'extension', 'package.json');
+            if (fs.existsSync(pkgPath)) {
+                try {
+                    const pkgRaw = await fs.promises.readFile(pkgPath, 'utf8');
+                    const pkg = JSON.parse(pkgRaw);
+                    let nls = null;
+                    const nlsPath = path.join(extPath, 'extension', 'package.nls.json');
+                    if (fs.existsSync(nlsPath)) {
+                        try {
+                            const nlsRaw = await fs.promises.readFile(nlsPath, 'utf8');
+                            nls = JSON.parse(nlsRaw);
+                        } catch (e) {}
+                    }
+
+                    const safeNls = nls || {};
+                    const localize = (obj) => {
+                        if (typeof obj === 'string') {
+                            return obj.replace(/%([^%]+)%/g, (match, key) => {
+                                if (safeNls[key] !== undefined) return safeNls[key];
+                                if (safeNls[match] !== undefined) return safeNls[match];
+                                const stripped = key.replace(/^extension\./, '');
+                                if (safeNls[stripped] !== undefined) return safeNls[stripped];
+                                
+                                // Fallbacks if strictly missing
+                                if (key.includes('displayName')) return pkg.name;
+                                if (key.includes('description')) return '';
+                                return match;
+                            });
+                        } else if (Array.isArray(obj)) {
+                            return obj.map(localize);
+                        } else if (obj && typeof obj === 'object') {
+                            for (const k in obj) {
+                                obj[k] = localize(obj[k]);
+                            }
+                        }
+                        return obj;
+                    };
+                    localize(pkg);
+
+                    if (pkg.contributes && pkg.contributes.viewsContainers && pkg.contributes.viewsContainers.activitybar) {
+                        for (const container of pkg.contributes.viewsContainers.activitybar) {
+                            if (container.icon) {
+                                container.iconPath = path.join(extPath, 'extension', container.icon);
+                            }
+                        }
+                    }
+                    
+                    installed.push({
+                        id: `${pkg.publisher || pkg.author || dir}.${pkg.name}`,
+                        name: pkg.name,
+                        displayName: pkg.displayName || pkg.name,
+                        publisherDisplayName: pkg.publisher || pkg.author || dir,
+                        description: pkg.description || '',
+                        version: pkg.version || '1.0.0',
+                        isTheme: pkg.contributes && (pkg.contributes.themes || pkg.contributes.iconThemes) ? true : false,
+                        localPath: extPath,
+                        main: pkg.main,
+                        contributes: pkg.contributes,
+                        activationEvents: pkg.activationEvents
+                    });
+                    
+                    // Register TextMate grammars
+                    const { registerGrammars } = require('./textmate-engine');
+                    registerGrammars(extPath, pkg.contributes);
+                    
+                } catch (e) {
+                    console.error(`Failed to read package.json for ${dir}`);
+                }
+            }
+        }
+        this._installedExtensionsCache = installed;
+        return installed;
+    }
+
+    async getAvailableDebuggers() {
+        const installed = await this.getInstalledExtensions();
+        const debuggers = [];
+        for (const ext of installed) {
+            if (ext.contributes && ext.contributes.debuggers) {
+                for (const dbg of ext.contributes.debuggers) {
+                    let programPath = dbg.program;
+                    if (!programPath && dbg.windows && process.platform === 'win32') {
+                        programPath = dbg.windows.program;
+                    } else if (!programPath && dbg.linux && process.platform === 'linux') {
+                        programPath = dbg.linux.program;
+                    } else if (!programPath && dbg.osx && process.platform === 'darwin') {
+                        programPath = dbg.osx.program;
+                    }
+                    
+                    let runtimePath = dbg.runtime;
+                    if (!runtimePath && dbg.windows && process.platform === 'win32') {
+                        runtimePath = dbg.windows.runtime;
+                    } else if (!runtimePath && dbg.linux && process.platform === 'linux') {
+                        runtimePath = dbg.linux.runtime;
+                    } else if (!runtimePath && dbg.osx && process.platform === 'darwin') {
+                        runtimePath = dbg.osx.runtime;
+                    }
+
+                    debuggers.push({
+                        type: dbg.type,
+                        label: dbg.label || dbg.type,
+                        program: programPath ? path.resolve(ext.localPath, 'extension', programPath) : null,
+                        runtime: runtimePath,
+                        extensionName: ext.name,
+                        args: dbg.args
+                    });
+                }
+            }
+        }
+        return debuggers;
+    }
+
+    async getAvailableAllThemes() {
+        if (this._cachedThemes && this._cachedIconThemes) return { themes: this._cachedThemes, iconThemes: this._cachedIconThemes };
+        const themes = [];
+        const iconThemes = [];
+        const pathsToScan = [
+            { dir: path.join(__dirname, 'builtin-themes'), isBuiltin: true },
+            { dir: this.extDirBase, isBuiltin: false }
+        ];
+
+        for (const target of pathsToScan) {
+            if (!fs.existsSync(target.dir)) continue;
+            
+            if (target.isBuiltin) {
+                const pkgPath = path.join(target.dir, 'package.json');
+                if (fs.existsSync(pkgPath)) {
+                    try {
+                        const pkgRaw = await fs.promises.readFile(pkgPath, 'utf8');
+                        const pkg = JSON.parse(pkgRaw);
+                        if (pkg.contributes) {
+                            if (pkg.contributes.themes) {
+                                for (const theme of pkg.contributes.themes) {
+                                    const origPath = path.join(target.dir, theme.path);
+                                    themes.push({
+                                        id: theme.id || theme.label,
+                                        label: theme.label || pkg.name,
+                                        uiTheme: theme.uiTheme || 'vs-dark',
+                                        extensionName: pkg.name,
+                                        themePath: origPath
+                                    });
+                                }
+                            }
+                            if (pkg.contributes.iconThemes) {
+                                for (const theme of pkg.contributes.iconThemes) {
+                                    const origPath = path.join(target.dir, theme.path);
+                                    iconThemes.push({
+                                        id: theme.id || theme.label,
+                                        label: theme.label || pkg.name,
+                                        uiTheme: 'icon',
+                                        extensionName: pkg.name,
+                                        themePath: origPath
+                                    });
+                                }
+                            }
+                        }
+                    } catch (e) {}
+                }
+            } else {
+                const dirs = await fs.promises.readdir(target.dir);
+                for (const dir of dirs) {
+                    const extPath = path.join(target.dir, dir);
+                    const pkgPath = path.join(extPath, 'extension', 'package.json');
+                    if (fs.existsSync(pkgPath)) {
+                        try {
+                            const pkgRaw = await fs.promises.readFile(pkgPath, 'utf8');
+                            const pkg = JSON.parse(pkgRaw);
+                            if (pkg.contributes) {
+                                if (pkg.contributes.themes) {
+                                    for (const theme of pkg.contributes.themes) {
+                                        const origPath = path.join(extPath, 'extension', theme.path);
+                                        themes.push({
+                                            id: `${pkg.name}.${theme.id || theme.label}`,
+                                            label: theme.label || pkg.name,
+                                            uiTheme: theme.uiTheme || 'vs-dark',
+                                            extensionName: pkg.name,
+                                            themePath: origPath
+                                        });
+                                    }
+                                }
+                                if (pkg.contributes.iconThemes) {
+                                    for (const theme of pkg.contributes.iconThemes) {
+                                        const origPath = path.join(extPath, 'extension', theme.path);
+                                        iconThemes.push({
+                                            id: `${pkg.name}.${theme.id || theme.label}`,
+                                            label: theme.label || pkg.name,
+                                            uiTheme: 'icon',
+                                            extensionName: pkg.name,
+                                            themePath: origPath
+                                        });
+                                    }
+                                }
+                            }
+                        } catch (e) {}
+                    }
+                }
+            }
+        }
+        this._cachedThemes = themes;
+        this._cachedIconThemes = iconThemes;
+        return { themes, iconThemes };
+    }
+
+    async getAvailableThemes() {
+        return (await this.getAvailableAllThemes()).themes;
+    }
+
+    async getAvailableIconThemes() {
+        return (await this.getAvailableAllThemes()).iconThemes;
+    }
+
+
+    async downloadExtension(url, name, progressCallback) {
+        const extDir = path.join(this.extDirBase, name);
+        if (!fs.existsSync(extDir)) fs.mkdirSync(extDir, { recursive: true });
+        
+        const zipPath = path.join(extDir, 'extension.vsix');
+        
+        await this._downloadFile(url, zipPath, progressCallback);
+        
+        log(`Extracting ${zipPath}...`);
+        const AdmZip = require('adm-zip');
+        const zip = new AdmZip(zipPath);
+        await new Promise((resolve, reject) => {
+            zip.extractAllToAsync(extDir, true, false, (error) => {
+                if (error) reject(error); else resolve();
+            });
+        });
+        
+        await fs.promises.unlink(zipPath);
+        log(`Successfully installed extension ${name}`);
+        await this.invalidateCache();
+    }
+
+    async invalidateCache() {
+        this._installedExtensionsCache = null;
+        this._cachedThemes = null;
+        this._cachedIconThemes = null;
+    }
+
+    _downloadFile(url, dest, progressCallback) {
+        const https = require('https');
+        return new Promise((resolve, reject) => {
+            const req = https.get(url, (res) => {
+                if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+                    resolve(this._downloadFile(res.headers.location, dest, progressCallback));
+                } else if (res.statusCode === 200) {
+                    const totalSize = parseInt(res.headers['content-length'] || '0', 10);
+                    let downloaded = 0;
+                    let lastPercentage = -1;
+
+                    const file = fs.createWriteStream(dest);
+                    res.on('data', (chunk) => {
+                        downloaded += chunk.length;
+                        if (totalSize > 0) {
+                            const percentage = Math.round((downloaded / totalSize) * 100);
+                            if (percentage !== lastPercentage) {
+                                lastPercentage = percentage;
+                                if (progressCallback) progressCallback(percentage);
+                            }
+                        }
+                    });
+
+                    res.pipe(file);
+                    file.on('finish', () => { 
+                        file.close(); 
+                        resolve(); 
+                    });
+                    file.on('error', reject);
+                } else {
+                    reject(new Error(`Failed with status ${res.statusCode}`));
+                }
+            });
+            req.on('error', reject);
+        });
+    }
+
+    async invalidateCache() {
+        this._cachedThemes = null;
+        this._installedExtensionsCache = null;
+        await this.indexExtensions();
+    }
+
+    translateThemeColorsInMemory(themeJson) {
+        const tokenMap = {
+            'editor.background': '--vrutti-bg',
+            'sideBar.background': '--vrutti-surface',
+            'activityBar.background': '--vrutti-surface',
+            'editorGroupHeader.tabsBackground': '--vrutti-surface',
+            'editor.foreground': '--vrutti-text-bright',
+            'sideBarTitle.foreground': '--vrutti-text',
+            'tab.activeBackground': '--vrutti-surface-border',
+            'button.background': '--vrutti-accent',
+            'focusBorder': '--vrutti-accent',
+            'editorLineNumber.foreground': '--vrutti-text',
+            'terminal.background': '--vrutti-bg',
+            'gitDecoration.modifiedResourceForeground': '--vrutti-git-modified',
+            'gitDecoration.untrackedResourceForeground': '--vrutti-git-untracked',
+            'gitDecoration.deletedResourceForeground': '--vrutti-git-deleted'
+        };
+
+        const result = { colors: {}, tokenColors: themeJson.tokenColors || [] };
+        if (themeJson.colors) {
+            for (const [vsToken, colorValue] of Object.entries(themeJson.colors)) {
+                if (tokenMap[vsToken]) {
+                    result.colors[tokenMap[vsToken]] = colorValue;
+                } else {
+                    // Forward unknown colors directly too, UI may or may not use them
+                    result.colors[vsToken] = colorValue;
+                }
+            }
+        }
+        // Basic fallback
+        if (!result.colors['--vrutti-bg']) {
+            result.colors['--vrutti-bg'] = themeJson.type === 'light' ? '#ffffff' : '#1e1e1e';
+        }
+
+        return result;
+    }
+}
+
+async function main() {
+    const config = parseArgs();
+    
+    if (!config.pipeName) {
+        console.error('Error: --pipe argument is required');
+        process.exit(1);
+    }
+
+    log(`Starting Extension Host with pipe: ${config.pipeName}`);
+
+    const ipcClient = new IPCClient(config.pipeName);
+    
+    try {
+        await ipcClient.connect();
+        log('Connected to native C++ engine.');
+        
+        const vruttiApi = createApi(ipcClient);
+        
+        // Inject the module into Node's module resolution cache
+        // Allow BOTH 'vscode' and 'vrutti' to ensure we support standard extensions
+        // while not breaking internal ones.
+        const originalRequire = Module.prototype.require;
+        Module.prototype.require = function(id) {
+            if (id === 'vscode' || id === 'vrutti') {
+                return vruttiApi;
+            }
+            return originalRequire.apply(this, arguments);
+        };
+        
+        ipcClient.sendNotification('host/ready');
+        log('Bootstrapper started');
+
+        const manager = new ExtensionManager(ipcClient, vruttiApi);
+        
+        ipcClient.on('extensions/request_installed', async () => {
+            const installedExts = await manager.getInstalledExtensions();
+            ipcClient.sendNotification('extensions/installed', installedExts);
+            ipcClient.sendNotification('themes/available', await manager.getAvailableThemes());
+            ipcClient.sendNotification('icon_themes/available', await manager.getAvailableIconThemes());
+            
+            for (const ext of installedExts) {
+                if (ext.contributes && ext.contributes.vrutti && ext.contributes.vrutti.injections) {
+                    ipcClient.sendNotification('extensions/injections', ext.contributes.vrutti.injections);
+                }
+            }
+
+            // Also check builtin themes for global injections (like live wallpapers)
+            try {
+                const pkgPath = path.join(__dirname, 'builtin-themes', 'package.json');
+                if (fs.existsSync(pkgPath)) {
+                    const pkgRaw = await fs.promises.readFile(pkgPath, 'utf8');
+                    const pkg = JSON.parse(pkgRaw);
+                    if (pkg.contributes && pkg.contributes.vrutti && pkg.contributes.vrutti.injections) {
+                        ipcClient.sendNotification('extensions/injections', pkg.contributes.vrutti.injections);
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to read builtin-themes injections:', e);
+            }
+        });
+
+        ipcClient.on('extensions/activateEvent', async (params) => {
+            if (params && params.event) {
+                await manager.activateByEvent(params.event);
+            }
+        });
+
+        ipcClient.on('extensions/uninstall', async (params) => {
+            log(`Uninstalling extension ${params.name}`);
+            try {
+                const extDir = path.join(manager.extDirBase, params.name);
+                if (fs.existsSync(extDir)) {
+                    await fs.promises.rm(extDir, { recursive: true, force: true });
+                }
+                await manager.invalidateCache();
+                ipcClient.sendNotification('extensions/installed', await manager.getInstalledExtensions());
+                ipcClient.sendNotification('themes/available', await manager.getAvailableThemes());
+                ipcClient.sendNotification('icon_themes/available', await manager.getAvailableIconThemes());
+            } catch (err) {
+                log(`Failed to uninstall extension ${params.name}: ${err.message}`);
+            }
+        });
+
+        ipcClient.on('extensions/install', async (params) => {
+            log(`Installing extension ${params.name} from ${params.url}`);
+            try {
+                await manager.downloadExtension(params.url, params.name, (percentage) => {
+                    ipcClient.sendNotification('extensions/progress', { name: params.name, percentage });
+                });
+                ipcClient.sendNotification('extensions/progress', { name: params.name, percentage: 100 });
+                await manager.invalidateCache();
+                ipcClient.sendNotification('extensions/installed', await manager.getInstalledExtensions());
+                ipcClient.sendNotification('themes/available', await manager.getAvailableThemes());
+                ipcClient.sendNotification('icon_themes/available', await manager.getAvailableIconThemes());
+            } catch (err) {
+                log(`Failed to install extension ${params.name}: ${err.message}\n${err.stack}`);
+            }
+        });
+
+        ipcClient.on('theme/set', async (params) => {
+            const themeLabelOrExtName = params.name;
+            log(`Setting theme to ${themeLabelOrExtName}`);
+            try {
+                const themes = await manager.getAvailableThemes();
+                let targetTheme = themes.find(t => t.id === params.id) || 
+                                  themes.find(t => t.id === themeLabelOrExtName) ||
+                                  themes.find(t => t.label === themeLabelOrExtName) || 
+                                  themes.find(t => t.extensionName === themeLabelOrExtName);
+                
+                if (targetTheme && fs.existsSync(targetTheme.themePath)) {
+                    try {
+                        const { loadThemeRecursive } = require('./theme-resolver');
+                        const originalThemeData = await loadThemeRecursive(targetTheme.themePath);
+                        const translatedThemeData = manager.translateThemeColorsInMemory(originalThemeData);
+                        
+                        log(`Loading theme: ${targetTheme.label}`);
+                        translatedThemeData.name = targetTheme.label;
+                        translatedThemeData.id = targetTheme.id;
+                        translatedThemeData.uiTheme = targetTheme.uiTheme;
+                        
+                        ipcClient.sendNotification('theme/load', translatedThemeData);
+                    } catch (e) {
+                        console.error(`Failed to parse theme JSON: ${targetTheme.themePath}`, e);
+                    }
+                } else {
+                    log(`Theme not found or missing path for ${themeLabelOrExtName}`);
+                }
+            } catch (err) {
+                log(`Failed to set theme ${themeLabelOrExtName}: ${err.message}`);
+            }
+        });
+
+        ipcClient.on('icon_theme/set', async (params) => {
+            const themeLabelOrExtName = params.name;
+            log(`Setting icon theme to ${themeLabelOrExtName}`);
+            
+            if (themeLabelOrExtName === 'default') {
+                ipcClient.sendNotification('icon_theme/load', null);
+                return;
+            }
+            
+            try {
+                const themes = await manager.getAvailableIconThemes();
+                let targetTheme = themes.find(t => t.id === params.id) || 
+                                  themes.find(t => t.id === themeLabelOrExtName) ||
+                                  themes.find(t => t.label === themeLabelOrExtName) || 
+                                  themes.find(t => t.extensionName === themeLabelOrExtName);
+                
+                if (targetTheme && fs.existsSync(targetTheme.themePath)) {
+                    try {
+                        const { loadThemeRecursive } = require('./theme-resolver');
+                        const originalThemeData = await loadThemeRecursive(targetTheme.themePath);
+                        
+                        log(`Loading icon theme: ${targetTheme.label}`);
+                        originalThemeData.name = targetTheme.label;
+                        originalThemeData.id = targetTheme.id;
+                        
+                        const themeDir = path.dirname(targetTheme.themePath);
+                        if (originalThemeData.iconDefinitions) {
+                            for (const key in originalThemeData.iconDefinitions) {
+                                const def = originalThemeData.iconDefinitions[key];
+                                if (def.iconPath) {
+                                    const absPath = path.resolve(themeDir, def.iconPath);
+                                    try {
+                                        let resStr = absPath.replace(/\\/g, '/');
+                                        if (resStr.startsWith('/')) {
+                                            def.iconPath = `file://${resStr}`;
+                                        } else {
+                                            def.iconPath = `file:///${resStr}`;
+                                        }
+                                    } catch(e) {
+                                        def.iconPath = require('url').pathToFileURL(absPath).href;
+                                    }
+                                }
+                            }
+                        }
+                        
+                        ipcClient.sendNotification('icon_theme/load', originalThemeData);
+                    } catch (e) {
+                        console.error(`Failed to parse icon theme JSON: ${targetTheme.themePath}`, e);
+                    }
+                } else {
+                    log(`Icon theme not found or missing path for ${themeLabelOrExtName}`);
+                }
+            } catch (err) {
+                log(`Failed to set icon theme ${themeLabelOrExtName}: ${err.message}`);
+            }
+        });
+
+        ipcClient.on('debuggers/available', async () => {
+            const debuggers = await manager.getAvailableDebuggers();
+            ipcClient.sendNotification('debuggers/available', debuggers);
+        });
+
+        // Start indexing after listeners are bound so we don't drop events in the meantime
+        await manager.indexExtensions();
+
+        // Register default internal command
+        vruttiApi.commands.registerCommand('vrutti.action.run', async (file, mode, userParams) => {
+            const url = require('url');
+            if (file.startsWith('file://')) {
+                file = url.fileURLToPath(file);
+            }
+
+            const ext = path.extname(file);
+            const dir = path.dirname(file);
+            const baseName = path.basename(file, ext);
+            if (mode === 'debug') {
+                ipcClient.sendNotification('menu/action', { action: 'Run and Debug' });
+                return;
+            }
+
+            let cmdString = '';
+            if (ext === '.py') {
+                cmdString = `python "${file}"`;
+            } else if (ext === '.js') {
+                cmdString = `node "${file}"`;
+            } else if (ext === '.ts') {
+                cmdString = `npx ts-node "${file}"`;
+            } else if (ext === '.cpp' || ext === '.c') {
+                const isWin = os.platform() === 'win32';
+                const exeName = isWin ? `${baseName}.exe` : baseName;
+                const outPath = path.join(dir, exeName);
+                const compiler = ext === '.cpp' ? 'g++' : 'gcc';
+                cmdString = `${compiler} "${file}" -o "${outPath}" && "${outPath}"`;
+            } else if (ext === '.html' || ext === '.htm') {
+                const isWin = os.platform() === 'win32';
+                cmdString = isWin ? `start "" "${file}"` : (os.platform() === 'darwin' ? `open "${file}"` : `xdg-open "${file}"`);
+            } else {
+                ipcClient.sendNotification('run/output', { text: `Unsupported file extension: ${ext}\n` });
+                return;
+            }
+            
+            if (userParams) cmdString += ` ${userParams}`;
+            ipcClient.sendNotification('terminal/runCommand', { command: cmdString });
+        });
+
+        ipcClient.on('editor/run', async (payloadJson) => {
+            try {
+                const req = typeof payloadJson === 'string' ? JSON.parse(payloadJson) : payloadJson;
+                if (!req || typeof req !== 'object') return;
+                
+                const file = req.file;
+                const mode = req.mode || 'run';
+                const userParams = req.params || '';
+                
+                if (!file) return;
+
+                await vruttiApi.commands.executeCommand('vrutti.action.run', file, mode, userParams);
+            } catch (err) {
+                log(`Failed to execute run command: ${err.message}`);
+                ipcClient.sendNotification('run/output', { text: `Error: ${err.message}\n` });
+            }
+        });
+        
+        ipcClient.on('editor/tokenize', async (payloadJson) => {
+            try {
+                const req = typeof payloadJson === 'string' ? JSON.parse(payloadJson) : payloadJson;
+                const { textmateEngine } = require('./textmate-engine'); // lazy load
+                // wait, I exported it directly
+                const { tokenizeDocument } = require('./textmate-engine');
+                const tokens = await tokenizeDocument(req.languageId, req.text);
+                if (tokens) {
+                    ipcClient.sendNotification('editor/tokens', { fileId: req.fileId, tokens });
+                }
+            } catch (e) {
+                log(`Tokenization error: ${e.message}`);
+            }
+        });
+        
+        // Intercept generic command execution from UI
+        ipcClient.on('command/execute', async (payload) => {
+            try {
+                const commandId = payload.command;
+                const args = payload.args || [];
+                // 1. Ensure extension is loaded
+                await manager.activateExtensionForCommand(commandId);
+                // 2. Execute
+                await vruttiApi.commands.executeCommand(commandId, ...args);
+            } catch (err) {
+                log(`Command execution failed: ${err.message}`);
+            }
+        });
+        
+        // Debug Adapter Protocol (DAP) Bindings
+        const dapClient = new DapClient(ipcClient);
+        
+        dapClient.on('event', (msg) => {
+            log(`[DAP Event] ${msg.event}: ${JSON.stringify(msg)}`);
+            ipcClient.sendNotification('dap/event', msg);
+            if (msg.event === 'output' && msg.body) {
+                const category = msg.body.category || 'console';
+                const type = category === 'stderr' ? 'error' : 'info';
+                ipcClient.sendNotification('debug/log', { type, text: msg.body.output });
+            }
+        });
+
+        dapClient.on('request', (msg) => {
+            log(`[DAP Request] ${msg.command}: ${JSON.stringify(msg)}`);
+            ipcClient.sendNotification('dap/request', msg);
+        });
+        
+        ipcClient.on('dap/start', async (payload) => {
+            log(`[DAP Start] Received start request: ${JSON.stringify(payload)}`);
+            try {
+                const debuggers = await manager.getAvailableDebuggers();
+                const targetDebugger = debuggers.find(d => d.type === payload.type);
+                if (targetDebugger) {
+                    let exec = targetDebugger.program;
+                    let args = targetDebugger.args || [];
+                    
+                    if (targetDebugger.runtime) {
+                        args = [exec, ...args];
+                        exec = targetDebugger.runtime;
+                    }
+                    
+                    if (!exec) {
+                        if (payload.type === 'python' || targetDebugger.extensionName === 'debugpy') {
+                            exec = 'python';
+                            const path = require('path');
+                            const fs = require('fs');
+                            const adapterScript = path.join(manager.extDirBase, targetDebugger.extensionName, 'extension', 'bundled', 'libs', 'debugpy', 'adapter');
+                            if (fs.existsSync(adapterScript)) {
+                                args = [adapterScript];
+                            } else {
+                                exec = null;
+                            }
+                        }
+                    }
+                    
+                    if (!exec) {
+                        ipcClient.sendNotification('debug/log', { type: 'error', text: `Debugger executable could not be resolved for type ${payload.type}. Ensure it is installed correctly.` });
+                        log(`[DAP Start] Debugger executable not resolved!`);
+                        return;
+                    }
+
+                    log(`[DAP Start] Starting Debug Adapter: ${exec} ${args.join(' ')} with CWD: ${payload.cwd}`);
+                    dapClient.start(exec, args, payload.cwd);
+                    ipcClient.sendNotification('dap/event', { event: 'vrutti-dap-started' });
+                } else {
+                    ipcClient.sendNotification('debug/log', { type: 'error', text: `Debugger type ${payload.type} not found in installed extensions.` });
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        });
+
+        ipcClient.on('dap/stop', () => dapClient.stop());
+        
+        ipcClient.on('dap/request', async (payload) => {
+            try {
+                if (payload && payload.command) {
+                    const result = await dapClient.sendRequest(payload.command, payload.args || {});
+                    ipcClient.sendNotification('dap/response', { command: payload.command, seq: payload.seq, success: true, body: result });
+                }
+            } catch (err) {
+                ipcClient.sendNotification('dap/response', { command: payload.command, seq: payload.seq, success: false, message: err.message });
+            }
+        });
+        
+        // Language Server Protocol (LSP) Bindings
+        const lspClient = new LspClient(ipcClient);
+        
+        lspClient.on('notification', (msg) => {
+            ipcClient.sendNotification('lsp/notification', msg);
+        });
+
+        lspClient.on('request', (msg) => {
+            ipcClient.sendNotification('lsp/request', msg);
+        });
+
+        ipcClient.on('lsp/start', (payload) => {
+            log(`[LSP Start] ${JSON.stringify(payload)}`);
+            try {
+                if (payload.executable) {
+                    lspClient.start(payload.executable, payload.args || [], payload.cwd);
+                    ipcClient.sendNotification('lsp/event', { event: 'started' });
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        });
+
+        ipcClient.on('lsp/stop', () => lspClient.stop());
+
+        ipcClient.on('lsp/client_request', async (payload) => {
+            try {
+                if (payload && payload.method) {
+                    const result = await lspClient.sendRequest(payload.method, payload.params || {});
+                    ipcClient.sendNotification('lsp/response', { method: payload.method, id: payload.id, success: true, result });
+                }
+            } catch (err) {
+                ipcClient.sendNotification('lsp/response', { method: payload.method, id: payload.id, success: false, error: err.message });
+            }
+        });
+
+        ipcClient.on('lsp/client_notification', (payload) => {
+            if (payload && payload.method) {
+                lspClient.sendNotification(payload.method, payload.params || {});
+            }
+        });
+        
+        if (config.extensionPath) {
+            log(`Loading extension from: ${config.extensionPath}`);
+            try {
+                const extModule = require(config.extensionPath);
+                if (extModule && typeof extModule.activate === 'function') {
+                    await extModule.activate({
+                        subscriptions: [],
+                        extensionPath: config.extensionPath,
+                        globalState: { get: () => undefined, update: () => {} }
+                    });
+                }
+            } catch (err) {
+                console.error(`Failed to load extension:`, err);
+            }
+        }
+    } catch (err) {
+        console.error('[Bootstrapper] Initialization failed:', err);
+        process.exit(1);
+    }
+}
+
+main();
