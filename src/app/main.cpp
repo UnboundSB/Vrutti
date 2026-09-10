@@ -5,6 +5,7 @@
 
 #include "ui/compositor/Window.h"
 #include "core/ipc/IPCClient.h"
+#include "core/ipc/VSCodeProtocol.h"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -35,6 +36,11 @@ int main(int argc, char* argv[]) {
 
     // Initialize IPC Client for Extension Host
     vrutti::core::ipc::IPCClient ipc("vrutti_pipe");
+    
+    // Wire up VSCodeProtocol
+    vrutti::core::ipc::VSCodeProtocol vsProtocol(&ipc);
+    vsProtocol.initialize();
+    
     ipc.start();
 
 #ifdef _WIN32
