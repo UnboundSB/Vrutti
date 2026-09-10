@@ -1,6 +1,8 @@
 #include <node_api.h>
 #include <iostream>
 #include <string>
+#include <unordered_map>
+#include <mutex>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -44,30 +46,41 @@ napi_value DynamicLinkCall(napi_env env, napi_callback_info info, bool isRequest
     std::string component = methodStr.substr(0, slashPos);
     std::string action = methodStr.substr(slashPos + 1);
 
+    static std::unordered_map<std::string, void*> s_moduleCache;
+    static std::mutex s_cacheMutex;
+    void* hMod = nullptr;
+
+    {
+        std::lock_guard<std::mutex> lock(s_cacheMutex);
+        auto it = s_moduleCache.find(component);
+        if (it != s_moduleCache.end()) {
+            hMod = it->second;
+        } else {
 #ifdef _WIN32
-    std::string libName = "vrutti_" + component + ".dll";
-    HMODULE hMod = LoadLibraryA(libName.c_str());
-    if (!hMod) {
-        napi_create_string_utf8(env, "{\"status\":\"fallback\"}", NAPI_AUTO_LENGTH, &result);
-        return result;
-    }
-    auto func = (BridgeCallFn)GetProcAddress(hMod, action.c_str());
+            std::string libName = "vrutti_" + component + ".dll";
+            hMod = (void*)LoadLibraryA(libName.c_str());
 #else
-    std::string libName = "libvrutti_" + component + ".so";
-    void* hMod = dlopen(libName.c_str(), RTLD_LAZY);
+            std::string libName = "libvrutti_" + component + ".so";
+            hMod = dlopen(libName.c_str(), RTLD_LAZY);
+#endif
+            if (hMod) {
+                s_moduleCache[component] = hMod;
+            }
+        }
+    }
+
     if (!hMod) {
         napi_create_string_utf8(env, "{\"status\":\"fallback\"}", NAPI_AUTO_LENGTH, &result);
         return result;
     }
+
+#ifdef _WIN32
+    auto func = (BridgeCallFn)GetProcAddress((HMODULE)hMod, action.c_str());
+#else
     auto func = (BridgeCallFn)dlsym(hMod, action.c_str());
 #endif
 
     if (!func) {
-#ifdef _WIN32
-        FreeLibrary(hMod);
-#else
-        dlclose(hMod);
-#endif
         napi_create_string_utf8(env, "{\"status\":\"fallback\"}", NAPI_AUTO_LENGTH, &result);
         return result;
     }
@@ -81,11 +94,6 @@ napi_value DynamicLinkCall(napi_env env, napi_callback_info info, bool isRequest
         napi_create_string_utf8(env, "{\"status\":\"ok\"}", NAPI_AUTO_LENGTH, &result);
     }
     
-#ifdef _WIN32
-    FreeLibrary(hMod);
-#else
-    dlclose(hMod);
-#endif
     return result;
 }
 
