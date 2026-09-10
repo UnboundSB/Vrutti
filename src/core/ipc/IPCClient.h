@@ -40,7 +40,13 @@ namespace vrutti::core::ipc {
         void* m_connectionHandle;
         std::mutex m_pipeMutex;
 
+#ifdef _WIN32
+        void* m_stopEvent;
+#endif
+
         std::function<void(const std::string&)> m_onMessage;
+        
+        std::mutex m_bufferMutex;
         std::string m_incomingBuffer;
 
         void listenLoop();

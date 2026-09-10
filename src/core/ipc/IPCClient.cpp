@@ -18,10 +18,18 @@ namespace vrutti::core::ipc {
     IPCClient::IPCClient(const std::string& pipeName) 
         : m_pipeName(pipeName), m_running(false), m_activeBuffer(nullptr), m_connectionHandle(nullptr) 
     {
+#ifdef _WIN32
+        m_stopEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+#endif
     }
 
     IPCClient::~IPCClient() {
         stop();
+#ifdef _WIN32
+        if (m_stopEvent) {
+            CloseHandle((HANDLE)m_stopEvent);
+        }
+#endif
     }
 
     void IPCClient::bindEditorBuffer(vrutti::core::editor::PieceTable* table) {
@@ -31,6 +39,9 @@ namespace vrutti::core::ipc {
     void IPCClient::start() {
         if (m_running) return;
         m_running = true;
+#ifdef _WIN32
+        ResetEvent((HANDLE)m_stopEvent);
+#endif
         
         // Spin up a std::thread running listenLoop()
         std::thread([this]() {
@@ -45,7 +56,9 @@ namespace vrutti::core::ipc {
     }
 
     void IPCClient::stop() {
+        if (!m_running) return;
         m_running = false;
+
 #ifndef _WIN32
         if (m_connectionHandle) {
             int fd = static_cast<int>(reinterpret_cast<intptr_t>(m_connectionHandle));
@@ -53,6 +66,8 @@ namespace vrutti::core::ipc {
             m_connectionHandle = nullptr;
         }
 #else
+        SetEvent((HANDLE)m_stopEvent);
+
         std::lock_guard<std::mutex> lock(m_pipeMutex);
         if (m_connectionHandle && m_connectionHandle != INVALID_HANDLE_VALUE) {
             DisconnectNamedPipe(m_connectionHandle);
@@ -65,35 +80,35 @@ namespace vrutti::core::ipc {
     void IPCClient::sendMessage(const std::string& method, const std::string& payload) {
         if (!m_running) return;
         
-        // Serialize to JSON-RPC and write to pipe
         std::string rpc = "{\"jsonrpc\":\"2.0\",\"method\":\"" + method + "\",\"params\":" + payload + "}\n";
         
 #ifdef _WIN32
         {
             std::lock_guard<std::mutex> lock(m_pipeMutex);
             if (m_connectionHandle && m_connectionHandle != INVALID_HANDLE_VALUE) {
-                std::cout << "[IPC] Writing to pipe..." << std::endl;
-                DWORD bytesWritten;
-                if (!WriteFile(m_connectionHandle, rpc.c_str(), rpc.length(), &bytesWritten, NULL)) {
-                    std::cerr << "[IPC] WriteFile failed. Error: " << GetLastError() << std::endl;
-                } else {
-                    // std::cout << "[IPC] WriteFile succeeded, wrote " << bytesWritten << " bytes." << std::endl;
+                OVERLAPPED ol = { 0 };
+                ol.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+                DWORD bytesWritten = 0;
+                if (!WriteFile(m_connectionHandle, rpc.c_str(), rpc.length(), NULL, &ol)) {
+                    if (GetLastError() == ERROR_IO_PENDING) {
+                        GetOverlappedResult(m_connectionHandle, &ol, &bytesWritten, TRUE);
+                    } else {
+                        std::cerr << "[IPC] WriteFile failed. Error: " << GetLastError() << std::endl;
+                    }
                 }
-            } else {
-                std::cerr << "[IPC] Cannot write, handle is invalid!" << std::endl;
+                CloseHandle(ol.hEvent);
             }
         }
 #else
         if (m_connectionHandle) {
-            std::cout << "[IPC] Writing to socket..." << std::endl;
             int fd = static_cast<int>(reinterpret_cast<intptr_t>(m_connectionHandle));
             write(fd, rpc.c_str(), rpc.length());
-            std::cout << "[IPC] Write complete." << std::endl;
         }
 #endif
     }
 
     void IPCClient::handleIncomingMessage(const std::string& jsonMessage) {
+        std::lock_guard<std::mutex> lock(m_bufferMutex);
         m_incomingBuffer += jsonMessage;
         
         size_t pos = 0;
@@ -162,7 +177,7 @@ namespace vrutti::core::ipc {
             std::string pipePath = "\\\\.\\pipe\\" + m_pipeName;
             HANDLE hPipe = CreateNamedPipeA(
                 pipePath.c_str(),
-                PIPE_ACCESS_DUPLEX,
+                PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
                 PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT,
                 1, 4096, 4096, 0, NULL);
                 
@@ -170,59 +185,67 @@ namespace vrutti::core::ipc {
                 std::cerr << "[IPC] Failed to create named pipe. Error: " << GetLastError() << std::endl;
                 return;
             }
-            
-            while (m_running) {
-                BOOL connected = ConnectNamedPipe(hPipe, NULL) ? TRUE : (GetLastError() == ERROR_PIPE_CONNECTED);
-                if (connected) {
-                    m_connectionHandle = hPipe;
-                    char buffer[4096];
-                    DWORD bytesRead;
-                    DWORD bytesAvail;
-                    while (m_running) {
-                        bool hasData = false;
-                        {
-                            std::lock_guard<std::mutex> lock(m_pipeMutex);
-                            if (PeekNamedPipe(hPipe, NULL, 0, NULL, &bytesAvail, NULL)) {
-                                if (bytesAvail > 0) {
-                                    if (ReadFile(hPipe, buffer, sizeof(buffer) - 1, &bytesRead, NULL) && bytesRead > 0) {
-                                        buffer[bytesRead] = '\0';
-                                        hasData = true;
-                                    } else {
-                                        break; // Error during read
-                                    }
-                                }
-                            } else {
-                                if (GetLastError() == ERROR_BROKEN_PIPE) break;
-                            }
-                        }
-                        
-                        if (hasData) {
-                            handleIncomingMessage(std::string(buffer));
-                        } else {
-                            Sleep(10);
-                        }
-                    }
-                    
-                    {
-                        std::lock_guard<std::mutex> lock(m_pipeMutex);
-                        DisconnectNamedPipe(hPipe);
-                        m_connectionHandle = nullptr;
-                    }
+
+            {
+                std::lock_guard<std::mutex> lock(m_pipeMutex);
+                m_connectionHandle = hPipe;
+            }
+
+            OVERLAPPED olConnect = { 0 };
+            olConnect.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+
+            BOOL connected = ConnectNamedPipe(hPipe, &olConnect) ? TRUE : (GetLastError() == ERROR_PIPE_CONNECTED);
+            if (!connected && GetLastError() == ERROR_IO_PENDING) {
+                HANDLE waitHandles[2] = { olConnect.hEvent, (HANDLE)m_stopEvent };
+                DWORD waitRes = WaitForMultipleObjects(2, waitHandles, FALSE, INFINITE);
+                if (waitRes == WAIT_OBJECT_0) {
+                    connected = TRUE;
+                } else {
+                    CancelIo(hPipe);
                 }
             }
+
+            if (connected && m_running) {
+                char buffer[4096];
+                OVERLAPPED olRead = { 0 };
+                olRead.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+                
+                while (m_running) {
+                    DWORD bytesRead = 0;
+                    BOOL readOk = ReadFile(hPipe, buffer, sizeof(buffer) - 1, NULL, &olRead);
+                    if (!readOk && GetLastError() == ERROR_IO_PENDING) {
+                        HANDLE waitHandles[2] = { olRead.hEvent, (HANDLE)m_stopEvent };
+                        DWORD waitRes = WaitForMultipleObjects(2, waitHandles, FALSE, INFINITE);
+                        if (waitRes == WAIT_OBJECT_0) {
+                            readOk = GetOverlappedResult(hPipe, &olRead, &bytesRead, FALSE);
+                        } else {
+                            CancelIo(hPipe);
+                            break;
+                        }
+                    } else if (readOk) {
+                        GetOverlappedResult(hPipe, &olRead, &bytesRead, FALSE);
+                    }
+
+                    if (readOk && bytesRead > 0) {
+                        buffer[bytesRead] = '\0';
+                        handleIncomingMessage(std::string(buffer));
+                    } else {
+                        break;
+                    }
+                    ResetEvent(olRead.hEvent);
+                }
+                CloseHandle(olRead.hEvent);
+            }
+            
+            CloseHandle(olConnect.hEvent);
+
             {
                 std::lock_guard<std::mutex> lock(m_pipeMutex);
                 if (m_connectionHandle == hPipe) {
+                    DisconnectNamedPipe(hPipe);
                     CloseHandle(hPipe);
                     m_connectionHandle = nullptr;
-                } else if (hPipe != INVALID_HANDLE_VALUE) {
-                    // Try to close it if it wasn't the connection handle
-                    // But actually stop() closes m_connectionHandle, so if it's null, we shouldn't close hPipe if they were the same.
                 }
-                // To be safe, just don't close if stop() already did
-                // Wait, if hPipe is NOT m_connectionHandle (e.g. before connected), we DO need to close it.
-                // Let's just track if we own the handle.
-                // Actually, if stop() closed it, it set m_connectionHandle to nullptr.
             }
 #endif
         }
