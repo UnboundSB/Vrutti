@@ -154,6 +154,34 @@ export class VruttiExtensions extends LitElement {
             color: #888;
             font-style: italic;
         }
+
+        details {
+            border-bottom: 1px solid var(--vrutti-surface-border, #333333);
+        }
+        details > summary {
+            list-style: none;
+            padding: 6px 12px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--vrutti-text-bright, #ffffff);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+        }
+        details > summary::-webkit-details-marker {
+            display: none;
+        }
+        details > summary::before {
+            content: "▸";
+            display: inline-block;
+            margin-right: 6px;
+            font-size: 12px;
+            transition: transform 0.1s;
+        }
+        details[open] > summary::before {
+            transform: rotate(90deg);
+        }
     `;
 
     @state() private query = '';
@@ -314,9 +342,46 @@ export class VruttiExtensions extends LitElement {
         }));
     }
 
+    renderExtensionList(list: ExtensionResult[]) {
+        return html`
+            ${repeat(list, ext => `${ext.namespace}.${ext.name}`, ext => {
+                const progress = this.progressMap.get(ext.name);
+                const isInstalling = progress !== undefined;
+                const extId = `${ext.namespace}.${ext.name}`.toLowerCase();
+                const extName = (ext.name || '').toLowerCase();
+                const isInstalled = this.installed.some(i => {
+                    const iId = (i.id || '').toLowerCase();
+                    const iName = (i.name || '').toLowerCase();
+                    return iId === extId || iName === extName;
+                });
+                return html`
+                <div class="extension-card" @click=${() => this.selectExtension(ext, isInstalled)}>
+                    <img class="ext-icon" src=${ext.iconUrl || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23333"/><text x="50" y="50" fill="%23888" font-size="40" text-anchor="middle" dominant-baseline="middle">E</text></svg>'} @error=${(e: Event) => (e.target as HTMLImageElement).style.display = 'none'} />
+                    <div class="ext-info">
+                        <div class="ext-name">${ext.displayName}</div>
+                        <div class="ext-publisher">${ext.publisherDisplayName}</div>
+                        <div class="ext-desc" title=${ext.description}>${ext.description}</div>
+                        
+                        ${isInstalling ? html`
+                            <div style="width: 100%; height: 4px; background: #333; margin-top: 4px; border-radius: 2px; overflow: hidden;">
+                                <div style="width: ${progress}%; height: 100%; background: var(--vrutti-accent, #007fd4); transition: width 0.2s;"></div>
+                            </div>
+                        ` : (isInstalled ? html`
+                            <div style="display: flex; gap: 8px;">
+                                <span style="font-size: 11px; color: var(--vrutti-text, #888); background: var(--vrutti-surface-border, #333); padding: 2px 6px; border-radius: 4px; align-self: flex-start;">Installed</span>
+                                <button class="install-btn" style="background: #e81123;" @click=${(e: Event) => this.uninstall(ext, e)}>Uninstall</button>
+                                ${ext.isTheme || this.installed.find(i => i.name === ext.name)?.isTheme ? html`<button class="install-btn" @click=${(e: Event) => this.setTheme(ext, e)}>Set Theme</button>` : ''}
+                            </div>
+                        ` : html`
+                            <button class="install-btn" @click=${(e: Event) => this.install(ext, e)}>Install</button>
+                        `)}
+                    </div>
+                </div>
+            `})}
+        `;
+    }
+
     render() {
-        const displayList = this.query ? this.results : this.installed;
-        
         return html`
             <div class="header">EXTENSIONS</div>
             <div class="search-container">
@@ -328,44 +393,20 @@ export class VruttiExtensions extends LitElement {
                 ` : ''}
             </div>
             <div class="results">
-                ${this.isLoading ? html`<div class="loading">Searching Open VSX Registry...</div>` : ''}
-                ${!this.isLoading && this.query && this.results.length === 0 ? html`<div class="loading">No extensions found.</div>` : ''}
-                ${!this.isLoading && !this.query && this.installed.length === 0 ? html`<div class="loading">No extensions installed.</div>` : ''}
-                
-                ${repeat(displayList, ext => `${ext.namespace}.${ext.name}`, ext => {
-                    const progress = this.progressMap.get(ext.name);
-                    const isInstalling = progress !== undefined;
-                    const extId = `${ext.namespace}.${ext.name}`.toLowerCase();
-                    const extName = (ext.name || '').toLowerCase();
-                    const isInstalled = this.installed.some(i => {
-                        const iId = (i.id || '').toLowerCase();
-                        const iName = (i.name || '').toLowerCase();
-                        return iId === extId || iName === extName;
-                    });
-                    return html`
-                    <div class="extension-card" @click=${() => this.selectExtension(ext, isInstalled)}>
-                        <img class="ext-icon" src=${ext.iconUrl || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23333"/><text x="50" y="50" fill="%23888" font-size="40" text-anchor="middle" dominant-baseline="middle">E</text></svg>'} @error=${(e: Event) => (e.target as HTMLImageElement).style.display = 'none'} />
-                        <div class="ext-info">
-                            <div class="ext-name">${ext.displayName}</div>
-                            <div class="ext-publisher">${ext.publisherDisplayName}</div>
-                            <div class="ext-desc" title=${ext.description}>${ext.description}</div>
-                            
-                            ${isInstalling ? html`
-                                <div style="width: 100%; height: 4px; background: #333; margin-top: 4px; border-radius: 2px; overflow: hidden;">
-                                    <div style="width: ${progress}%; height: 100%; background: var(--vrutti-accent, #007fd4); transition: width 0.2s;"></div>
-                                </div>
-                            ` : (isInstalled ? html`
-                                <div style="display: flex; gap: 8px;">
-                                    <span style="font-size: 11px; color: var(--vrutti-text, #888); background: var(--vrutti-surface-border, #333); padding: 2px 6px; border-radius: 4px; align-self: flex-start;">Installed</span>
-                                    <button class="install-btn" style="background: #e81123;" @click=${(e: Event) => this.uninstall(ext, e)}>Uninstall</button>
-                                    ${ext.isTheme || this.installed.find(i => i.name === ext.name)?.isTheme ? html`<button class="install-btn" @click=${(e: Event) => this.setTheme(ext, e)}>Set Theme</button>` : ''}
-                                </div>
-                            ` : html`
-                                <button class="install-btn" @click=${(e: Event) => this.install(ext, e)}>Install</button>
-                            `)}
-                        </div>
-                    </div>
-                `})}
+                ${this.query ? html`
+                    <details open>
+                        <summary>MARKETPLACE (${this.results.length})</summary>
+                        ${this.isLoading ? html`<div class="loading">Searching Open VSX Registry...</div>` : ''}
+                        ${!this.isLoading && this.results.length === 0 ? html`<div class="loading">No extensions found.</div>` : ''}
+                        ${this.renderExtensionList(this.results)}
+                    </details>
+                ` : html`
+                    <details open>
+                        <summary>INSTALLED (${this.installed.length})</summary>
+                        ${this.installed.length === 0 ? html`<div class="loading">No extensions installed.</div>` : ''}
+                        ${this.renderExtensionList(this.installed)}
+                    </details>
+                `}
             </div>
         `;
     }

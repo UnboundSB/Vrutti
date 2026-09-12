@@ -888,6 +888,12 @@ export class VruttiApp extends LitElement {
       min-width: 0;
       overflow: hidden;
       z-index: 10000;
+      transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .terminal-panel.closed {
+      height: 0 !important;
+      opacity: 0;
+      border-top-color: transparent;
     }
     .terminal-resizer {
       height: 4px;
@@ -1095,12 +1101,10 @@ export class VruttiApp extends LitElement {
               ${this.activeExtension ? html`<vrutti-extension-details .extension=${this.activeExtension} style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 40;"></vrutti-extension-details>` : ''}
               <vrutti-editor-layout id="main-layout"></vrutti-editor-layout>
             </div>
-            ${this.showTerminal ? html`
-              <div class="terminal-panel" style="height: ${this.terminalHeight}px">
-                <div class="terminal-resizer" @mousedown=${this.startTerminalResize}></div>
-                <vrutti-panel @close-panel=${() => this.showTerminal = false}></vrutti-panel>
-              </div>
-            ` : ''}
+            <div class="terminal-panel ${this.showTerminal ? 'open' : 'closed'}" style="height: ${this.showTerminal ? this.terminalHeight : 0}px">
+              <div class="terminal-resizer" @mousedown=${this.startTerminalResize}></div>
+              <vrutti-panel @close-panel=${() => this.showTerminal = false}></vrutti-panel>
+            </div>
           `}
           ${this.showGitGraph ? html`
               <vrutti-git-graph @close-git-graph=${() => this.showGitGraph = false}></vrutti-git-graph>

@@ -45,6 +45,7 @@ namespace {
 #include "../../core/utils/Base64.h"
 #include "../../core/config/SettingsManager.h"
 #include "../../core/plugins/PluginLoader.h"
+#include "../../core/plugins/ExtensionScanner.h"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -405,10 +406,19 @@ namespace vrutti::ui {
             return "{}";
         });
 
-        w->bind("vruttiRequestInstalledExtensions", [this](const std::string& req) -> std::string {
-            if (this->m_ipc) {
-                this->m_ipc->sendMessage("extensions/request_installed", "{}");
-            }
+        w->bind("vruttiRequestInstalledExtensions", [this, w](const std::string& req) -> std::string {
+            std::thread([this, w]() {
+                std::string jsonStr = vrutti::core::plugins::ExtensionScanner::getInstalledExtensions();
+                std::string b64 = base64_encode(jsonStr);
+                
+                w->dispatch([w, b64]() {
+                    w->eval("if (window.dispatchEvent) { "
+                            "const jsonStr = atob('" + b64 + "');"
+                            "const msg = { method: 'extensions/installed', params: JSON.parse(jsonStr) };"
+                            "window.dispatchEvent(new CustomEvent('vrutti-ipc', { detail: msg }));"
+                            "}");
+                });
+            }).detach();
             return "{}";
         });
 
