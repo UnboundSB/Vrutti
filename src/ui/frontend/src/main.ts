@@ -14,7 +14,10 @@ import { registry } from './core/Registry';
 import { registerCoreContributions } from './core/core-contributions';
 
 import { globalHoverStyle } from './shared-styles';
+import { installDomBridge } from './dom-bridge';
 
+// Install DOM proxies for VS Code extension compatibility
+installDomBridge();
 @customElement('vrutti-app')
 export class VruttiApp extends LitElement {
   @state()
@@ -89,6 +92,18 @@ export class VruttiApp extends LitElement {
     (window as any).vruttiWriteOutput = (channel: string, text: string) => {
       window.dispatchEvent(new CustomEvent('vrutti-output-write', { detail: { channel, text } }));
     };
+
+    // Load mock VS Code UI CSS for extensions like Live Wallpaper/Shizuku
+    if ((window as any).vruttiReadFile) {
+      (window as any).vruttiReadFile('d:/vrutti/out/vs/workbench/workbench.desktop.main.css').then((css: string) => {
+        if (css && css.trim().length > 0 && css.trim() !== '/* MOCK CSS */') {
+          const style = document.createElement('style');
+          style.innerHTML = css;
+          document.head.appendChild(style);
+          console.log('[Theme] Injected mock workbench CSS for extension compatibility.');
+        }
+      }).catch((e: any) => console.log('Mock CSS not found:', e));
+    }
 
     (window as any).vruttiIpcMessage = (b64: string) => {
       try {
