@@ -639,12 +639,7 @@ namespace vrutti::ui {
 
         w->bind("vruttiRequestInstalledExtensions", [this, w](const std::string& req) -> std::string {
             std::thread([this, w]() {
-                std::string jsonStr = "[]";
-                vrutti::core::plugins::IPlugin* plugin = m_pluginLoader.loadPlugin("build/ExtensionManager.dll");
-                if (plugin) {
-                    plugin->initialize();
-                    jsonStr = plugin->executeCommand("list", "");
-                }
+                std::string jsonStr = vrutti::core::plugins::ExtensionScanner::getInstalledExtensions();
                 
                 std::string b64 = base64_encode(jsonStr);
                 
