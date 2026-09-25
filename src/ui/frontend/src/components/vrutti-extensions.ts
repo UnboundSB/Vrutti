@@ -212,7 +212,11 @@ export class VruttiExtensions extends LitElement {
     private handleIpc = (e: CustomEvent) => {
         const msg = e.detail;
         if (msg.method === 'extensions/installed') {
-            this.installed = msg.params || [];
+            this.installed = (msg.params || []).map((ext: any) => ({
+                ...ext,
+                namespace: ext.namespace || ext.publisher || 'unknown',
+                iconUrl: ext.iconUrl || (ext.icon ? `file:///${(ext.localPath || '').replace(/\\/g, '/')}/${ext.icon}` : undefined)
+            }));
         } else if (msg.method === 'extensions/progress') {
             const { name, percentage } = msg.params;
             const newMap = new Map(this.progressMap);
@@ -262,8 +266,21 @@ export class VruttiExtensions extends LitElement {
         const searchId = ++this.currentSearchId;
         
         try {
-            const res = await fetch(`https://open-vsx.org/api/-/search?query=${encodeURIComponent(this.query)}`);
-            const json = await res.json();
+            let json: any = { extensions: [] };
+            if ((window as any).sendIpcMessage) {
+                // Send IPC request. Since IPC is async and doesn't return directly via sendIpcMessage,
+                // we'll need to use a dedicated binding or promise wrapper.
+                // In this architecture, let's assume we mapped `vruttiSearchExtensions` as a direct sync/async binding
+                // or we use a promise. If not, we can use the `invoke` pattern.
+                if ((window as any).vruttiSearchExtensions) {
+                    const result = await (window as any).vruttiSearchExtensions(JSON.stringify({ query: this.query }));
+                    json = typeof result === 'string' ? JSON.parse(result) : result;
+                }
+            } else {
+                // Fallback for isolated web view testing
+                const res = await fetch(`https://open-vsx.org/api/-/search?query=${encodeURIComponent(this.query)}`);
+                json = await res.json();
+            }
             
             if (this.currentSearchId !== searchId) return;
             
