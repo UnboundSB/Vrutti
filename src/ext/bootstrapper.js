@@ -31,20 +31,22 @@ console.log(`[Bootstrapper] Launching Extension Host: ${extHostPath}`);
 const env = {
     ...process.env,
     // Provide the pipe for VS Code's IPC
+    VSCODE_EXTHOST_IPC_HOOK: pipeName,
     VSCODE_EXTHOST_IPC_HOOK_EXTHOST: pipeName,
     VSCODE_HANDLES_UNCAUGHT_ERRORS: true
 };
 
-const args = [];
+let spawnCmd = process.execPath;
+const args = ['--require', path.join(__dirname, 'crypto-polyfill.js'), '--expose-gc'];
 if (useTsx) {
-    // We would use npx tsx to launch it if not compiled
-    args.push('tsx', extHostPath);
+    const tsxPath = path.resolve(__dirname, '../../node_modules/tsx/dist/cli.mjs');
+    args.push(tsxPath, '--tsconfig=' + path.join(__dirname, '../../tsconfig.exthost.json'), extHostPath);
 } else {
     args.push(extHostPath);
 }
 
 // Spawn the extension host
-const child = spawn(process.execPath, args, {
+const child = spawn(spawnCmd, args, {
     env,
     stdio: ['pipe', 'pipe', 'pipe', 'ipc']
 });

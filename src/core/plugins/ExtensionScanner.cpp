@@ -112,6 +112,39 @@ std::string ExtensionScanner::getInstalledExtensions() {
                 std::string localPath = entry.path().string();
                 std::replace(localPath.begin(), localPath.end(), '\\', '/');
 
+                std::string iconUrlBase64 = "";
+                if (!icon.empty()) {
+                    std::filesystem::path iconPath = std::filesystem::path(localPath) / icon;
+                    if (std::filesystem::exists(iconPath)) {
+                        std::ifstream ifs(iconPath, std::ios::binary);
+                        if (ifs) {
+                            std::ostringstream ss;
+                            ss << ifs.rdbuf();
+                            std::string binary = ss.str();
+                            static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+                            std::string b64out;
+                            int val = 0, valb = -6;
+                            for (unsigned char c : binary) {
+                                val = (val << 8) + c;
+                                valb += 8;
+                                while (valb >= 0) {
+                                    b64out.push_back(b64[(val >> valb) & 0x3F]);
+                                    valb -= 6;
+                                }
+                            }
+                            if (valb > -6) b64out.push_back(b64[((val << 8) >> (valb + 8)) & 0x3F]);
+                            while (b64out.size() % 4) b64out.push_back('=');
+                            
+                            std::string ext = iconPath.extension().string();
+                            std::string mime = "image/png";
+                            if (ext == ".svg") mime = "image/svg+xml";
+                            else if (ext == ".jpg" || ext == ".jpeg") mime = "image/jpeg";
+                            else if (ext == ".gif") mime = "image/gif";
+                            iconUrlBase64 = "data:" + mime + ";base64," + b64out;
+                        }
+                    }
+                }
+
                 if (!first) {
                     jsonBuilder += ",";
                 }
@@ -125,6 +158,9 @@ std::string ExtensionScanner::getInstalledExtensions() {
                 jsonBuilder += "\"description\":" + vrutti::core::utils::JsonSerializer::escapeString(description) + ",";
                 jsonBuilder += "\"version\":" + vrutti::core::utils::JsonSerializer::escapeString(version) + ",";
                 jsonBuilder += "\"icon\":" + vrutti::core::utils::JsonSerializer::escapeString(icon) + ",";
+                if (!iconUrlBase64.empty()) {
+                    jsonBuilder += "\"iconUrl\":" + vrutti::core::utils::JsonSerializer::escapeString(iconUrlBase64) + ",";
+                }
                 jsonBuilder += "\"isTheme\":" + std::string(isTheme ? "true" : "false") + ",";
                 jsonBuilder += "\"contributes\":" + contributesStr + ",";
                 jsonBuilder += "\"localPath\":" + vrutti::core::utils::JsonSerializer::escapeString(localPath);
