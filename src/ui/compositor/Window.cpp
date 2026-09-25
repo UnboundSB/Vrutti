@@ -68,28 +68,12 @@ namespace vrutti::ui {
     bool Window::init() {
         std::cout << "[UI] Initializing Native Webview Window..." << std::endl;
         
-        std::filesystem::path exePath;
-#ifdef _WIN32
-        char buffer[MAX_PATH];
-        GetModuleFileNameA(NULL, buffer, MAX_PATH);
-        exePath = std::filesystem::path(buffer);
-        std::string searchPluginPath = (exePath.parent_path() / "libvrutti_search.dll").string();
-        if (!std::filesystem::exists(searchPluginPath)) {
-            searchPluginPath = (exePath.parent_path() / "vrutti_search.dll").string();
-        }
-#else
-        char buffer[PATH_MAX];
-        ssize_t count = readlink("/proc/self/exe", buffer, PATH_MAX);
-        if (count != -1) {
-            exePath = std::filesystem::path(std::string(buffer, (count > 0) ? count : 0));
-        }
-        std::string searchPluginPath = (exePath.parent_path() / "libvrutti_search.so").string();
-#endif
-        m_searchPlugin = m_pluginLoader.loadPlugin(searchPluginPath);
+        m_searchPlugin = m_pluginLoader.loadPlugin("build/vrutti_search.dll");
         if (m_searchPlugin) {
-            std::cout << "[Window] Successfully loaded search plugin." << std::endl;
+            m_searchPlugin->initialize();
+            std::cout << "[Window] Successfully loaded search plugin dynamically." << std::endl;
         } else {
-            std::cerr << "[Window] Failed to load search plugin from: " << searchPluginPath << std::endl;
+            std::cerr << "[Window] Failed to load search plugin from: build/vrutti_search.dll" << std::endl;
         }
         
         // Ensure webview.h compiles by setting up a dummy handle
@@ -259,6 +243,194 @@ namespace vrutti::ui {
             return "{}";
         });
 
+        w->bind("vruttiSearchExtensions", [this](const std::string& req) -> std::string {
+            std::string payload = req;
+            auto parsedReq = vrutti::core::utils::JsonParser::parse(req);
+            if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && !parsedReq->arrayElements.empty()) {
+                auto argNode = parsedReq->arrayElements[0];
+                if (argNode && argNode->type == vrutti::core::utils::JsonNode::Type::String) {
+                    payload = vrutti::core::utils::JsonParser::unescapeString(argNode->stringValue);
+                } else if (argNode && argNode->type == vrutti::core::utils::JsonNode::Type::Object) {
+                    payload = vrutti::core::utils::JsonSerializer::stringify(argNode);
+                }
+            }
+
+            vrutti::core::plugins::IPlugin* vsxPlugin = m_pluginLoader.getPlugin("VSXRegistryService");
+            if (!vsxPlugin) {
+                vsxPlugin = m_pluginLoader.loadPlugin("build/VSXRegistryService.dll");
+                if (vsxPlugin) {
+                    vsxPlugin->initialize();
+                }
+            }
+            
+            if (vsxPlugin) {
+                return vsxPlugin->executeCommand("search_extensions", payload);
+            }
+            return "{\"extensions\":[]}";
+        });
+
+        w->bind("vruttiSetBackgroundMedia", [this](const std::string& req) -> std::string {
+            vrutti::core::plugins::IPlugin* mediaPlugin = m_pluginLoader.loadPlugin("build/MediaController.dll");
+            if (mediaPlugin) {
+                mediaPlugin->initialize();
+                return mediaPlugin->executeCommand("set_background_media", req);
+            }
+            return "{\"status\":\"error\"}";
+        });
+
+        w->bind("vruttiDocumentOpened", [this](const std::string& req) -> std::string {
+            vrutti::core::plugins::IPlugin* docPlugin = m_pluginLoader.loadPlugin("build/DocumentSyncService.dll");
+            if (docPlugin) {
+                docPlugin->initialize();
+                return docPlugin->executeCommand("document_opened", req);
+            }
+            return "{\"status\":\"error\"}";
+        });
+
+        w->bind("vruttiDocumentClosed", [this](const std::string& req) -> std::string {
+            vrutti::core::plugins::IPlugin* docPlugin = m_pluginLoader.loadPlugin("build/DocumentSyncService.dll");
+            if (docPlugin) {
+                docPlugin->initialize();
+                return docPlugin->executeCommand("document_closed", req);
+            }
+            return "{\"status\":\"error\"}";
+        });
+
+        w->bind("vruttiDocumentEdited", [this](const std::string& req) -> std::string {
+            vrutti::core::plugins::IPlugin* docPlugin = m_pluginLoader.loadPlugin("build/DocumentSyncService.dll");
+            if (docPlugin) {
+                docPlugin->initialize();
+                return docPlugin->executeCommand("document_edited", req);
+            }
+            return "{\"status\":\"error\"}";
+        });
+
+        w->bind("vruttiSelectionChanged", [this](const std::string& req) -> std::string {
+            vrutti::core::plugins::IPlugin* docPlugin = m_pluginLoader.loadPlugin("build/DocumentSyncService.dll");
+            if (docPlugin) {
+                docPlugin->initialize();
+                return docPlugin->executeCommand("selection_changed", req);
+            }
+            return "{\"status\":\"error\"}";
+        });
+
+        w->bind("vruttiGetActiveCommands", [this](const std::string& req) -> std::string {
+            vrutti::core::plugins::IPlugin* cmdPlugin = m_pluginLoader.loadPlugin("build/CommandHandlerService.dll");
+            if (cmdPlugin) {
+                cmdPlugin->initialize();
+                return cmdPlugin->executeCommand("get_active_commands", req);
+            }
+            return "{\"status\":\"error\"}";
+        });
+
+        w->bind("vruttiExecuteCommand", [this](const std::string& req) -> std::string {
+            vrutti::core::plugins::IPlugin* cmdPlugin = m_pluginLoader.loadPlugin("build/CommandHandlerService.dll");
+            if (cmdPlugin) {
+                cmdPlugin->initialize();
+                return cmdPlugin->executeCommand("execute_command", req);
+            }
+            return "{\"status\":\"error\"}";
+        });
+
+        w->bind("vruttiRequestCompletions", [this](const std::string& req) -> std::string {
+            vrutti::core::plugins::IPlugin* plugin = m_pluginLoader.loadPlugin("build/LanguageFeatureService.dll");
+            if (plugin) {
+                plugin->initialize();
+                return plugin->executeCommand("request_completions", req);
+            }
+            return "{\"status\":\"error\"}";
+        });
+
+        w->bind("vruttiRequestHover", [this](const std::string& req) -> std::string {
+            vrutti::core::plugins::IPlugin* plugin = m_pluginLoader.loadPlugin("build/LanguageFeatureService.dll");
+            if (plugin) {
+                plugin->initialize();
+                return plugin->executeCommand("request_hover", req);
+            }
+            return "{\"status\":\"error\"}";
+        });
+
+        w->bind("vruttiGetDiagnostics", [this](const std::string& req) -> std::string {
+            vrutti::core::plugins::IPlugin* plugin = m_pluginLoader.loadPlugin("build/DiagnosticService.dll");
+            if (plugin) {
+                plugin->initialize();
+                return plugin->executeCommand("get_diagnostics", req);
+            }
+            return "{\"status\":\"error\"}";
+        });
+
+        w->bind("vrutti_fs_read_dir", [this](const std::string& req) -> std::string {
+            vrutti::core::plugins::IPlugin* plugin = m_pluginLoader.loadPlugin("build/FileSystemService.dll");
+            if (plugin) {
+                plugin->initialize();
+                return plugin->executeCommand("read_directory", req);
+            }
+            return "{\"status\":\"error\"}";
+        });
+
+        w->bind("vrutti_fs_read_file", [this](const std::string& req) -> std::string {
+            vrutti::core::plugins::IPlugin* plugin = m_pluginLoader.loadPlugin("build/FileSystemService.dll");
+            if (plugin) {
+                plugin->initialize();
+                return plugin->executeCommand("read_file", req);
+            }
+            return "{\"status\":\"error\"}";
+        });
+
+        w->bind("vrutti_debug_start", [this](const std::string& req) -> std::string {
+            vrutti::core::plugins::IPlugin* plugin = m_pluginLoader.loadPlugin("build/DebugAdapterService.dll");
+            if (plugin) {
+                plugin->initialize();
+                return plugin->executeCommand("debug_start", req);
+            }
+            return "{\"status\":\"error\"}";
+        });
+
+        w->bind("vrutti_debug_set_breakpoints", [this](const std::string& req) -> std::string {
+            vrutti::core::plugins::IPlugin* plugin = m_pluginLoader.loadPlugin("build/DebugAdapterService.dll");
+            if (plugin) {
+                plugin->initialize();
+                return plugin->executeCommand("debug_set_breakpoints", req);
+            }
+            return "{\"status\":\"error\"}";
+        });
+
+        w->bind("vrutti_debug_action", [this](const std::string& req) -> std::string {
+            vrutti::core::plugins::IPlugin* plugin = m_pluginLoader.loadPlugin("build/DebugAdapterService.dll");
+            if (plugin) {
+                plugin->initialize();
+                return plugin->executeCommand("debug_action", req);
+            }
+            return "{\"status\":\"error\"}";
+        });
+
+        w->bind("vrutti_terminal_create", [this](const std::string& req) -> std::string {
+            vrutti::core::plugins::IPlugin* plugin = m_pluginLoader.loadPlugin("build/TerminalService.dll");
+            if (plugin) {
+                plugin->initialize();
+                return plugin->executeCommand("terminal_create", req);
+            }
+            return "{\"status\":\"error\"}";
+        });
+
+        w->bind("vrutti_terminal_write", [this](const std::string& req) -> std::string {
+            vrutti::core::plugins::IPlugin* plugin = m_pluginLoader.loadPlugin("build/TerminalService.dll");
+            if (plugin) {
+                plugin->initialize();
+                return plugin->executeCommand("terminal_write", req);
+            }
+            return "{\"status\":\"error\"}";
+        });
+
+        w->bind("vrutti_terminal_resize", [this](const std::string& req) -> std::string {
+            vrutti::core::plugins::IPlugin* plugin = m_pluginLoader.loadPlugin("build/TerminalService.dll");
+            if (plugin) {
+                plugin->initialize();
+                return plugin->executeCommand("terminal_resize", req);
+            }
+            return "{\"status\":\"error\"}";
+        });
+
         w->bind("vruttiTerminalInput", [this](const std::string& req) -> std::string {
             auto parsedReq = vrutti::core::utils::JsonParser::parse(req);
             if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 2) {
@@ -366,7 +538,7 @@ namespace vrutti::ui {
             return "{}";
         });
 
-        w->bind("vruttiInstallExtension", [this](const std::string& req) -> std::string {
+        w->bind("vruttiInstallExtension", [this, w](const std::string& req) -> std::string {
             auto parsedReq = vrutti::core::utils::JsonParser::parse(req);
             if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 2) {
                 auto urlNode = parsedReq->arrayElements[0];
@@ -379,28 +551,87 @@ namespace vrutti::ui {
                     
                     std::cout << "[Core] Request to install extension '" << name << "' from " << url << std::endl;
                     
-                    // Forward to IPC Node Host if connected
-                    if (this->m_ipc) {
-                        std::cout << "[Core] Sending message to IPC..." << std::endl;
-                        std::string payload = "{\"url\":\"" + url + "\",\"name\":\"" + name + "\"}";
-                        this->m_ipc->sendMessage("extensions/install", payload);
-                        std::cout << "[Core] Finished sending message to IPC." << std::endl;
-                    }
+                    std::thread([this, w, url, name]() {
+#ifdef _WIN32
+                        std::string cmd = "powershell.exe -NoProfile -ExecutionPolicy Bypass -Command \"$ErrorActionPreference = 'Stop'; Write-Output 'PROGRESS_10'; $name = '" + name + "'; $url = '" + url + "'; $extDir = Join-Path $env:USERPROFILE '.vrutti\\extensions\\'; if (!(Test-Path $extDir)) { New-Item -ItemType Directory -Force -Path $extDir | Out-Null }; $destDir = Join-Path $extDir $name; if (Test-Path $destDir) { Remove-Item -Recurse -Force $destDir }; $tmpZip = Join-Path $env:TEMP '" + name + ".zip'; [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri $url -OutFile $tmpZip -UseBasicParsing; Write-Output 'PROGRESS_50'; Expand-Archive -Path $tmpZip -DestinationPath $destDir -Force; Remove-Item $tmpZip; Write-Output 'PROGRESS_100'; Write-Output 'SUCCESS';\"";
+                        FILE* pipe = _popen(cmd.c_str(), "r");
+#else
+                        std::string cmd = "mkdir -p ~/.vrutti/extensions/" + name + " && curl -L \"" + url + "\" -o /tmp/" + name + ".zip && echo 'PROGRESS_50' && unzip -o /tmp/" + name + ".zip -d ~/.vrutti/extensions/" + name + " && rm /tmp/" + name + ".zip && echo 'PROGRESS_100' && echo 'SUCCESS'";
+                        FILE* pipe = popen(cmd.c_str(), "r");
+#endif
+                        if (!pipe) {
+                            std::cerr << "[Core] Failed to execute installer" << std::endl;
+                            return;
+                        }
+
+                        char buffer[1024];
+                        while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
+                            std::string line = buffer;
+                            // Remove trailing newlines
+                            line.erase(std::remove(line.begin(), line.end(), '\n'), line.end());
+                            line.erase(std::remove(line.begin(), line.end(), '\r'), line.end());
+                            
+                            if (line.empty()) continue;
+
+                            // Send progress back to webview
+                            std::string b64 = base64_encode(line);
+                            w->dispatch([w, name, b64]() {
+                                w->eval("if (window.dispatchEvent) { "
+                                        "try { const out = atob('" + b64 + "');"
+                                        "if (out.startsWith('PROGRESS_')) {"
+                                        "  const msg = { method: 'extensions/progress', params: { name: '" + name + "', percentage: parseInt(out.split('_')[1]) } };"
+                                        "  window.dispatchEvent(new CustomEvent('vrutti-ipc', { detail: msg }));"
+                                        "} else if (out === 'SUCCESS' || out === 'ERROR') {"
+                                        "  const msg = { method: 'extensions/install-result', params: { name: '" + name + "', type: out.toLowerCase() } };"
+                                        "  window.dispatchEvent(new CustomEvent('vrutti-ipc', { detail: msg }));"
+                                        "  if (out === 'SUCCESS' && window.vruttiRequestInstalledExtensions) { window.vruttiRequestInstalledExtensions('{}'); }"
+                                        "} } catch(e) { console.warn('Ignored ext_manager output:', atob('" + b64 + "')); }"
+                                        "}");
+                            });
+                        }
+#ifdef _WIN32
+                        _pclose(pipe);
+#else
+                        pclose(pipe);
+#endif
+                    }).detach();
                 }
             }
             return "{}";
         });
 
-        w->bind("vruttiUninstallExtension", [this](const std::string& req) -> std::string {
+        w->bind("vruttiUninstallExtension", [this, w](const std::string& req) -> std::string {
             auto parsedReq = vrutti::core::utils::JsonParser::parse(req);
             if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
                 auto nameNode = parsedReq->arrayElements[0];
                 if (nameNode && nameNode->type == vrutti::core::utils::JsonNode::Type::String) {
                     std::string name = vrutti::core::utils::JsonParser::unescapeString(nameNode->stringValue);
-                    if (this->m_ipc) {
-                        std::string payload = "{\"name\":\"" + name + "\"}";
-                        this->m_ipc->sendMessage("extensions/uninstall", payload);
-                    }
+                    
+                    std::thread([this, w, name]() {
+#ifdef _WIN32
+                        std::string cmd = "powershell.exe -NoProfile -ExecutionPolicy Bypass -Command \"$dir = Join-Path $env:USERPROFILE '.vrutti\\extensions\\" + name + "'; if (Test-Path $dir) { Remove-Item -Recurse -Force $dir }; \"";
+                        FILE* pipe = _popen(cmd.c_str(), "r");
+#else
+                        std::string cmd = "rm -rf ~/.vrutti/extensions/" + name;
+                        FILE* pipe = popen(cmd.c_str(), "r");
+#endif
+                        if (pipe) {
+#ifdef _WIN32
+                            _pclose(pipe);
+#else
+                            pclose(pipe);
+#endif
+                        }
+                        
+                        // Notify webview to refresh
+                        w->dispatch([w]() {
+                            w->eval("if (window.dispatchEvent) { "
+                                    "const msg = { method: 'extensions/uninstalled', params: {} };"
+                                    "window.dispatchEvent(new CustomEvent('vrutti-ipc', { detail: msg }));"
+                                    "if (window.vruttiRequestInstalledExtensions) { window.vruttiRequestInstalledExtensions('{}'); }"
+                                    "}");
+                        });
+                    }).detach();
                 }
             }
             return "{}";
@@ -408,14 +639,41 @@ namespace vrutti::ui {
 
         w->bind("vruttiRequestInstalledExtensions", [this, w](const std::string& req) -> std::string {
             std::thread([this, w]() {
-                std::string jsonStr = vrutti::core::plugins::ExtensionScanner::getInstalledExtensions();
+                std::string jsonStr = "[]";
+                vrutti::core::plugins::IPlugin* plugin = m_pluginLoader.loadPlugin("build/ExtensionManager.dll");
+                if (plugin) {
+                    plugin->initialize();
+                    jsonStr = plugin->executeCommand("list", "");
+                }
+                
                 std::string b64 = base64_encode(jsonStr);
                 
                 w->dispatch([w, b64]() {
                     w->eval("if (window.dispatchEvent) { "
+                            "try { "
                             "const jsonStr = atob('" + b64 + "');"
-                            "const msg = { method: 'extensions/installed', params: JSON.parse(jsonStr) };"
+                            "const installed = JSON.parse(jsonStr);"
+                            "const msg = { method: 'extensions/installed', params: installed };"
                             "window.dispatchEvent(new CustomEvent('vrutti-ipc', { detail: msg }));"
+                            "const themes = [];"
+                            "const iconThemes = [];"
+                            "for (const ext of installed) {"
+                            "  if (ext.contributes) {"
+                            "    if (ext.contributes.themes) {"
+                            "      for (const t of ext.contributes.themes) {"
+                            "        themes.push({ id: t.id || t.label, label: t.label, path: ext.localPath + '/' + t.path });"
+                            "      }"
+                            "    }"
+                            "    if (ext.contributes.iconThemes) {"
+                            "      for (const t of ext.contributes.iconThemes) {"
+                            "        iconThemes.push({ id: t.id || t.label, label: t.label, path: ext.localPath + '/' + t.path });"
+                            "      }"
+                            "    }"
+                            "  }"
+                            "}"
+                            "window.dispatchEvent(new CustomEvent('vrutti-ipc', { detail: { method: 'themes/available', params: themes } }));"
+                            "window.dispatchEvent(new CustomEvent('vrutti-ipc', { detail: { method: 'icon_themes/available', params: iconThemes } }));"
+                            "} catch(e) { console.warn('Failed to parse extensions list:', e); }"
                             "}");
                 });
             }).detach();
