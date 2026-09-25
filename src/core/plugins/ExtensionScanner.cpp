@@ -96,10 +96,17 @@ std::string ExtensionScanner::getInstalledExtensions() {
                 }
                 
                 bool isTheme = false;
+                std::string contributesStr = "{}";
                 if (auto contributes = pkg->get("contributes"); contributes && contributes->type == vrutti::core::utils::JsonNode::Type::Object) {
+                    contributesStr = vrutti::core::utils::JsonSerializer::stringify(contributes, 0, false);
                     if (contributes->get("themes") || contributes->get("iconThemes")) {
                         isTheme = true;
                     }
+                }
+                
+                std::string icon = "";
+                if (auto iconNode = pkg->get("icon"); iconNode && iconNode->type == vrutti::core::utils::JsonNode::Type::String) {
+                    icon = vrutti::core::utils::JsonParser::unescapeString(iconNode->stringValue);
                 }
                 
                 std::string localPath = entry.path().string();
@@ -111,14 +118,16 @@ std::string ExtensionScanner::getInstalledExtensions() {
                 first = false;
                 
                 jsonBuilder += "{";
-                jsonBuilder += "\"id\":\"" + vrutti::core::utils::JsonSerializer::escapeString(publisher + "." + name) + "\",";
-                jsonBuilder += "\"name\":\"" + vrutti::core::utils::JsonSerializer::escapeString(name) + "\",";
-                jsonBuilder += "\"displayName\":\"" + vrutti::core::utils::JsonSerializer::escapeString(displayName) + "\",";
-                jsonBuilder += "\"publisherDisplayName\":\"" + vrutti::core::utils::JsonSerializer::escapeString(publisher) + "\",";
-                jsonBuilder += "\"description\":\"" + vrutti::core::utils::JsonSerializer::escapeString(description) + "\",";
-                jsonBuilder += "\"version\":\"" + vrutti::core::utils::JsonSerializer::escapeString(version) + "\",";
+                jsonBuilder += "\"id\":" + vrutti::core::utils::JsonSerializer::escapeString(publisher + "." + name) + ",";
+                jsonBuilder += "\"name\":" + vrutti::core::utils::JsonSerializer::escapeString(name) + ",";
+                jsonBuilder += "\"displayName\":" + vrutti::core::utils::JsonSerializer::escapeString(displayName) + ",";
+                jsonBuilder += "\"publisherDisplayName\":" + vrutti::core::utils::JsonSerializer::escapeString(publisher) + ",";
+                jsonBuilder += "\"description\":" + vrutti::core::utils::JsonSerializer::escapeString(description) + ",";
+                jsonBuilder += "\"version\":" + vrutti::core::utils::JsonSerializer::escapeString(version) + ",";
+                jsonBuilder += "\"icon\":" + vrutti::core::utils::JsonSerializer::escapeString(icon) + ",";
                 jsonBuilder += "\"isTheme\":" + std::string(isTheme ? "true" : "false") + ",";
-                jsonBuilder += "\"localPath\":\"" + vrutti::core::utils::JsonSerializer::escapeString(localPath) + "\"";
+                jsonBuilder += "\"contributes\":" + contributesStr + ",";
+                jsonBuilder += "\"localPath\":" + vrutti::core::utils::JsonSerializer::escapeString(localPath);
                 jsonBuilder += "}";
 
             } catch (...) {}
