@@ -3,7 +3,6 @@ import { customElement, state } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { globalHoverStyle } from '../../shared-styles';
 import { registry } from '../../core/Registry';
-import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { 
     icon_check, 
     icon_add, 
@@ -366,7 +365,7 @@ export class VruttiScm extends LitElement {
                 <div class="actions">
                     ${(registry.getMenu('scm/title')?.items || []).map(item => html`
                         <div class="icon-btn" title="${item.label}" @click=${() => registry.executeCommand(item.command || '')}>
-                            ${item.iconContent ? unsafeHTML(item.iconContent) : ''}
+                            ${item.iconContent ? html`${item.iconContent}` : ''}
                         </div>
                     `)}
                 </div>
@@ -399,7 +398,7 @@ export class VruttiScm extends LitElement {
                         <div class="file-actions">
                             ${(registry.getMenu('scm/resourceState/staged')?.items || []).map(item => html`
                                 <div class="icon-btn" title="${item.label}" @click=${(e: Event) => { e.stopPropagation(); registry.executeCommand(item.command || '', { path: f.path }); }}>
-                                    ${item.iconContent ? unsafeHTML(item.iconContent) : ''}
+                                    ${item.iconContent ? html`${item.iconContent}` : ''}
                                 </div>
                             `)}
                         </div>
@@ -421,7 +420,7 @@ export class VruttiScm extends LitElement {
                         <div class="file-actions">
                             ${(registry.getMenu('scm/resourceState/unstaged')?.items || []).map(item => html`
                                 <div class="icon-btn" title="${item.label}" @click=${(e: Event) => { e.stopPropagation(); registry.executeCommand(item.command || '', { path: f.path }); }}>
-                                    ${item.iconContent ? unsafeHTML(item.iconContent) : ''}
+                                    ${item.iconContent ? html`${item.iconContent}` : ''}
                                 </div>
                             `)}
                         </div>

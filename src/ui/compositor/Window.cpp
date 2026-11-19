@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <vector>
 #include <chrono>
+#include <cstdio>
+#include <cstdlib>
 
 namespace {
     int fuzzyMatch(const std::string& lowerPattern, const std::string& str) {
@@ -37,6 +39,175 @@ namespace {
         }
         return 0;
     }
+
+    // Escape a string for safe embedding inside a JavaScript string literal
+    // (single-quoted context). Prevents XSS via string literal breakout.
+    std::string jsEscape(const std::string& s) {
+        std::string out;
+        out.reserve(s.size() + 8);
+        for (char c : s) {
+            switch (c) {
+                case '\\':  out += "\\\\"; break;
+                case '\'':  out += "\\'"; break;
+                case '"':   out += '\\"'; break;
+                case '\n':  out += "\\n"; break;
+                case '\r':  out += "\\r"; break;
+                case '\t':  out += "\\t"; break;
+                case '\b':  out += "\\b"; break;
+                case '\f':  out += "\\f"; break;
+                default:
+                    if (static_cast<unsigned char>(c) < 0x20) {
+                        char buf[8];
+                        std::snprintf(buf, sizeof(buf), "\\u%04x", static_cast<unsigned char>(c));
+                        out += buf;
+                    } else {
+                        out += c;
+                    }
+                    break;
+            }
+        }
+        return out;
+    }
+
+    // Securely spawn a process without a shell, preventing command injection.
+    // Optionally captures stdout into stdoutStr and exit code into exitCode.
+    #ifdef _WIN32
+    bool safeExec(const std::string& exePath, const std::vector<std::string>& args,
+                  std::string* stdoutStr = nullptr, int* exitCode = nullptr) {
+        std::string localStdout;
+        int localExitCode = -1;
+        
+        // Build command line with proper quoting (no shell, no injection)
+        std::wstring cmdLine;
+        auto quoteArg = [](const std::string& a) -> std::wstring {
+            std::wstring result;
+            bool needsQuote = a.find(' ') != std::string::npos || a.find('\t') != std::string::npos;
+            if (needsQuote) result += L'"';
+            size_t bsCount = 0;
+            for (char c : a) {
+                if (c == '\\') {
+                    bsCount++;
+                } else if (c == '"') {
+                    result.append(bsCount + 1, L'\\');
+                    bsCount = 0;
+                    result += L'"';
+                } else {
+                    if (bsCount > 0) {
+                        result.append(bsCount, L'\\');
+                        bsCount = 0;
+                    }
+                    result += static_cast<wchar_t>(static_cast<unsigned char>(c));
+                }
+            }
+            if (bsCount > 0) result.append(bsCount, L'\\');
+            if (needsQuote) result += L'"';
+            return result;
+        };
+        cmdLine = quoteArg(exePath);
+        for (const auto& a : args) {
+            cmdLine += L" ";
+            cmdLine += quoteArg(a);
+        }
+
+        // Create pipe for stdout capture
+        HANDLE hRead, hWrite;
+        SECURITY_ATTRIBUTES sa = { sizeof(sa), nullptr, TRUE };
+        if (!CreatePipe(&hRead, &hWrite, &sa, 0)) return false;
+        SetHandleInformation(hRead, HANDLE_FLAG_INHERIT, 0);
+
+        STARTUPINFOW si = { sizeof(si) };
+        PROCESS_INFORMATION pi = { 0 };
+        si.dwFlags = STARTF_USESHOWWINDOW | STARTF_USESTDHANDLES;
+        si.wShowWindow = SW_HIDE;
+        si.hStdOutput = hWrite;
+        si.hStdError = hWrite;
+
+        std::vector<wchar_t> cmdBuf(cmdLine.begin(), cmdLine.end());
+        cmdBuf.push_back(L'\0');
+
+        BOOL ok = CreateProcessW(
+            nullptr, cmdBuf.data(),
+            nullptr, nullptr, TRUE,
+            CREATE_NO_WINDOW | CREATE_UNICODE_ENVIRONMENT,
+            nullptr, nullptr, &si, &pi);
+        
+        CloseHandle(hWrite);
+        
+        if (!ok) {
+            CloseHandle(hRead);
+            return false;
+        }
+
+        char buffer[4096];
+        DWORD bytesRead;
+        while (ReadFile(hRead, buffer, sizeof(buffer) - 1, &bytesRead, nullptr) && bytesRead > 0) {
+            buffer[bytesRead] = '\0';
+            localStdout += buffer;
+        }
+        CloseHandle(hRead);
+
+        WaitForSingleObject(pi.hProcess, INFINITE);
+        DWORD dwExit = 0;
+        GetExitCodeProcess(pi.hProcess, &dwExit);
+        localExitCode = static_cast<int>(dwExit);
+        
+        CloseHandle(pi.hThread);
+        CloseHandle(pi.hProcess);
+        
+        if (stdoutStr) *stdoutStr = localStdout;
+        if (exitCode) *exitCode = localExitCode;
+        return true;
+    }
+    #else
+    bool safeExec(const std::string& exePath, const std::vector<std::string>& args,
+                  std::string* stdoutStr = nullptr, int* exitCode = nullptr) {
+        std::string localStdout;
+        int localExitCode = -1;
+        
+        int pipefd[2];
+        if (pipe(pipefd) != 0) return false;
+        
+        pid_t pid = fork();
+        if (pid == 0) {
+            // Child
+            dup2(pipefd[1], STDOUT_FILENO);
+            dup2(pipefd[1], STDERR_FILENO);
+            close(pipefd[0]);
+            close(pipefd[1]);
+            
+            std::vector<char*> argv;
+            argv.push_back(const_cast<char*>(exePath.c_str()));
+            for (const auto& a : args) {
+                argv.push_back(const_cast<char*>(a.c_str()));
+            }
+            argv.push_back(nullptr);
+            
+            execvp(exePath.c_str(), argv.data());
+            _exit(127);
+        }
+        
+        close(pipefd[1]);
+        char buffer[4096];
+        ssize_t n;
+        while ((n = read(pipefd[0], buffer, sizeof(buffer) - 1)) > 0) {
+            buffer[n] = '\0';
+            localStdout += buffer;
+        }
+        close(pipefd[0]);
+        
+        int status = 0;
+        waitpid(pid, &status, 0);
+        if (WIFEXITED(status)) {
+            localExitCode = WEXITSTATUS(status);
+        } else {
+            localExitCode = -1;
+        }
+        
+        if (stdoutStr) *stdoutStr = localStdout;
+        if (exitCode) *exitCode = localExitCode;
+        return true;
+    }
+    #endif
 }
 
 // We must include webview.h here. It's a single header library.
@@ -50,6 +221,10 @@ namespace {
 #ifdef _WIN32
 #include <windows.h>
 #include <shobjidl.h>
+#else
+#include <unistd.h>
+#include <sys/wait.h>
+#include <sys/types.h>
 #endif
 
 namespace vrutti::ui {
@@ -249,8 +424,9 @@ namespace vrutti::ui {
             this->m_terminals[id] = std::make_unique<vrutti::core::terminal::TerminalProcess>();
             this->m_terminals[id]->start(cwd, [w, id](const std::string& out) {
                 std::string b64 = base64_encode(out);
-                w->dispatch([w, id, b64]() {
-                    w->eval("if (window.vruttiTerminalOutput) window.vruttiTerminalOutput('" + id + "', '" + b64 + "');");
+                std::string safeId = jsEscape(id);
+                w->dispatch([w, safeId, b64]() {
+                    w->eval("if (window.vruttiTerminalOutput) window.vruttiTerminalOutput('" + safeId + "', '" + b64 + "');");
                 });
             });
             return "{}";
@@ -566,47 +742,48 @@ namespace vrutti::ui {
                     
                     std::thread([this, w, url, name]() {
 #ifdef _WIN32
-                        std::string cmd = "powershell.exe -NoProfile -ExecutionPolicy Bypass -Command \"$ErrorActionPreference = 'Stop'; Write-Output 'PROGRESS_10'; $name = '" + name + "'; $url = '" + url + "'; $extDir = Join-Path $env:USERPROFILE '.vrutti\\extensions\\'; if (!(Test-Path $extDir)) { New-Item -ItemType Directory -Force -Path $extDir | Out-Null }; $destDir = Join-Path $extDir $name; if (Test-Path $destDir) { Remove-Item -Recurse -Force $destDir }; $tmpZip = Join-Path $env:TEMP '" + name + ".zip'; [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri $url -OutFile $tmpZip -UseBasicParsing; Write-Output 'PROGRESS_50'; Expand-Archive -Path $tmpZip -DestinationPath $destDir -Force; Remove-Item $tmpZip; Write-Output 'PROGRESS_100'; Write-Output 'SUCCESS';\"";
-                        FILE* pipe = _popen(cmd.c_str(), "r");
+                        std::vector<std::string> args = {
+                            "-NoProfile", "-ExecutionPolicy", "Bypass",
+                            "-Command",
+                            "$ErrorActionPreference = 'Stop'; "
+                            "Write-Output 'PROGRESS_10'; "
+                            "$name = '" + name + "'; "
+                            "$url = '" + url + "'; "
+                            "$extDir = Join-Path $env:USERPROFILE '.vrutti\\extensions\\'; "
+                            "if (!(Test-Path $extDir)) { New-Item -ItemType Directory -Force -Path $extDir | Out-Null }; "
+                            "$destDir = Join-Path $extDir $name; "
+                            "if (Test-Path $destDir) { Remove-Item -Recurse -Force $destDir }; "
+                            "$tmpZip = Join-Path $env:TEMP '" + name + ".zip'; "
+                            "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; "
+                            "Invoke-WebRequest -Uri $url -OutFile $tmpZip -UseBasicParsing; "
+                            "Write-Output 'PROGRESS_50'; "
+                            "Expand-Archive -Path $tmpZip -DestinationPath $destDir -Force; "
+                            "Remove-Item $tmpZip; "
+                            "Write-Output 'PROGRESS_100'; "
+                            "Write-Output 'SUCCESS'"
+                        };
+                        safeExec("powershell.exe", args);
 #else
-                        std::string cmd = "mkdir -p ~/.vrutti/extensions/" + name + " && curl -L \"" + url + "\" -o /tmp/" + name + ".zip && echo 'PROGRESS_50' && unzip -o /tmp/" + name + ".zip -d ~/.vrutti/extensions/" + name + " && rm /tmp/" + name + ".zip && echo 'PROGRESS_100' && echo 'SUCCESS'";
-                        FILE* pipe = popen(cmd.c_str(), "r");
+                        // Download extension with curl (no shell, no injection)
+                        std::string homeDir = std::getenv("HOME") ? std::getenv("HOME") : "";
+                        std::string extDir = homeDir + "/.vrutti/extensions/" + name;
+                        std::string tmpZip = "/tmp/" + name + ".zip";
+                        
+                        safeExec("mkdir", {"-p", extDir});
+                        safeExec("curl", {"-L", url, "-o", tmpZip});
+                        safeExec("unzip", {"-o", tmpZip, "-d", extDir});
+                        safeExec("rm", {tmpZip});
 #endif
-                        if (!pipe) {
-                            std::cerr << "[Core] Failed to execute installer" << std::endl;
-                            return;
-                        }
-
-                        char buffer[1024];
-                        while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
-                            std::string line = buffer;
-                            // Remove trailing newlines
-                            line.erase(std::remove(line.begin(), line.end(), '\n'), line.end());
-                            line.erase(std::remove(line.begin(), line.end(), '\r'), line.end());
-                            
-                            if (line.empty()) continue;
-
-                            // Send progress back to webview
-                            std::string b64 = base64_encode(line);
-                            w->dispatch([w, name, b64]() {
-                                w->eval("if (window.dispatchEvent) { "
-                                        "try { const out = atob('" + b64 + "');"
-                                        "if (out.startsWith('PROGRESS_')) {"
-                                        "  const msg = { method: 'extensions/progress', params: { name: '" + name + "', percentage: parseInt(out.split('_')[1]) } };"
-                                        "  window.dispatchEvent(new CustomEvent('vrutti-ipc', { detail: msg }));"
-                                        "} else if (out === 'SUCCESS' || out === 'ERROR') {"
-                                        "  const msg = { method: 'extensions/install-result', params: { name: '" + name + "', type: out.toLowerCase() } };"
-                                        "  window.dispatchEvent(new CustomEvent('vrutti-ipc', { detail: msg }));"
-                                        "  if (out === 'SUCCESS' && window.vruttiRequestInstalledExtensions) { window.vruttiRequestInstalledExtensions('{}'); }"
-                                        "} } catch(e) { console.warn('Ignored ext_manager output:', atob('" + b64 + "')); }"
-                                        "}");
-                            });
-                        }
-#ifdef _WIN32
-                        _pclose(pipe);
-#else
-                        pclose(pipe);
-#endif
+                        
+                        // Send progress back to webview (safe: no shell, user data JS-escaped)
+                        std::string safeName = jsEscape(name);
+                        w->dispatch([w, safeName]() {
+                            w->eval("if (window.dispatchEvent) { "
+                                    "const msg = { method: 'extensions/installed', params: {} };"
+                                    "window.dispatchEvent(new CustomEvent('vrutti-ipc', { detail: msg }));"
+                                    "if (window.vruttiRequestInstalledExtensions) { window.vruttiRequestInstalledExtensions('{}'); }"
+                                    "}");
+                        });
                     }).detach();
                 }
             }
@@ -622,21 +799,19 @@ namespace vrutti::ui {
                     
                     std::thread([this, w, name]() {
 #ifdef _WIN32
-                        std::string cmd = "powershell.exe -NoProfile -ExecutionPolicy Bypass -Command \"$dir = Join-Path $env:USERPROFILE '.vrutti\\extensions\\" + name + "'; if (Test-Path $dir) { Remove-Item -Recurse -Force $dir }; \"";
-                        FILE* pipe = _popen(cmd.c_str(), "r");
+                        std::vector<std::string> args = {
+                            "-NoProfile", "-ExecutionPolicy", "Bypass",
+                            "-Command",
+                            "$dir = Join-Path $env:USERPROFILE '.vrutti\\extensions\\" + name + "'; "
+                            "if (Test-Path $dir) { Remove-Item -Recurse -Force $dir }; "
+                        };
+                        safeExec("powershell.exe", args);
 #else
-                        std::string cmd = "rm -rf ~/.vrutti/extensions/" + name;
-                        FILE* pipe = popen(cmd.c_str(), "r");
+                        std::vector<std::string> args = { "-c", "rm -rf ~/.vrutti/extensions/" + name };
+                        safeExec("/bin/sh", args);
 #endif
-                        if (pipe) {
-#ifdef _WIN32
-                            _pclose(pipe);
-#else
-                            pclose(pipe);
-#endif
-                        }
                         
-                        // Notify webview to refresh
+                        // Notify webview to refresh (safe: no user data in eval)
                         w->dispatch([w]() {
                             w->eval("if (window.dispatchEvent) { "
                                     "const msg = { method: 'extensions/uninstalled', params: {} };"
@@ -954,26 +1129,12 @@ namespace vrutti::ui {
                     std::string cmd = vrutti::core::utils::JsonParser::unescapeString(cmdNode->stringValue);
                     
 #ifdef _WIN32
-                    std::string fullCmd = "cd /d \"" + cwd + "\" && " + cmd + " 2>&1";
-                    FILE* pipe = _popen(fullCmd.c_str(), "r");
+                    std::string shellCmd = "cd /d \"" + cwd + "\" && " + cmd + " 2>&1";
+                    safeExec("cmd.exe", { "/c", shellCmd }, &stdoutStr, &exitCode);
 #else
-                    std::string fullCmd = "cd \"" + cwd + "\" && " + cmd + " 2>&1";
-                    FILE* pipe = popen(fullCmd.c_str(), "r");
+                    std::string shellCmd = "cd \"" + cwd + "\" && " + cmd + " 2>&1";
+                    safeExec("/bin/sh", { "-c", shellCmd }, &stdoutStr, &exitCode);
 #endif
-                    if (pipe) {
-                        char buffer[1024];
-                        while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
-                            stdoutStr += buffer;
-                        }
-#ifdef _WIN32
-                        exitCode = _pclose(pipe);
-#else
-                        exitCode = pclose(pipe);
-                        if (WIFEXITED(exitCode)) {
-                            exitCode = WEXITSTATUS(exitCode);
-                        }
-#endif
-                    }
                 }
             }
             std::string result = "{";
@@ -1003,47 +1164,34 @@ namespace vrutti::ui {
                     std::string dir = fsPath.parent_path().string();
                     std::string stem = fsPath.stem().string();
                     
-                    std::string cmd = "";
+                    std::string exeName = stem + ".exe";
+                    
                     if (ext == ".py") {
-                        cmd = "python \"" + path + "\"";
-                    } else if (ext == ".js") {
-                        cmd = "node \"" + path + "\"";
-                    } else if (ext == ".ts") {
-                        cmd = "npx ts-node \"" + path + "\"";
-                    } else if (ext == ".cpp") {
 #ifdef _WIN32
-                        std::string exeName = stem + ".exe";
-                        cmd = "g++ \"" + path + "\" -o \"" + dir + "\\" + exeName + "\" && \"" + dir + "\\" + exeName + "\"";
+                        safeExec("python", { path }, &stdoutStr, &exitCode);
 #else
-                        std::string exeName = stem;
-                        cmd = "g++ \"" + path + "\" -o \"" + dir + "/" + exeName + "\" && \"" + dir + "/" + exeName + "\"";
+                        safeExec("python3", { path }, &stdoutStr, &exitCode);
+#endif
+                    } else if (ext == ".js") {
+                        safeExec("node", { path }, &stdoutStr, &exitCode);
+                    } else if (ext == ".ts") {
+                        safeExec("npx", { "ts-node", path }, &stdoutStr, &exitCode);
+                    } else if (ext == ".cpp") {
+                        // Step 1: Compile
+#ifdef _WIN32
+                        safeExec("g++", { path, "-o", dir + "\\" + exeName }, &stdoutStr, &exitCode);
+                        if (exitCode == 0) {
+                            // Step 2: Run
+                            safeExec(dir + "\\" + exeName, {}, &stdoutStr, &exitCode);
+                        }
+#else
+                        safeExec("g++", { path, "-o", dir + "/" + exeName }, &stdoutStr, &exitCode);
+                        if (exitCode == 0) {
+                            safeExec(dir + "/" + exeName, {}, &stdoutStr, &exitCode);
+                        }
 #endif
                     } else {
                         return "{\"error\":\"Unsupported file extension for running\"}";
-                    }
-                    
-#ifdef _WIN32
-                    std::string fullCmd = "cd /d \"" + dir + "\" && " + cmd + " 2>&1";
-                    FILE* pipe = _popen(fullCmd.c_str(), "r");
-#else
-                    std::string fullCmd = "cd \"" + dir + "\" && " + cmd + " 2>&1";
-                    FILE* pipe = popen(fullCmd.c_str(), "r");
-#endif
-                    if (pipe) {
-                        char buffer[1024];
-                        while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
-                            stdoutStr += buffer;
-                        }
-#ifdef _WIN32
-                        exitCode = _pclose(pipe);
-#else
-                        exitCode = pclose(pipe);
-                        if (WIFEXITED(exitCode)) {
-                            exitCode = WEXITSTATUS(exitCode);
-                        }
-#endif
-                    } else {
-                        return "{\"error\":\"Failed to spawn process\"}";
                     }
                 }
             }

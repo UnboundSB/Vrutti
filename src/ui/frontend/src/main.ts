@@ -118,12 +118,13 @@ export class VruttiApp extends LitElement {
             for (const inj of injections) {
                 if (inj.type === 'css') {
                     const style = document.createElement('style');
-                    style.innerHTML = inj.content || '';
+                    style.textContent = inj.content || '';
                     document.head.appendChild(style);
                 } else if (inj.type === 'js') {
-                    const script = document.createElement('script');
-                    script.innerHTML = inj.content || '';
-                    document.head.appendChild(script);
+                    // JS injection disabled: extensions must use sandboxed iframes
+                    // script.textContent = inj.content || '';
+                    // document.head.appendChild(script);
+                    console.warn('[Security] Extension JS injection blocked. Use iframe sandbox instead.');
                 }
             }
         } else if (msg.method === 'extensions/installed') {
