@@ -198,20 +198,33 @@ namespace vrutti::ui {
                 if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 2) {
                     auto methodNode = parsedReq->arrayElements[0];
                     auto payloadNode = parsedReq->arrayElements[1];
-                    if (methodNode && methodNode->type == vrutti::core::utils::JsonNode::Type::String &&
-                        payloadNode && payloadNode->type == vrutti::core::utils::JsonNode::Type::String) {
+                    if (methodNode && methodNode->type == vrutti::core::utils::JsonNode::Type::String) {
                         std::string method = vrutti::core::utils::JsonParser::unescapeString(methodNode->stringValue);
-                        std::string payload = vrutti::core::utils::JsonParser::unescapeString(payloadNode->stringValue);
-                        this->m_ipc->sendMessage(method, payload);
+                        // Wrap payload as a JSON node (try parsing, fallback to string)
+                        std::shared_ptr<vrutti::core::utils::JsonNode> params;
+                        if (payloadNode) {
+                            std::string payloadStr = vrutti::core::utils::JsonParser::unescapeString(payloadNode->stringValue);
+                            auto parsed = vrutti::core::utils::JsonParser::parse(payloadStr);
+                            if (parsed) {
+                                params = parsed;
+                            } else {
+                                params = std::make_shared<vrutti::core::utils::JsonNode>(vrutti::core::utils::JsonNode::Type::String);
+                                params->stringValue = payloadStr;
+                            }
+                        } else {
+                            params = std::make_shared<vrutti::core::utils::JsonNode>(vrutti::core::utils::JsonNode::Type::Object);
+                        }
+                        this->m_ipc->sendNotification(method, params);
                     }
                 }
             }
         }, nullptr);
 
         if (this->m_ipc) {
-            this->m_ipc->setOnMessage([w](const std::string& msg) {
-                std::string b64 = base64_encode(msg);
-                w->dispatch([w, b64]() {
+            this->m_ipc->setOnMessage([w](const std::string& method, const std::shared_ptr<vrutti::core::utils::JsonNode>& params) {
+                std::string jsonStr = vrutti::core::utils::JsonSerializer::stringify(params, 0, false);
+                std::string b64 = base64_encode(jsonStr);
+                w->dispatch([w, method, b64]() {
                     w->eval("if (window.vruttiIpcMessage) window.vruttiIpcMessage('" + b64 + "');");
                 });
             });

@@ -1,0 +1,12 @@
+# This is a generated file and its contents are an internal implementation detail.
+# The download step will be re-executed if anything in this file changes.
+# No other meaning or use of this file is supported.
+
+method=url
+command=C:/msys64/ucrt64/bin/cmake.exe;-DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE;-P;D:/vrutti/vrutti_ide/build_ucrt64/_deps/webview2-subbuild/webview2-populate-prefix/src/webview2-populate-stamp/download-webview2-populate.cmake;COMMAND;C:/msys64/ucrt64/bin/cmake.exe;-DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE;-P;D:/vrutti/vrutti_ide/build_ucrt64/_deps/webview2-subbuild/webview2-populate-prefix/src/webview2-populate-stamp/verify-webview2-populate.cmake;COMMAND;C:/msys64/ucrt64/bin/cmake.exe;-DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE;-P;D:/vrutti/vrutti_ide/build_ucrt64/_deps/webview2-subbuild/webview2-populate-prefix/src/webview2-populate-stamp/extract-webview2-populate.cmake
+source_dir=D:/vrutti/vrutti_ide/build_ucrt64/_deps/webview2-src
+work_dir=D:/vrutti/vrutti_ide/build_ucrt64/_deps
+url(s)=https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/1.0.2592.51
+hash=
+      no_extract=
+

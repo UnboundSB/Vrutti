@@ -1,8 +1,30 @@
 #include "VSCodeProtocol.h"
 #include <iostream>
-#include <nlohmann/json.hpp> // Assuming nlohmann/json is available for JSON-RPC
+#include <memory>
+#include <string>
+#include <filesystem>
+#include "core/utils/Json.h"
+#include "core/plugins/PluginLoader.h"
 
-using json = nlohmann::json;
+using namespace vrutti::core::utils;
+
+namespace {
+    // Static helper functions (not class members)
+    std::string getAppRoot() {
+        return std::filesystem::current_path().string();
+    }
+
+    std::string getLogsLocation() {
+#ifdef _WIN32
+        const char* appData = std::getenv("APPDATA");
+        if (appData) return std::string(appData) + "\\Vrutti\\logs";
+#else
+        const char* home = std::getenv("HOME");
+        if (home) return std::string(home) + "/.config/Vrutti/logs";
+#endif
+        return (std::filesystem::current_path() / "logs").string();
+    }
+} // namespace
 
 namespace vrutti::core::ipc {
 
@@ -12,75 +34,50 @@ namespace vrutti::core::ipc {
 
     void VSCodeProtocol::initialize() {
         // Set the IPCClient message callback to route messages here
-        m_ipc->setOnMessage([this](const std::string& msg) {
-            this->handleMessage(msg);
+        m_ipc->setOnMessage([this](const std::string& method, const std::shared_ptr<JsonNode>& params) {
+            this->handleMessage(method, params);
         });
 
-        // Wait for the Extension Host to connect and send VSCODE_EXTHOST_IPC_READY
-        // Or proactively send the initialization data
+        // Proactively send the initialization data
         sendInitData();
     }
 
     void VSCodeProtocol::sendInitData() {
-        // The official VS Code Extension Host expects a massive initialization payload
-        // containing workspace details, environment variables, registered commands, etc.
-        json initData = {
-            {"type", 0}, // MessageType.Initialized
-            {"commit", "unknown"},
-            {"version", "1.90.0"},
-            {"parentPid", 0},
-            {"environment", {
-                {"isExtensionDevelopmentDebug", false},
-                {"appRoot", "d:\\vrutti"},
-                {"appName", "Vrutti IDE"},
-                {"appUriScheme", "vrutti"}
-            }},
-            {"workspace", {
-                {"id", "vrutti-workspace"},
-                {"name", "Vrutti Workspace"}
-            }},
-            {"remote", {
-                {"isRemote", false}
-            }},
-            {"logsLocation", "d:\\vrutti\\logs"},
-            {"logLevel", 1} // Trace
-        };
+        vrutti::core::plugins::PluginLoader pluginManager;
+        auto plugin = pluginManager.loadPlugin("VSCodeExtHostService.dll");
+        if (plugin) {
+            std::string payload = plugin->executeCommand("getInitData", "");
 
-        // Send this JSON over IPC
-        std::string payload = initData.dump();
-        // Since we are mocking the ExtHost, we format it as a VS Code RPC response
-        m_ipc->sendMessage("VSCODE_EXTHOST_IPC_INIT", payload);
-    }
+            auto params = std::make_shared<JsonNode>(JsonNode::Type::Object);
+            params->objectProperties.emplace_back("initData", std::make_shared<JsonNode>(JsonNode::Type::String));
+            params->objectProperties.back().second->stringValue = payload;
 
-    void VSCodeProtocol::handleMessage(const std::string& jsonMessage) {
-        try {
-            json msg = json::parse(jsonMessage);
-            
-            // Log incoming messages from the official VS Code ExtHost
-            std::cout << "[VSCodeProtocol] Received: " << jsonMessage << std::endl;
-
-            // Simple router for VS Code MainThread messages
-            if (msg.contains("method")) {
-                std::string method = msg["method"];
-                
-                // Route MainThreadCommands
-                if (method == "MainThreadCommands.$registerCommand") {
-                    std::cout << "[VSCodeProtocol] Registered command: " << msg["params"][0] << std::endl;
-                }
-                // Route MainThreadDocuments
-                else if (method == "MainThreadDocuments.$trySaveDocument") {
-                    std::cout << "[VSCodeProtocol] Trying to save document" << std::endl;
-                }
-                // ... we will expand this with a full router map ...
-            }
-
-        } catch (const std::exception& e) {
-            std::cerr << "[VSCodeProtocol] Failed to parse message: " << e.what() << std::endl;
+            m_ipc->sendNotification("VSCODE_EXTHOST_IPC_INIT", params);
         }
     }
 
-    void VSCodeProtocol::sendMessage(const std::string& method, const std::string& params) {
-        m_ipc->sendMessage(method, params);
+    void VSCodeProtocol::handleMessage(const std::string& method, const std::shared_ptr<JsonNode>& params) {
+        std::cout << "[VSCodeProtocol] Received: " << method << std::endl;
+
+        if (method == "MainThreadCommands.$registerCommand") {
+            if (params && params->type == JsonNode::Type::Array && !params->arrayElements.empty()) {
+                std::cout << "[VSCodeProtocol] Registered command: " << params->arrayElements[0]->stringValue << std::endl;
+            }
+        }
+        else if (method == "MainThreadDocuments.$trySaveDocument") {
+            std::cout << "[VSCodeProtocol] Trying to save document" << std::endl;
+        }
+        // ... we will expand this with a full router map ...
+    }
+
+    void VSCodeProtocol::sendNotification(const std::string& method, const std::shared_ptr<JsonNode>& params) {
+        m_ipc->sendNotification(method, params);
+    }
+
+    int VSCodeProtocol::sendRequest(const std::string& method, const std::shared_ptr<JsonNode>& params,
+                                    std::function<void(const std::shared_ptr<JsonNode>&)> onResolve,
+                                    std::function<void(const std::shared_ptr<JsonNode>&)> onReject) {
+        return m_ipc->sendRequest(method, params, std::move(onResolve), std::move(onReject));
     }
 
 } // namespace vrutti::core::ipc

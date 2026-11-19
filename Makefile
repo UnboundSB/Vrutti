@@ -44,9 +44,10 @@ SRCS = $(SRC_DIR)/app/main.cpp \
        $(SRC_DIR)/core/utils/StringPool.cpp \
        $(SRC_DIR)/core/utils/LineScanner.cpp \
        $(SRC_DIR)/core/ipc/IPCClient.cpp \
+       $(SRC_DIR)/core/ipc/VSCodeProtocol.cpp \
+       $(SRC_DIR)/core/plugins/ExtensionScanner.cpp \
        $(SRC_DIR)/core/terminal/ReplProcess.cpp \
        $(SRC_DIR)/core/terminal/TerminalProcess.cpp \
-       $(SRC_DIR)/plugins/search/SearchPlugin.cpp \
        $(SRC_DIR)/ui/compositor/Window.cpp
 
 # Object files
@@ -55,13 +56,28 @@ ifdef RES_FILE
 OBJS += $(RES_FILE)
 endif
 
+# Plugin target
+ifeq ($(OS), Windows_NT)
+	SEARCH_PLUGIN = $(BIN_DIR)/vrutti_search.dll
+else ifeq ($(OS), Darwin)
+	SEARCH_PLUGIN = $(BIN_DIR)/vrutti_search.dylib
+else
+	SEARCH_PLUGIN = $(BIN_DIR)/vrutti_search.so
+endif
+
 # Default target
-all: $(TARGET)
+all: $(TARGET) $(SEARCH_PLUGIN)
 
 # Link the executable
 $(TARGET): $(OBJS)
 	@if not exist "$(subst /,\,$(dir $@))" mkdir "$(subst /,\,$(dir $@))"
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
+	@echo "[SUCCESS] Build complete: $@"
+
+# Build the Search Plugin DLL
+$(SEARCH_PLUGIN): $(SRC_DIR)/plugins/search/SearchPlugin.cpp
+	@if not exist "$(subst /,\,$(dir $@))" mkdir "$(subst /,\,$(dir $@))"
+	$(CXX) $(CXXFLAGS) -shared -o $@ $<
 	@echo "[SUCCESS] Build complete: $@"
 
 # Compile source files to object files

@@ -37,11 +37,11 @@ Houses the modular Web Components (built with the Lit library) that construct th
 
 ## Planned Components & Roadmap
 The following components are slated for future implementation to achieve parity with modern IDE architectures. Here is the current implementation status:
-1. **vrutti-problems-view.ts (Problems / Diagnostics Panel)**: Exists: No, Dynamic: No
+1. **vrutti-problems-view.ts (Problems / Diagnostics Panel)**: Exists: Yes, Dynamic: No
 2. **vrutti-editor-layout.ts (Split Editors)**: Exists: Yes, Dynamic: Yes
 3. **vrutti-search.ts (Search & Replace)**: Exists: Yes, Dynamic: Yes
 4. **LSP (Language Server Protocol)**: Exists: No, Dynamic: No
-5. **vrutti-diff-editor.ts (Diff Editor)**: Exists: No, Dynamic: No
+5. **vrutti-diff-editor.ts (Diff Editor)**: Exists: Yes, Dynamic: No
 6. **Minimap & Breadcrumbs**: Exists: No, Dynamic: No
 
 - **vrutti-dynamic-background.ts**: A lightweight, cache-flushed dynamic background rendering engine to support custom images/videos behind the IDE while optimizing memory on file open.

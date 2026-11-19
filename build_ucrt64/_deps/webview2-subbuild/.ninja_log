@@ -1,0 +1,21 @@
+# ninja log v7
+5	747	8111593493365299	webview2-populate-prefix/src/webview2-populate-stamp/webview2-populate-mkdir	dccd10e4915cb5fc
+5	747	8111593493365299	D:/vrutti/vrutti_ide/build_ucrt64/_deps/webview2-subbuild/webview2-populate-prefix/src/webview2-populate-stamp/webview2-populate-mkdir	dccd10e4915cb5fc
+748	8192	8111593568234478	webview2-populate-prefix/src/webview2-populate-stamp/webview2-populate-download	6b5739809bcc75d7
+748	8192	8111593568234478	D:/vrutti/vrutti_ide/build_ucrt64/_deps/webview2-subbuild/webview2-populate-prefix/src/webview2-populate-stamp/webview2-populate-download	6b5739809bcc75d7
+8192	8307	8111593569443456	webview2-populate-prefix/src/webview2-populate-stamp/webview2-populate-update	2803212a5332728f
+8192	8307	8111593569443456	D:/vrutti/vrutti_ide/build_ucrt64/_deps/webview2-subbuild/webview2-populate-prefix/src/webview2-populate-stamp/webview2-populate-update	2803212a5332728f
+8309	8520	8111593571432411	webview2-populate-prefix/src/webview2-populate-stamp/webview2-populate-patch	d484fbbf5ae7436a
+8309	8520	8111593571432411	D:/vrutti/vrutti_ide/build_ucrt64/_deps/webview2-subbuild/webview2-populate-prefix/src/webview2-populate-stamp/webview2-populate-patch	d484fbbf5ae7436a
+8520	8843	8111593574667284	webview2-populate-prefix/src/webview2-populate-stamp/webview2-populate-configure	5ed21b42629e5106
+8520	8843	8111593574667284	D:/vrutti/vrutti_ide/build_ucrt64/_deps/webview2-subbuild/webview2-populate-prefix/src/webview2-populate-stamp/webview2-populate-configure	5ed21b42629e5106
+8843	9145	8111593577596893	webview2-populate-prefix/src/webview2-populate-stamp/webview2-populate-build	4d8b0a11cf81d831
+8843	9145	8111593577596893	D:/vrutti/vrutti_ide/build_ucrt64/_deps/webview2-subbuild/webview2-populate-prefix/src/webview2-populate-stamp/webview2-populate-build	4d8b0a11cf81d831
+9145	9457	8111593580763127	webview2-populate-prefix/src/webview2-populate-stamp/webview2-populate-install	e8d201d7dbdb8290
+9145	9457	8111593580763127	D:/vrutti/vrutti_ide/build_ucrt64/_deps/webview2-subbuild/webview2-populate-prefix/src/webview2-populate-stamp/webview2-populate-install	e8d201d7dbdb8290
+9457	9765	8111593583894836	webview2-populate-prefix/src/webview2-populate-stamp/webview2-populate-test	f88116eab28dc6c3
+9457	9765	8111593583894836	D:/vrutti/vrutti_ide/build_ucrt64/_deps/webview2-subbuild/webview2-populate-prefix/src/webview2-populate-stamp/webview2-populate-test	f88116eab28dc6c3
+9766	10106	8111593587130651	CMakeFiles/webview2-populate-complete	ac3f2250ef5640dd
+9766	10106	8111593587130651	webview2-populate-prefix/src/webview2-populate-stamp/webview2-populate-done	ac3f2250ef5640dd
+9766	10106	8111593587130651	D:/vrutti/vrutti_ide/build_ucrt64/_deps/webview2-subbuild/CMakeFiles/webview2-populate-complete	ac3f2250ef5640dd
+9766	10106	8111593587130651	D:/vrutti/vrutti_ide/build_ucrt64/_deps/webview2-subbuild/webview2-populate-prefix/src/webview2-populate-stamp/webview2-populate-done	ac3f2250ef5640dd

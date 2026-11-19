@@ -42,6 +42,7 @@ add_library(vrutti_core STATIC
     src/core/ipc/VSCodeProtocol.cpp
     src/core/config/SettingsManager.cpp
     src/core/plugins/PluginLoader.cpp
+    src/core/plugins/ExtensionScanner.cpp
     src/core/terminal/TerminalProcess.cpp
     src/core/terminal/ReplProcess.cpp
     src/ui/compositor/Window.cpp
@@ -64,16 +65,44 @@ endif()
 
 # Main Executable
 add_executable(vrutti_app src/app/main.cpp src/app/vrutti_app.rc)
+set_target_properties(vrutti_app PROPERTIES OUTPUT_NAME "vrutti")
 target_link_libraries(vrutti_app PRIVATE vrutti_core)
 
 # Lazy Loaded Search DLL
 add_library(vrutti_search SHARED
     src/plugins/search/SearchPlugin.cpp
 )
+set_target_properties(vrutti_search PROPERTIES PREFIX "")
 target_link_libraries(vrutti_search PRIVATE vrutti_core)
+
+# Plugin DLLs
+function(add_vrutti_plugin name source_file)
+    add_library(${name} SHARED src/core/plugins/${source_file})
+    set_target_properties(${name} PROPERTIES PREFIX "")
+    target_link_libraries(${name} PRIVATE vrutti_core)
+endfunction()
+
+add_vrutti_plugin(VSCodeExtHostService VSCodeExtHostService.cpp)
+add_vrutti_plugin(ExtensionManager ExtensionManager.cpp)
+add_vrutti_plugin(DocumentSyncService DocumentSyncService.cpp)
+add_vrutti_plugin(ExtensionLifecycleManager ExtensionLifecycleManager.cpp)
+add_vrutti_plugin(DebugAdapterService DebugAdapterService.cpp)
+add_vrutti_plugin(TerminalService TerminalService.cpp)
+add_vrutti_plugin(CommandHandlerService CommandHandlerService.cpp)
+add_vrutti_plugin(DiagnosticService DiagnosticService.cpp)
+add_vrutti_plugin(FileSystemService FileSystemService.cpp)
+add_vrutti_plugin(LanguageFeatureService LanguageFeatureService.cpp)
+add_vrutti_plugin(MediaController MediaController.cpp)
+add_vrutti_plugin(VSXRegistryService VSXRegistryService.cpp)
+target_link_libraries(VSXRegistryService PRIVATE wininet)
+add_vrutti_plugin(WorkspaceService WorkspaceService.cpp)
 
 # Rigorous Unit Testing Pipeline
 enable_testing()
+
+add_executable(vrutti_integration_test src/tests/integration/ExtHostIntegrationTest.cpp)
+target_link_libraries(vrutti_integration_test PRIVATE vrutti_core)
+add_test(NAME IntegrationTest COMMAND vrutti_integration_test)
 
 
 

@@ -475,7 +475,12 @@ export class VruttiSettings extends LitElement {
             <div class="setting-title">Color Theme</div>
             <div class="setting-desc">Select the active color theme for the workspace. Applies upon clicking Apply and Exit.</div>
             <select class="input-field" @change=${(e: any) => this.selectedTheme = e.target.value}>
-              ${this.availableThemes.length === 0 ? html`<option value="${this.selectedTheme}" selected>${this.selectedTheme}</option>` : ''}
+              <option value="Default Dark" ?selected=${this.selectedTheme === 'Default Dark'}>Default Dark</option>
+              <option value="One Dark Pro" ?selected=${this.selectedTheme === 'One Dark Pro'}>One Dark Pro</option>
+              <option value="Vrutti Glass" ?selected=${this.selectedTheme === 'Vrutti Glass'}>Vrutti Glass</option>
+              <option value="Vrutti Light" ?selected=${this.selectedTheme === 'Vrutti Light'}>Vrutti Light</option>
+              <option value="Vrutti Glass Light" ?selected=${this.selectedTheme === 'Vrutti Glass Light'}>Vrutti Glass Light</option>
+              <option value="Light+" ?selected=${this.selectedTheme === 'Light+'}>Light+</option>
               ${this.availableThemes.map(t => html`<option value="${t.id}" ?selected=${t.id === this.selectedTheme}>${t.label}</option>`)}
             </select>
           </div>

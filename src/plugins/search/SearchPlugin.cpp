@@ -14,11 +14,11 @@
 #endif
 
 extern "C" {
-    PLUGIN_EXPORT vrutti::core::plugins::IPlugin* CreatePlugin() {
+    PLUGIN_EXPORT vrutti::core::plugins::IPlugin* createPlugin() {
         return new vrutti::plugins::search::SearchPlugin();
     }
 
-    PLUGIN_EXPORT void DestroyPlugin(vrutti::core::plugins::IPlugin* plugin) {
+    PLUGIN_EXPORT void destroyPlugin(vrutti::core::plugins::IPlugin* plugin) {
         delete plugin;
     }
 }

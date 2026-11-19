@@ -4,6 +4,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <mutex>
 
 namespace vrutti::core::plugins {
 
@@ -23,6 +24,7 @@ namespace vrutti::core::plugins {
             DestroyPluginFunc destroyFunc;
         };
 
+        mutable std::mutex m_loaderMutex;
         std::unordered_map<std::string, PluginHandle> m_loadedPlugins;
     };
 

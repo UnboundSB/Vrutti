@@ -1,0 +1,46 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "D:/vrutti/vrutti_ide/build_ucrt64/_deps/webview2-subbuild/CMakeFiles/webview2-populate"
+		},
+		{
+			"file" : "D:/vrutti/vrutti_ide/build_ucrt64/_deps/webview2-subbuild/CMakeFiles/webview2-populate.rule"
+		},
+		{
+			"file" : "D:/vrutti/vrutti_ide/build_ucrt64/_deps/webview2-subbuild/CMakeFiles/webview2-populate-complete.rule"
+		},
+		{
+			"file" : "D:/vrutti/vrutti_ide/build_ucrt64/_deps/webview2-subbuild/webview2-populate-prefix/src/webview2-populate-stamp/webview2-populate-build.rule"
+		},
+		{
+			"file" : "D:/vrutti/vrutti_ide/build_ucrt64/_deps/webview2-subbuild/webview2-populate-prefix/src/webview2-populate-stamp/webview2-populate-configure.rule"
+		},
+		{
+			"file" : "D:/vrutti/vrutti_ide/build_ucrt64/_deps/webview2-subbuild/webview2-populate-prefix/src/webview2-populate-stamp/webview2-populate-download.rule"
+		},
+		{
+			"file" : "D:/vrutti/vrutti_ide/build_ucrt64/_deps/webview2-subbuild/webview2-populate-prefix/src/webview2-populate-stamp/webview2-populate-install.rule"
+		},
+		{
+			"file" : "D:/vrutti/vrutti_ide/build_ucrt64/_deps/webview2-subbuild/webview2-populate-prefix/src/webview2-populate-stamp/webview2-populate-mkdir.rule"
+		},
+		{
+			"file" : "D:/vrutti/vrutti_ide/build_ucrt64/_deps/webview2-subbuild/webview2-populate-prefix/src/webview2-populate-stamp/webview2-populate-patch.rule"
+		},
+		{
+			"file" : "D:/vrutti/vrutti_ide/build_ucrt64/_deps/webview2-subbuild/webview2-populate-prefix/src/webview2-populate-stamp/webview2-populate-test.rule"
+		},
+		{
+			"file" : "D:/vrutti/vrutti_ide/build_ucrt64/_deps/webview2-subbuild/webview2-populate-prefix/src/webview2-populate-stamp/webview2-populate-update.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"webview2-populate"
+		],
+		"name" : "webview2-populate"
+	}
+}

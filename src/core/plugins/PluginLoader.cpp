@@ -1,5 +1,6 @@
 #include "PluginLoader.h"
 #include <iostream>
+#include <mutex>
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -14,8 +15,11 @@ namespace vrutti::core::plugins {
 
     PluginLoader::~PluginLoader() {
         std::vector<std::string> names;
-        for (const auto& pair : m_loadedPlugins) {
-            names.push_back(pair.first);
+        {
+            std::lock_guard<std::mutex> lock(m_loaderMutex);
+            for (const auto& pair : m_loadedPlugins) {
+                names.push_back(pair.first);
+            }
         }
         for (const auto& name : names) {
             unloadPlugin(name);
@@ -23,6 +27,8 @@ namespace vrutti::core::plugins {
     }
 
     IPlugin* PluginLoader::loadPlugin(const std::string& path) {
+        std::lock_guard<std::mutex> lock(m_loaderMutex);
+
         void* handle = nullptr;
 
 #ifdef _WIN32
@@ -40,11 +46,11 @@ namespace vrutti::core::plugins {
         DestroyPluginFunc destroyFunc = nullptr;
 
 #ifdef _WIN32
-        createFunc = reinterpret_cast<CreatePluginFunc>(GetProcAddress(static_cast<HMODULE>(handle), "CreatePlugin"));
-        destroyFunc = reinterpret_cast<DestroyPluginFunc>(GetProcAddress(static_cast<HMODULE>(handle), "DestroyPlugin"));
+        createFunc = reinterpret_cast<CreatePluginFunc>(GetProcAddress(static_cast<HMODULE>(handle), "createPlugin"));
+        destroyFunc = reinterpret_cast<DestroyPluginFunc>(GetProcAddress(static_cast<HMODULE>(handle), "destroyPlugin"));
 #else
-        createFunc = reinterpret_cast<CreatePluginFunc>(dlsym(handle, "CreatePlugin"));
-        destroyFunc = reinterpret_cast<DestroyPluginFunc>(dlsym(handle, "DestroyPlugin"));
+        createFunc = reinterpret_cast<CreatePluginFunc>(dlsym(handle, "createPlugin"));
+        destroyFunc = reinterpret_cast<DestroyPluginFunc>(dlsym(handle, "destroyPlugin"));
 #endif
 
         if (!createFunc || !destroyFunc) {
@@ -86,6 +92,7 @@ namespace vrutti::core::plugins {
     }
 
     void PluginLoader::unloadPlugin(const std::string& name) {
+        std::lock_guard<std::mutex> lock(m_loaderMutex);
         auto it = m_loadedPlugins.find(name);
         if (it != m_loadedPlugins.end()) {
             it->second.instance->shutdown();
@@ -102,6 +109,7 @@ namespace vrutti::core::plugins {
     }
 
     IPlugin* PluginLoader::getPlugin(const std::string& name) const {
+        std::lock_guard<std::mutex> lock(m_loaderMutex);
         auto it = m_loadedPlugins.find(name);
         if (it != m_loadedPlugins.end()) {
             return it->second.instance;

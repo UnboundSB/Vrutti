@@ -12,14 +12,19 @@ New-Item -ItemType Directory -Force -Path "$ReleaseDir\src\ext\builtin-themes" |
 New-Item -ItemType Directory -Force -Path "$ReleaseDir\src\ui\frontend\dist" | Out-Null
 
 Write-Host "Copying Vrutti executable..."
-if (Test-Path "build\vrutti_app.exe") {
+if (Test-Path "build\vrutti.exe") {
+    Copy-Item "build\vrutti.exe" "$ReleaseDir\vrutti.exe"
+} elseif (Test-Path "build\vrutti_app.exe") {
     Copy-Item "build\vrutti_app.exe" "$ReleaseDir\vrutti.exe"
-    if (Test-Path "build\libvrutti_search.dll") {
-        Copy-Item "build\libvrutti_search.dll" "$ReleaseDir\"
-    }
 } else {
-    Write-Host "ERROR: build\vrutti_app.exe not found! Compile the project first."
+    Write-Host "ERROR: build\vrutti.exe not found! Compile the project first."
     exit 1
+}
+
+Write-Host "Copying plugin DLLs..."
+foreach ($dll in Get-ChildItem "build\*.dll") {
+    Copy-Item $dll.FullName "$ReleaseDir\"
+    Write-Host "  Copied: $($dll.Name)"
 }
 
 Write-Host "Copying Node backend (src\ext)..."

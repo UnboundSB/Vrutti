@@ -34,12 +34,17 @@ int main(int argc, char* argv[]) {
     SetCurrentDirectoryA(basePath.string().c_str());
 #endif
 
-    // Initialize IPC Client for Extension Host
-    vrutti::core::ipc::IPCClient ipc("vrutti_pipe");
+    // Initialize IPC Client for Extension Host (per-instance pipe to avoid collisions)
+    std::string pipeName = "vrutti_pipe_" + std::to_string(GetCurrentProcessId());
+    vrutti::core::ipc::IPCClient ipc(pipeName);
     
     // Wire up VSCodeProtocol
     vrutti::core::ipc::VSCodeProtocol vsProtocol(&ipc);
-    vsProtocol.initialize();
+    
+    ipc.setOnConnected([&vsProtocol]() {
+        std::cout << "[Core] IPC Connected. Initializing VSCode Protocol..." << std::endl;
+        vsProtocol.initialize();
+    });
     
     ipc.start();
 
@@ -54,8 +59,13 @@ int main(int argc, char* argv[]) {
     si.wShowWindow = SW_HIDE;
     ZeroMemory(&pi, sizeof(pi));
 
-    // Use the bundled node.exe
-    std::string cmd = "src\\ext\\bin\\node.exe --expose-gc src/ext/bootstrapper.js --pipe=\\\\.\\pipe\\vrutti_pipe";
+    // Resolve node.exe and bootstrapper.js dynamically from the executable directory
+    // (exePath and basePath already computed above for CWD fix)
+    std::string nodePath = (basePath / "src" / "ext" / "bin" / "node.exe").string();
+    std::string bootstrapperPath = (basePath / "src" / "ext" / "bootstrapper.js").string();
+
+    std::string cmd = "\"" + nodePath + "\" --expose-gc \"" + bootstrapperPath +
+                      "\" --pipe=\\\\.\\pipe\\" + pipeName;
     std::vector<char> cmdBuffer(cmd.begin(), cmd.end());
     cmdBuffer.push_back('\0');
     
