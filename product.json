@@ -11,5 +11,6 @@
   "darwinBundleIdentifier": "com.vrutti.editor",
   "reportIssueUrl": "https://github.com/UnboundSB/Vrutti/issues",
   "urlProtocol": "vrutti",
-  "extensionAllowedProposedApi": []
+  "extensionAllowedProposedApi": [],
+  "version": "0.0.4"
 }
