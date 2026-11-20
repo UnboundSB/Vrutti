@@ -25,7 +25,9 @@ dist/
 *.sln
 *.sw?
 
-tests/
+# Scratch test scratchpad at the repository root only. The real test suites
+# live in src/tests/ and are tracked.
+/tests/
 V r u t t i _ R e l e a s e  
  v r u t t i _ e a r l y _ r e l e a s e . z i p  
  V r u t t i _ S e t u p . e x e  
