@@ -66,6 +66,11 @@ void SettingsManager::load() {
         buffer << file.rdbuf();
         cachedSource_ = buffer.str();
         root_ = utils::JsonParser::parse(cachedSource_);
+        if (!root_ || root_->type != utils::JsonNode::Type::Object) {
+            // A malformed settings file must never take the editor down.
+            cachedSource_ = "{}";
+            root_ = utils::JsonParser::parse(cachedSource_);
+        }
     }
 }
 
@@ -97,8 +102,11 @@ void SettingsManager::updateSetting(const std::string& key, const std::string& v
             root_->objectProperties.push_back({key, newValueNode});
         }
 
+        // Serialize the tree back to JSON. The serializer escapes backslashes
+        // and control characters, so the file on disk is always valid JSON --
+        // even when a legacy file contained raw Windows paths such as
+        // "D:\projects\app".
         cachedSource_ = utils::JsonSerializer::stringify(root_, 0, true);
-        root_ = utils::JsonParser::parse(cachedSource_);
     }
 
     // Non-blocking: hand off to background writer
@@ -106,7 +114,12 @@ void SettingsManager::updateSetting(const std::string& key, const std::string& v
 }
 
 void SettingsManager::saveAsync() {
-    enqueueSave(cachedSource_);
+    std::string json;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        json = root_ ? utils::JsonSerializer::stringify(root_, 0, true) : cachedSource_;
+    }
+    enqueueSave(json);
 }
 
 void SettingsManager::enqueueSave(const std::string& jsonStr) {

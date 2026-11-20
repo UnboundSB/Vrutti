@@ -12,6 +12,11 @@
 #endif
 
 int main(int argc, char* argv[]) {
+    // Unbuffered stdout: the diagnostics of the extension host handshake are
+    // worthless if they sit in a buffer when the process is terminated.
+    std::cout << std::unitbuf;
+    std::cerr << std::unitbuf;
+
     std::cout << "--- Vrutti IDE Core ---" << std::endl;
     
     std::string initialWorkspace;
@@ -37,15 +42,14 @@ int main(int argc, char* argv[]) {
     // Initialize IPC Client for Extension Host (per-instance pipe to avoid collisions)
     std::string pipeName = "vrutti_pipe_" + std::to_string(GetCurrentProcessId());
     vrutti::core::ipc::IPCClient ipc(pipeName);
-    
-    // Wire up VSCodeProtocol
+
+    // Wire up VSCodeProtocol. The protocol layer owns the extension host
+    // handshake, so it must be initialised *before* the listener starts --
+    // otherwise the "ready" frame can arrive before the handler is registered.
     vrutti::core::ipc::VSCodeProtocol vsProtocol(&ipc);
-    
-    ipc.setOnConnected([&vsProtocol]() {
-        std::cout << "[Core] IPC Connected. Initializing VSCode Protocol..." << std::endl;
-        vsProtocol.initialize();
-    });
-    
+    vsProtocol.setWorkspaceFolder(initialWorkspace);
+    vsProtocol.initialize();
+
     ipc.start();
 
 #ifdef _WIN32

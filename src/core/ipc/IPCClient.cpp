@@ -1,6 +1,7 @@
 #include "IPCClient.h"
 #include <iostream>
 #include <thread>
+#include <algorithm>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -17,9 +18,32 @@ using namespace vrutti::core::utils;
 
 namespace vrutti::core::ipc {
 
+namespace {
+    // Builds a JSON string node that owns its text.
+    std::shared_ptr<JsonNode> strNode(std::string value) {
+        return vrutti::core::utils::makeJsonString(std::move(value));
+    }
+
+    std::shared_ptr<JsonNode> numNode(double value) {
+        auto node = std::make_shared<JsonNode>(JsonNode::Type::Number);
+        node->numberValue = value;
+        return node;
+    }
+
+    std::shared_ptr<JsonNode> boolNode(bool value) {
+        auto node = std::make_shared<JsonNode>(JsonNode::Type::Boolean);
+        node->boolValue = value;
+        return node;
+    }
+
+    std::shared_ptr<JsonNode> nullNode() {
+        return std::make_shared<JsonNode>(JsonNode::Type::Null);
+    }
+} // namespace
+
 IPCClient::IPCClient(const std::string& pipeName)
     : m_pipeName(pipeName), m_running(false), m_activeBuffer(nullptr),
-      m_connectionHandle(nullptr), m_nextId(1)
+      m_connectionHandle(nullptr), m_nextId(0)
 {
 #ifdef _WIN32
     m_stopEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
@@ -107,89 +131,247 @@ void IPCClient::sendRaw(const std::string& payload) {
 #endif
 }
 
-void IPCClient::sendNotification(const std::string& method, const std::shared_ptr<JsonNode>& params) {
-    auto rpc = std::make_shared<JsonNode>(JsonNode::Type::Object);
-    rpc->objectProperties.emplace_back("jsonrpc", std::make_shared<JsonNode>(JsonNode::Type::String));
-    rpc->objectProperties.back().second->stringValue = "2.0";
-    rpc->objectProperties.emplace_back("method", std::make_shared<JsonNode>(JsonNode::Type::String));
-    rpc->objectProperties.back().second->stringValue = method;
-    rpc->objectProperties.emplace_back("params", params);
-    sendRaw(serializeJson(rpc) + "\n");
+// -----------------------------------------------------------------------------
+// Outbound: renderer -> extension host
+// -----------------------------------------------------------------------------
+
+void IPCClient::emitEvent(const std::string& method,
+                          const std::shared_ptr<JsonNode>& params) {
+    if (m_onEvent) m_onEvent(method, params);
 }
 
-int IPCClient::sendRequest(const std::string& method, const std::shared_ptr<JsonNode>& params,
+void IPCClient::sendLocalRequest(const std::string& method,
+                                 const std::shared_ptr<JsonNode>& params) {
+    if (m_onLocalRequest) m_onLocalRequest(method, params);
+}
+
+void IPCClient::sendInitData(const std::shared_ptr<JsonNode>& initData) {
+    // The bridge does `JSON.stringify(msg.data)`, so `data` must be an OBJECT.
+    auto frame = std::make_shared<JsonNode>(JsonNode::Type::Object);
+    frame->objectProperties.emplace_back("type", strNode("init"));
+    frame->objectProperties.emplace_back("data", initData ? initData : nullNode());
+    sendRaw(serializeJson(frame) + "\n");
+    std::cout << "[IPC] Sent extension host init data\n";
+}
+
+int IPCClient::sendRequest(int proxyId,
+                           const std::string& method,
+                           const std::shared_ptr<JsonNode>& args,
                            std::function<void(const std::shared_ptr<JsonNode>&)> onResolve,
-                           std::function<void(const std::shared_ptr<JsonNode>&)> onReject) {
+                           std::function<void(const std::string&)> onReject) {
     int id = ++m_nextId;
     {
         std::lock_guard<std::mutex> lock(m_pendingMutex);
         m_pendingCalls[id] = { std::move(onResolve), std::move(onReject) };
     }
 
-    auto rpc = std::make_shared<JsonNode>(JsonNode::Type::Object);
-    rpc->objectProperties.emplace_back("jsonrpc", std::make_shared<JsonNode>(JsonNode::Type::String));
-    rpc->objectProperties.back().second->stringValue = "2.0";
-    rpc->objectProperties.emplace_back("id", std::make_shared<JsonNode>(JsonNode::Type::Number));
-    rpc->objectProperties.back().second->numberValue = static_cast<double>(id);
-    rpc->objectProperties.emplace_back("method", std::make_shared<JsonNode>(JsonNode::Type::String));
-    rpc->objectProperties.back().second->stringValue = method;
-    rpc->objectProperties.emplace_back("params", params);
-    sendRaw(serializeJson(rpc) + "\n");
+    auto frame = std::make_shared<JsonNode>(JsonNode::Type::Object);
+    frame->objectProperties.emplace_back("type", strNode("request"));
+    frame->objectProperties.emplace_back("reqId", numNode(static_cast<double>(id)));
+    frame->objectProperties.emplace_back("proxyId", numNode(static_cast<double>(proxyId)));
+    frame->objectProperties.emplace_back("method", strNode(method));
+    frame->objectProperties.emplace_back("args",
+        (args && args->type == JsonNode::Type::Array)
+            ? args
+            : std::make_shared<JsonNode>(JsonNode::Type::Array));
+    sendRaw(serializeJson(frame) + "\n");
     return id;
 }
 
-void IPCClient::resolvePending(int requestId, const std::shared_ptr<JsonNode>& payload, bool isError) {
-    std::function<void(const std::shared_ptr<JsonNode>&)> callback;
+void IPCClient::sendReply(int reqId, const std::shared_ptr<JsonNode>& result) {
+    auto frame = std::make_shared<JsonNode>(JsonNode::Type::Object);
+    frame->objectProperties.emplace_back("type", strNode("reply"));
+    frame->objectProperties.emplace_back("reqId", numNode(static_cast<double>(reqId)));
+    frame->objectProperties.emplace_back("res", result ? result : nullNode());
+    sendRaw(serializeJson(frame) + "\n");
+}
+
+void IPCClient::sendReplyError(int reqId, const std::string& message, const std::string& name) {
+    // `$isError` makes the Extension Host rebuild a real Error object
+    // (see RPCProtocol._receiveReplyErr) instead of handing the extension a
+    // bare object.
+    auto err = std::make_shared<JsonNode>(JsonNode::Type::Object);
+    err->objectProperties.emplace_back("$isError", boolNode(true));
+    err->objectProperties.emplace_back("name", strNode(name));
+    err->objectProperties.emplace_back("message", strNode(message));
+
+    auto frame = std::make_shared<JsonNode>(JsonNode::Type::Object);
+    frame->objectProperties.emplace_back("type", strNode("replyErr"));
+    frame->objectProperties.emplace_back("reqId", numNode(static_cast<double>(reqId)));
+    frame->objectProperties.emplace_back("err", err);
+    sendRaw(serializeJson(frame) + "\n");
+}
+
+void IPCClient::sendAck(int reqId) {
+    auto frame = std::make_shared<JsonNode>(JsonNode::Type::Object);
+    frame->objectProperties.emplace_back("type", strNode("ack"));
+    frame->objectProperties.emplace_back("reqId", numNode(static_cast<double>(reqId)));
+    sendRaw(serializeJson(frame) + "\n");
+}
+
+void IPCClient::sendCancel(int reqId) {
+    auto frame = std::make_shared<JsonNode>(JsonNode::Type::Object);
+    frame->objectProperties.emplace_back("type", strNode("cancel"));
+    frame->objectProperties.emplace_back("reqId", numNode(static_cast<double>(reqId)));
+    sendRaw(serializeJson(frame) + "\n");
+}
+
+void IPCClient::sendTerminate() {
+    auto frame = std::make_shared<JsonNode>(JsonNode::Type::Object);
+    frame->objectProperties.emplace_back("type", strNode("terminate"));
+    sendRaw(serializeJson(frame) + "\n");
+}
+
+// -----------------------------------------------------------------------------
+// Inbound: extension host -> renderer
+// -----------------------------------------------------------------------------
+
+void IPCClient::resolvePending(int requestId,
+                               const std::shared_ptr<JsonNode>& payload,
+                               bool isError,
+                               const std::string& errorMessage) {
+    std::function<void(const std::shared_ptr<JsonNode>&)> resolveCb;
+    std::function<void(const std::string&)> rejectCb;
     {
         std::lock_guard<std::mutex> lock(m_pendingMutex);
         auto it = m_pendingCalls.find(requestId);
         if (it == m_pendingCalls.end()) return;
-        callback = isError ? it->second.reject : it->second.resolve;
+        resolveCb = it->second.resolve;
+        rejectCb = it->second.reject;
         m_pendingCalls.erase(it);
     }
-    if (callback) callback(payload);
+    if (isError) {
+        if (rejectCb) rejectCb(errorMessage);
+    } else {
+        if (resolveCb) resolveCb(payload);
+    }
+}
+
+bool IPCClient::decodeVSBuffer(const std::shared_ptr<JsonNode>& node, std::vector<uint8_t>& out) {
+    out.clear();
+    if (!node || node->type != JsonNode::Type::Object) return false;
+
+    // JSON.stringify flattens a VSBuffer into { "buffer": { "0": 12, ... } }.
+    auto bufferNode = node->get("buffer");
+    if (!bufferNode || bufferNode->type != JsonNode::Type::Object) return false;
+
+    size_t maxIndex = 0;
+    for (const auto& prop : bufferNode->objectProperties) {
+        if (prop.second && prop.second->type == JsonNode::Type::Number) {
+            maxIndex = std::max(maxIndex, static_cast<size_t>(prop.second->numberValue));
+        }
+    }
+    out.assign(maxIndex + 1, 0);
+    for (const auto& prop : bufferNode->objectProperties) {
+        if (prop.second && prop.second->type == JsonNode::Type::Number) {
+            size_t idx = static_cast<size_t>(prop.second->numberValue);
+            if (idx < out.size()) out[idx] = static_cast<uint8_t>(prop.second->numberValue);
+        }
+    }
+    return true;
 }
 
 void IPCClient::handleIncomingMessage(const std::string& jsonMessage) {
     try {
         auto msg = JsonParser::parse(jsonMessage);
-        if (!msg) return;
+        if (!msg || msg->type != JsonNode::Type::Object) return;
 
-        // If it has an id, it's a response to one of our requests
-        auto idNode = msg->get("id");
-        if (idNode && idNode->type == JsonNode::Type::Number) {
-            int id = static_cast<int>(idNode->numberValue);
-            auto errorNode = msg->get("error");
-            auto resultNode = msg->get("result");
-            resolvePending(id, errorNode ? errorNode : resultNode, errorNode != nullptr);
+        auto typeNode = msg->get("type");
+        if (!typeNode || typeNode->type != JsonNode::Type::String) return;
+        std::string type(typeNode->stringValue.data(), typeNode->stringValue.length());
+
+        if (type == "ready") {
+            std::cout << "[IPC] Extension Host reported ready\n";
+            if (m_onReady) m_onReady();
             return;
         }
 
-        // Otherwise it's a notification/request from Node.js
-        auto methodNode = msg->get("method");
-        if (methodNode && methodNode->type == JsonNode::Type::String) {
-            std::string method(methodNode->stringValue.data(), methodNode->stringValue.length());
-            auto paramsNode = msg->get("params");
-            if (m_onMessage) {
-                m_onMessage(method, paramsNode ? paramsNode : std::make_shared<JsonNode>(JsonNode::Type::Object));
-            }
+        if (type == "initialized") {
+            return; // informational only
         }
 
-        // Direct Piece Table integration (replaces fragile string matching)
-        if (msg->get("method") && msg->get("method")->type == JsonNode::Type::String &&
-            msg->get("method")->stringValue == "insert" && m_activeBuffer) {
-            auto paramsNode = msg->get("params");
-            if (paramsNode && paramsNode->type == JsonNode::Type::Object) {
-                auto offsetNode = paramsNode->get("offset");
-                auto textNode = paramsNode->get("text");
-                if (offsetNode && textNode &&
-                    offsetNode->type == JsonNode::Type::Number &&
-                    textNode->type == JsonNode::Type::String) {
-                    size_t offset = static_cast<size_t>(offsetNode->numberValue);
-                    std::string text(textNode->stringValue.data(), textNode->stringValue.length());
-                    m_activeBuffer->insert(offset, text);
-                }
+        if (type == "terminate") {
+            std::cout << "[IPC] Extension Host requested termination\n";
+            return;
+        }
+
+        if (type == "request") {
+            RpcRequest req;
+            auto reqIdNode = msg->get("reqId");
+            if (reqIdNode && reqIdNode->type == JsonNode::Type::Number) {
+                req.reqId = static_cast<int>(reqIdNode->numberValue);
             }
+            auto proxyIdNode = msg->get("proxyId");
+            if (proxyIdNode && proxyIdNode->type == JsonNode::Type::Number) {
+                req.proxyId = static_cast<int>(proxyIdNode->numberValue);
+            }
+            auto methodNode = msg->get("method");
+            if (methodNode && methodNode->type == JsonNode::Type::String) {
+                req.method = std::string(methodNode->stringValue.data(), methodNode->stringValue.length());
+            }
+            req.args = msg->get("args");
+            auto cancelNode = msg->get("cancellation");
+            if (cancelNode && cancelNode->type == JsonNode::Type::Boolean) {
+                req.hasCancellation = cancelNode->boolValue;
+            }
+            auto mixedNode = msg->get("mixed");
+            if (mixedNode && mixedNode->type == JsonNode::Type::Boolean) {
+                req.mixedArgs = mixedNode->boolValue;
+            }
+
+            if (m_onRequest) m_onRequest(req);
+            return;
+        }
+
+        if (type == "reply") {
+            auto reqIdNode = msg->get("reqId");
+            if (reqIdNode && reqIdNode->type == JsonNode::Type::Number) {
+                int id = static_cast<int>(reqIdNode->numberValue);
+                auto resNode = msg->get("res");
+                resolvePending(id, resNode ? resNode : nullNode(), false);
+            }
+            return;
+        }
+
+        if (type == "replyErr") {
+            auto reqIdNode = msg->get("reqId");
+            if (reqIdNode && reqIdNode->type == JsonNode::Type::Number) {
+                int id = static_cast<int>(reqIdNode->numberValue);
+                std::string message = "Unknown extension host error";
+                auto errNode = msg->get("err");
+                if (errNode && errNode->type == JsonNode::Type::Object) {
+                    auto msgNode = errNode->get("message");
+                    if (msgNode && msgNode->type == JsonNode::Type::String) {
+                        message = std::string(msgNode->stringValue.data(), msgNode->stringValue.length());
+                    }
+                }
+                resolvePending(id, errNode ? errNode : nullNode(), true, message);
+            }
+            return;
+        }
+
+        if (type == "ack") {
+            auto reqIdNode = msg->get("reqId");
+            if (reqIdNode && reqIdNode->type == JsonNode::Type::Number) {
+                // The ExtHost acknowledged one of our requests; nothing to do.
+            }
+            return;
+        }
+
+        if (type == "cancel") {
+            auto reqIdNode = msg->get("reqId");
+            if (reqIdNode && reqIdNode->type == JsonNode::Type::Number) {
+                std::cout << "[IPC] Extension Host cancelled request "
+                          << static_cast<int>(reqIdNode->numberValue) << "\n";
+            }
+            return;
+        }
+
+        // Unknown frame type -- forward it to the UI channel as an event so the
+        // frontend can decide what to do with it.
+        if (m_onEvent) {
+            auto paramsNode = msg->get("params");
+            m_onEvent(type, paramsNode ? paramsNode : nullNode());
         }
     } catch (const std::exception& e) {
         std::cerr << "[IPC] Failed to parse message: " << e.what() << "\n";
@@ -234,6 +416,7 @@ void IPCClient::listenLoop() {
 
         if (connected && m_running) {
             m_isConnected = true;
+            std::cout << "[IPC] Extension Host connected\n";
             if (m_onConnected) {
                 m_onConnected();
             }
@@ -258,18 +441,26 @@ void IPCClient::listenLoop() {
                 }
 
                 if (readOk && bytesRead > 0) {
-                    buffer[bytesRead] = '\0';
-                    std::string line(buffer);
+                    // NOTE: the length must be taken explicitly -- constructing a
+                    // std::string from `buffer` before NUL-terminating it used to
+                    // leak uninitialized bytes into every frame.
+                    std::string chunk(buffer, bytesRead);
 
+                    std::vector<std::string> frames;
                     {
                         std::lock_guard<std::mutex> lock(m_bufferMutex);
-                        m_incomingBuffer += line;
+                        m_incomingBuffer += chunk;
                         size_t pos = 0;
                         while ((pos = m_incomingBuffer.find('\n')) != std::string::npos) {
-                            std::string complete = m_incomingBuffer.substr(0, pos);
+                            frames.push_back(m_incomingBuffer.substr(0, pos));
                             m_incomingBuffer.erase(0, pos + 1);
-                            handleIncomingMessage(complete);
                         }
+                    }
+
+                    // Dispatch outside the buffer lock: a handler may reply on the
+                    // same channel and must not deadlock or re-enter the parser.
+                    for (const auto& frame : frames) {
+                        if (!frame.empty()) handleIncomingMessage(frame);
                     }
                 } else {
                     break;
@@ -318,24 +509,32 @@ void IPCClient::listenLoop() {
             int client_fd = accept(server_fd, NULL, NULL);
             if (client_fd < 0) continue;
             m_connectionHandle = reinterpret_cast<void*>(static_cast<intptr_t>(client_fd));
+            m_isConnected = true;
+            std::cout << "[IPC] Extension Host connected\n";
+            if (m_onConnected) m_onConnected();
 
             char buffer[4096];
             while (m_running) {
                 ssize_t bytes_read = read(client_fd, buffer, sizeof(buffer) - 1);
                 if (bytes_read <= 0) break;
-                buffer[bytes_read] = '\0';
 
+                std::string chunk(buffer, bytes_read);
+                std::vector<std::string> frames;
                 {
                     std::lock_guard<std::mutex> lock(m_bufferMutex);
-                    m_incomingBuffer += buffer;
+                    m_incomingBuffer += chunk;
                     size_t pos = 0;
                     while ((pos = m_incomingBuffer.find('\n')) != std::string::npos) {
-                        std::string complete = m_incomingBuffer.substr(0, pos);
+                        frames.push_back(m_incomingBuffer.substr(0, pos));
                         m_incomingBuffer.erase(0, pos + 1);
-                        handleIncomingMessage(complete);
                     }
                 }
+
+                for (const auto& frame : frames) {
+                    if (!frame.empty()) handleIncomingMessage(frame);
+                }
             }
+            m_isConnected = false;
             close(client_fd);
             m_connectionHandle = nullptr;
         }

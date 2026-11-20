@@ -374,11 +374,11 @@ namespace vrutti::ui {
                     auto methodNode = parsedReq->arrayElements[0];
                     auto payloadNode = parsedReq->arrayElements[1];
                     if (methodNode && methodNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                        std::string method = vrutti::core::utils::JsonParser::unescapeString(methodNode->stringValue);
+                        std::string method(methodNode->stringValue);
                         // Wrap payload as a JSON node (try parsing, fallback to string)
                         std::shared_ptr<vrutti::core::utils::JsonNode> params;
                         if (payloadNode) {
-                            std::string payloadStr = vrutti::core::utils::JsonParser::unescapeString(payloadNode->stringValue);
+                            std::string payloadStr(payloadNode->stringValue);
                             auto parsed = vrutti::core::utils::JsonParser::parse(payloadStr);
                             if (parsed) {
                                 params = parsed;
@@ -389,17 +389,24 @@ namespace vrutti::ui {
                         } else {
                             params = std::make_shared<vrutti::core::utils::JsonNode>(vrutti::core::utils::JsonNode::Type::Object);
                         }
-                        this->m_ipc->sendNotification(method, params);
+                        this->m_ipc->sendLocalRequest(method, params);
                     }
                 }
             }
         }, nullptr);
 
         if (this->m_ipc) {
-            this->m_ipc->setOnMessage([w](const std::string& method, const std::shared_ptr<vrutti::core::utils::JsonNode>& params) {
-                std::string jsonStr = vrutti::core::utils::JsonSerializer::stringify(params, 0, false);
+            this->m_ipc->setOnEvent([w](const std::string& method, const std::shared_ptr<vrutti::core::utils::JsonNode>& params) {
+                auto envelope = std::make_shared<vrutti::core::utils::JsonNode>(vrutti::core::utils::JsonNode::Type::Object);
+                envelope->objectProperties.emplace_back(
+                    std::string_view("method"),
+                    vrutti::core::utils::makeJsonString(method));
+                envelope->objectProperties.emplace_back(
+                    std::string_view("params"),
+                    params ? params : std::make_shared<vrutti::core::utils::JsonNode>(vrutti::core::utils::JsonNode::Type::Null));
+                std::string jsonStr = vrutti::core::utils::JsonSerializer::stringify(envelope, 0, false);
                 std::string b64 = base64_encode(jsonStr);
-                w->dispatch([w, method, b64]() {
+                w->dispatch([w, b64]() {
                     w->eval("if (window.vruttiIpcMessage) window.vruttiIpcMessage('" + b64 + "');");
                 });
             });
@@ -413,10 +420,10 @@ namespace vrutti::ui {
                 auto idNode = parsedReq->arrayElements[0];
                 auto pathNode = parsedReq->arrayElements[1];
                 if (idNode && idNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    id = vrutti::core::utils::JsonParser::unescapeString(idNode->stringValue);
+                    id = idNode->stringValue;
                 }
                 if (pathNode && pathNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    cwd = vrutti::core::utils::JsonParser::unescapeString(pathNode->stringValue);
+                    cwd = pathNode->stringValue;
                 }
             }
             if (id.empty()) return "{}";
@@ -438,7 +445,7 @@ namespace vrutti::ui {
             if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && !parsedReq->arrayElements.empty()) {
                 auto argNode = parsedReq->arrayElements[0];
                 if (argNode && argNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    payload = vrutti::core::utils::JsonParser::unescapeString(argNode->stringValue);
+                    payload = argNode->stringValue;
                 } else if (argNode && argNode->type == vrutti::core::utils::JsonNode::Type::Object) {
                     payload = vrutti::core::utils::JsonSerializer::stringify(argNode);
                 }
@@ -627,7 +634,7 @@ namespace vrutti::ui {
                 auto inputNode = parsedReq->arrayElements[1];
                 if (idNode && idNode->type == vrutti::core::utils::JsonNode::Type::String &&
                     inputNode && inputNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    std::string id = vrutti::core::utils::JsonParser::unescapeString(idNode->stringValue);
+                    std::string id(idNode->stringValue);
                     std::string input = base64_decode(std::string(inputNode->stringValue));
                     if (this->m_terminals.count(id)) {
                         this->m_terminals[id]->writeInput(input);
@@ -643,7 +650,7 @@ namespace vrutti::ui {
                 std::string id = "";
                 auto idNode = parsedReq->arrayElements[0];
                 if (idNode && idNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    id = vrutti::core::utils::JsonParser::unescapeString(idNode->stringValue);
+                    id = idNode->stringValue;
                 }
                 
                 if (!id.empty() && this->m_terminals.count(id)) {
@@ -671,7 +678,7 @@ namespace vrutti::ui {
             if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
                 auto idNode = parsedReq->arrayElements[0];
                 if (idNode && idNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    std::string id = vrutti::core::utils::JsonParser::unescapeString(idNode->stringValue);
+                    std::string id(idNode->stringValue);
                     if (this->m_terminals.count(id)) {
                         this->m_terminals[id]->stop();
                         this->m_terminals.erase(id);
@@ -700,7 +707,7 @@ namespace vrutti::ui {
             if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
                 auto inputNode = parsedReq->arrayElements[0];
                 if (inputNode && inputNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    std::string input = vrutti::core::utils::JsonParser::unescapeString(inputNode->stringValue);
+                    std::string input(inputNode->stringValue);
                     if (this->m_repl) {
                         this->m_repl->evaluate(input);
                     }
@@ -719,7 +726,7 @@ namespace vrutti::ui {
                 auto keyNode = parsedReq->arrayElements[0];
                 auto valNode = parsedReq->arrayElements[1];
                 if (keyNode && keyNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    std::string key = vrutti::core::utils::JsonParser::unescapeString(keyNode->stringValue);
+                    std::string key(keyNode->stringValue);
                     std::string valStr = vrutti::core::utils::JsonSerializer::stringify(valNode, 0, false);
                     vrutti::core::config::SettingsManager::getInstance().updateSetting(key, valStr);
                 }
@@ -735,8 +742,8 @@ namespace vrutti::ui {
                 if (urlNode && urlNode->type == vrutti::core::utils::JsonNode::Type::String &&
                     nameNode && nameNode->type == vrutti::core::utils::JsonNode::Type::String) {
                     
-                    std::string url = vrutti::core::utils::JsonParser::unescapeString(urlNode->stringValue);
-                    std::string name = vrutti::core::utils::JsonParser::unescapeString(nameNode->stringValue);
+                    std::string url(urlNode->stringValue);
+                    std::string name(nameNode->stringValue);
                     
                     std::cout << "[Core] Request to install extension '" << name << "' from " << url << std::endl;
                     
@@ -795,7 +802,7 @@ namespace vrutti::ui {
             if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
                 auto nameNode = parsedReq->arrayElements[0];
                 if (nameNode && nameNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    std::string name = vrutti::core::utils::JsonParser::unescapeString(nameNode->stringValue);
+                    std::string name(nameNode->stringValue);
                     
                     std::thread([this, w, name]() {
 #ifdef _WIN32
@@ -868,7 +875,7 @@ namespace vrutti::ui {
             if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
                 auto pathNode = parsedReq->arrayElements[0];
                 if (pathNode && pathNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    std::string path = vrutti::core::utils::JsonParser::unescapeString(pathNode->stringValue);
+                    std::string path(pathNode->stringValue);
                     
                     std::string json = "[";
                     bool first = true;
@@ -901,7 +908,7 @@ namespace vrutti::ui {
             if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
                 auto pathNode = parsedReq->arrayElements[0];
                 if (pathNode && pathNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    std::string path = vrutti::core::utils::JsonParser::unescapeString(pathNode->stringValue);
+                    std::string path(pathNode->stringValue);
                     try {
                         std::ofstream f(path);
                         f.close();
@@ -919,7 +926,7 @@ namespace vrutti::ui {
             if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
                 auto pathNode = parsedReq->arrayElements[0];
                 if (pathNode && pathNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    std::string path = vrutti::core::utils::JsonParser::unescapeString(pathNode->stringValue);
+                    std::string path(pathNode->stringValue);
                     try {
                         std::filesystem::remove_all(path);
                         return "{\"success\":true}";
@@ -937,8 +944,8 @@ namespace vrutti::ui {
                 auto oldPathNode = parsedReq->arrayElements[0];
                 auto newPathNode = parsedReq->arrayElements[1];
                 if (oldPathNode && oldPathNode->type == vrutti::core::utils::JsonNode::Type::String && newPathNode && newPathNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    std::string oldPath = vrutti::core::utils::JsonParser::unescapeString(oldPathNode->stringValue);
-                    std::string newPath = vrutti::core::utils::JsonParser::unescapeString(newPathNode->stringValue);
+                    std::string oldPath(oldPathNode->stringValue);
+                    std::string newPath(newPathNode->stringValue);
                     try {
                         std::filesystem::rename(oldPath, newPath);
                         return "{\"success\":true}";
@@ -955,7 +962,7 @@ namespace vrutti::ui {
             if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
                 auto pathNode = parsedReq->arrayElements[0];
                 if (pathNode && pathNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    std::string path = vrutti::core::utils::JsonParser::unescapeString(pathNode->stringValue);
+                    std::string path(pathNode->stringValue);
                     try {
                         std::filesystem::create_directories(path);
                         return "{\"success\":true}";
@@ -1006,7 +1013,7 @@ namespace vrutti::ui {
             if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
                 auto pathNode = parsedReq->arrayElements[0];
                 if (pathNode && pathNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    std::string path = vrutti::core::utils::JsonParser::unescapeString(pathNode->stringValue);
+                    std::string path(pathNode->stringValue);
                     try {
                         std::ifstream f(path, std::ios::binary);
                         if (f.is_open()) {
@@ -1027,8 +1034,8 @@ namespace vrutti::ui {
                 auto pathNode = parsedReq->arrayElements[0];
                 auto contentNode = parsedReq->arrayElements[1];
                 if (pathNode && pathNode->type == vrutti::core::utils::JsonNode::Type::String && contentNode && contentNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    std::string path = vrutti::core::utils::JsonParser::unescapeString(pathNode->stringValue);
-                    std::string content = vrutti::core::utils::JsonParser::unescapeString(contentNode->stringValue);
+                    std::string path(pathNode->stringValue);
+                    std::string content(contentNode->stringValue);
                     try {
                         std::ofstream f(path, std::ios::binary);
                         f << content;
@@ -1079,7 +1086,7 @@ namespace vrutti::ui {
             if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
                 auto pathNode = parsedReq->arrayElements[0];
                 if (pathNode && pathNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    std::string path = vrutti::core::utils::JsonParser::unescapeString(pathNode->stringValue);
+                    std::string path(pathNode->stringValue);
 #ifdef _WIN32
                     char exePath[MAX_PATH];
                     GetModuleFileNameA(NULL, exePath, MAX_PATH);
@@ -1094,6 +1101,26 @@ namespace vrutti::ui {
         w->bind("vruttiGetInitialWorkspace", [this](const std::string& req) -> std::string {
             std::string json = "{\"path\":" + vrutti::core::utils::JsonSerializer::escapeString(m_initialWorkspace) + "}";
             return json;
+        });
+
+        // Reports whether a path still exists on disk. The webview uses this
+        // to drop a workspace folder that has been deleted or moved since the
+        // last session, instead of opening a directory that is not there.
+        w->bind("vruttiPathExists", [this](const std::string& req) -> std::string {
+            bool exists = false;
+            auto parsedReq = vrutti::core::utils::JsonParser::parse(req);
+            if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array &&
+                !parsedReq->arrayElements.empty()) {
+                auto pathNode = parsedReq->arrayElements[0];
+                if (pathNode && pathNode->type == vrutti::core::utils::JsonNode::Type::String) {
+                    std::string path(pathNode->stringValue);
+                    if (!path.empty()) {
+                        std::error_code ec;
+                        exists = std::filesystem::exists(path, ec) && !ec;
+                    }
+                }
+            }
+            return exists ? "{\"exists\":true}" : "{\"exists\":false}";
         });
 
         w->bind("vruttiGetSettings", [this](const std::string& req) -> std::string {
@@ -1125,8 +1152,8 @@ namespace vrutti::ui {
                 if (cwdNode && cwdNode->type == vrutti::core::utils::JsonNode::Type::String &&
                     cmdNode && cmdNode->type == vrutti::core::utils::JsonNode::Type::String) {
                     
-                    std::string cwd = vrutti::core::utils::JsonParser::unescapeString(cwdNode->stringValue);
-                    std::string cmd = vrutti::core::utils::JsonParser::unescapeString(cmdNode->stringValue);
+                    std::string cwd(cwdNode->stringValue);
+                    std::string cmd(cmdNode->stringValue);
                     
 #ifdef _WIN32
                     std::string shellCmd = "cd /d \"" + cwd + "\" && " + cmd + " 2>&1";
@@ -1157,7 +1184,7 @@ namespace vrutti::ui {
             if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
                 auto pathNode = parsedReq->arrayElements[0];
                 if (pathNode && pathNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    std::string path = vrutti::core::utils::JsonParser::unescapeString(pathNode->stringValue);
+                    std::string path(pathNode->stringValue);
                     
                     std::filesystem::path fsPath(path);
                     std::string ext = fsPath.extension().string();
@@ -1223,7 +1250,7 @@ namespace vrutti::ui {
             if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
                 auto urlNode = parsedReq->arrayElements[0];
                 if (urlNode && urlNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    std::string url = vrutti::core::utils::JsonParser::unescapeString(urlNode->stringValue);
+                    std::string url(urlNode->stringValue);
 #ifdef _WIN32
                     ShellExecuteA(NULL, "open", url.c_str(), NULL, NULL, SW_SHOWNORMAL);
 #else

@@ -56,7 +56,7 @@ namespace vrutti::plugins::search {
                     std::string dir = "";
                     auto dirNode = req->get("directory");
                     if (dirNode && dirNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                        dir = vrutti::core::utils::JsonParser::unescapeString(dirNode->stringValue);
+                        dir = dirNode->stringValue;
                     }
                     if (dir.empty()) return "[]";
                     
@@ -78,11 +78,11 @@ namespace vrutti::plugins::search {
             if (req && req->type == vrutti::core::utils::JsonNode::Type::Object) {
                 auto queryNode = req->get("query");
                 if (queryNode && queryNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    query = vrutti::core::utils::JsonParser::unescapeString(queryNode->stringValue);
+                    query = queryNode->stringValue;
                 }
                 auto dirNode = req->get("directory");
                 if (dirNode && dirNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    dir = vrutti::core::utils::JsonParser::unescapeString(dirNode->stringValue);
+                    dir = dirNode->stringValue;
                 }
                 
                 auto matchCaseNode = req->get("matchCase");
@@ -103,7 +103,7 @@ namespace vrutti::plugins::search {
                 }
                 auto replaceStringNode = req->get("replaceString");
                 if (replaceStringNode && replaceStringNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    options.replaceString = vrutti::core::utils::JsonParser::unescapeString(replaceStringNode->stringValue);
+                    options.replaceString = replaceStringNode->stringValue;
                 }
             }
             
@@ -188,7 +188,7 @@ namespace vrutti::plugins::search {
                             std::string filePath = "";
                             if (pathNode) {
                                 auto textNode = pathNode->get("text");
-                                if (textNode) filePath = vrutti::core::utils::JsonParser::unescapeString(textNode->stringValue);
+                                if (textNode) filePath = textNode->stringValue;
                             }
                             
                             int lineNum = 1;
@@ -202,7 +202,7 @@ namespace vrutti::plugins::search {
                             if (linesNode) {
                                 auto textNode = linesNode->get("text");
                                 if (textNode) {
-                                    lineText = vrutti::core::utils::JsonParser::unescapeString(textNode->stringValue);
+                                    lineText = textNode->stringValue;
                                     if (!lineText.empty() && lineText.back() == '\n') lineText.pop_back();
                                     if (!lineText.empty() && lineText.back() == '\r') lineText.pop_back();
                                 }

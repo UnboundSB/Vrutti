@@ -1,0 +1,18 @@
+{
+    "name": "vrutti-hello",
+    "displayName": "Vrutti Hello (test)",
+    "description": "Minimal extension used by the Vrutti extension-host activation test.",
+    "version": "1.0.0",
+    "publisher": "vrutti",
+    "license": "MIT",
+    "engines": {
+        "vscode": "^1.90.0"
+    },
+    "categories": [
+        "Other"
+    ],
+    "activationEvents": [
+        "onStartupFinished"
+    ],
+    "main": "./extension.js"
+}

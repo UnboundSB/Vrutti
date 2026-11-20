@@ -2,15 +2,17 @@
 #include <string>
 #include <string_view>
 #include <vector>
-#include <unordered_map>
 #include <memory>
-#include <stdexcept>
 
 namespace vrutti::core::utils {
 
-    // A lightweight, zero-copy JSON Node. 
-    // String values and keys are stored as `std::string_view` pointing directly 
-    // into the original source buffer, radically minimizing RAM usage.
+    // A lightweight JSON DOM node.
+    //
+    // String *values* are stored as `std::string_view` into an owned buffer
+    // (`stringOwner` / `sourceOwner`), which keeps parsing allocation-light.
+    // Object *keys* are stored by value: they are short, they are looked up
+    // by name and they are mutated at runtime (settings updates), so owning
+    // them removes a whole class of dangling-view bugs.
     class JsonNode {
     public:
         enum class Type { Null, Object, Array, String, Number, Boolean };
@@ -19,33 +21,64 @@ namespace vrutti::core::utils {
         explicit JsonNode(Type t) : type(t) {}
 
         Type type;
-        
-        // Payload (using string_view for absolute zero-copy references)
+
+        // The *decoded* text of a string value. Escape sequences have already
+        // been resolved by the parser, so this is the logical value of the
+        // document, not its raw source text.
         std::string_view stringValue;
         double numberValue = 0.0;
         bool boolValue = false;
-        
+
+        // Keeps `stringValue` alive when it points at storage the node does
+        // not otherwise own (e.g. a temporary std::string used while building
+        // a tree).
+        std::shared_ptr<const std::string> stringOwner;
+
+        // Keeps the parsed source text alive. The parser stores the source on
+        // every node, so every `string_view` in the tree stays valid even
+        // when the caller passed a temporary to `JsonParser::parse`.
+        std::shared_ptr<const std::string> sourceOwner;
+
         // Object / Array storage
-        // Note: For objects, we use a simple vector of pairs to preserve ordering 
-        // and keep allocation footprint smaller than unordered_map for small configs.
-        std::vector<std::pair<std::string_view, std::shared_ptr<JsonNode>>> objectProperties;
+        // A vector of pairs preserves ordering and keeps the allocation
+        // footprint small for the small objects this app deals with.
+        std::vector<std::pair<std::string, std::shared_ptr<JsonNode>>> objectProperties;
         std::vector<std::shared_ptr<JsonNode>> arrayElements;
 
-        // Helpers
+        // Looks up a property of an object node.
         std::shared_ptr<JsonNode> get(std::string_view key) const;
     };
 
-    // Parses a raw JSON string into a zero-copy DOM tree.
-    // The `source` string must outlive the returned JsonNode tree, because 
-    // the tree holds `std::string_view` references directly into `source`.
+    // Creates a JSON string node that owns its text, so it is safe to build
+    // trees out of temporary std::strings.
+    std::shared_ptr<JsonNode> makeJsonString(std::string value);
+
+    // Parses a raw JSON string into a DOM tree.
+    //
+    // The tree keeps its own copy of the source text, so the caller may pass
+    // a temporary: every `string_view` in the tree stays valid for as long as
+    // the returned root node is alive.
+    //
+    // String values in the resulting tree are *decoded* -- escape sequences
+    // are resolved -- so `stringValue` always holds the logical value. Never
+    // unescape it a second time.
     class JsonParser {
     public:
         static std::shared_ptr<JsonNode> parse(const std::string& source);
+
+        // Resolves JSON escape sequences in raw (escaped) text.
+        //
+        // Unknown escape sequences keep their backslash instead of being
+        // dropped: legacy settings files contain raw Windows paths such as
+        // "D:\projects\app", and silently removing the backslash would
+        // corrupt them into "D:projectsapp".
         static std::string unescapeString(std::string_view sv);
 
     private:
-        static std::shared_ptr<JsonNode> parseValue(const std::string& source, size_t& pos);
-        static std::string_view parseString(const std::string& source, size_t& pos);
+        static std::shared_ptr<JsonNode> parseValue(const std::string& source, size_t& pos,
+                                                    const std::shared_ptr<const std::string>& sourceOwner);
+        static std::string_view parseString(const std::string& source, size_t& pos,
+                                            std::shared_ptr<const std::string>& owner);
         static void skipWhitespace(const std::string& source, size_t& pos);
     };
 
@@ -54,7 +87,7 @@ namespace vrutti::core::utils {
     public:
         static std::string stringify(const std::shared_ptr<JsonNode>& node, int indentLevel = 0, bool pretty = true);
         static std::string escapeString(std::string_view str);
-    
+
     private:
         static void serializeNode(const std::shared_ptr<JsonNode>& node, std::string& out, int indentLevel, bool pretty);
     };

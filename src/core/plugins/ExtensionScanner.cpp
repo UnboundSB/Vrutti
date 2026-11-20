@@ -70,29 +70,29 @@ std::string ExtensionScanner::getInstalledExtensions() {
                 
                 std::string publisher = entry.path().filename().string();
                 if (auto pNode = pkg->get("publisher"); pNode && pNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    publisher = vrutti::core::utils::JsonParser::unescapeString(pNode->stringValue);
+                    publisher = pNode->stringValue;
                 } else if (auto aNode = pkg->get("author"); aNode && aNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    publisher = vrutti::core::utils::JsonParser::unescapeString(aNode->stringValue);
+                    publisher = aNode->stringValue;
                 }
                 
                 std::string name = "";
                 if (auto nNode = pkg->get("name"); nNode && nNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    name = vrutti::core::utils::JsonParser::unescapeString(nNode->stringValue);
+                    name = nNode->stringValue;
                 }
                 
                 std::string displayName = name;
                 if (auto dnNode = pkg->get("displayName"); dnNode && dnNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    displayName = vrutti::core::utils::JsonParser::unescapeString(dnNode->stringValue);
+                    displayName = dnNode->stringValue;
                 }
 
                 std::string description = "";
                 if (auto descNode = pkg->get("description"); descNode && descNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    description = vrutti::core::utils::JsonParser::unescapeString(descNode->stringValue);
+                    description = descNode->stringValue;
                 }
                 
                 std::string version = "1.0.0";
                 if (auto vNode = pkg->get("version"); vNode && vNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    version = vrutti::core::utils::JsonParser::unescapeString(vNode->stringValue);
+                    version = vNode->stringValue;
                 }
                 
                 bool isTheme = false;
@@ -106,7 +106,7 @@ std::string ExtensionScanner::getInstalledExtensions() {
                 
                 std::string icon = "";
                 if (auto iconNode = pkg->get("icon"); iconNode && iconNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    icon = vrutti::core::utils::JsonParser::unescapeString(iconNode->stringValue);
+                    icon = iconNode->stringValue;
                 }
                 
                 std::string localPath = entry.path().string();

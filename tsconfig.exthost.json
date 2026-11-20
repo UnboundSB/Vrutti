@@ -6,5 +6,5 @@
 		"experimentalDecorators": true,
 		"allowJs": true
 	},
-	"include": ["d:/vrutti/src/**/*.ts"]
+	"include": ["d:/vrutti/src/**/*.ts", "d:/vrutti/vrutti_ide/src/ext/exthost/**/*.ts"]
 }

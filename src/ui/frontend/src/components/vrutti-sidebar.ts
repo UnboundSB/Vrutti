@@ -66,7 +66,9 @@ export class VruttiSidebar extends LitElement {
     registry.addEventListener('change', this.handleRegistryChange);
     this.updateFromRegistry();
     
+    // If no initial path was provided via CLI argument, restore from localStorage
     let initialPath = '';
+    let restoredFromStorage = false;
     if ((window as any).vruttiGetInitialWorkspace) {
       try {
         const json = await (window as any).vruttiGetInitialWorkspace();
@@ -77,7 +79,7 @@ export class VruttiSidebar extends LitElement {
         console.warn("Failed to get initial workspace from backend, falling back to local storage.", e);
       }
     }
-    
+
     window.addEventListener('switch-to-debug-panel', () => {
       this.selectTab('debug');
       this.isOpen = true;
@@ -86,14 +88,31 @@ export class VruttiSidebar extends LitElement {
       }
     });
 
-    // If no initial path was provided via CLI argument, restore from localStorage
     if (!initialPath) {
       const savedPath = localStorage.getItem('lastWorkspace');
       if (savedPath) {
         initialPath = savedPath;
+        restoredFromStorage = true;
       }
     }
-    
+
+    // A workspace folder can be deleted or moved between sessions. Opening a
+    // path that no longer exists leaves the explorer empty and every git
+    // command fails, so drop it and start without a workspace instead.
+    if (initialPath && (window as any).vruttiPathExists) {
+      try {
+        const res = await (window as any).vruttiPathExists(initialPath);
+        const exists = typeof res === 'string' ? JSON.parse(res)?.exists : res?.exists;
+        if (!exists) {
+          console.warn(`[vrutti-sidebar] Workspace "${initialPath}" no longer exists -- ignoring it.`);
+          if (restoredFromStorage) localStorage.removeItem('lastWorkspace');
+          initialPath = '';
+        }
+      } catch (e) {
+        console.warn("[vrutti-sidebar] Failed to verify the workspace path.", e);
+      }
+    }
+
     if (initialPath) {
       (window as any).currentWorkspace = initialPath;
       localStorage.setItem('lastWorkspace', initialPath);
