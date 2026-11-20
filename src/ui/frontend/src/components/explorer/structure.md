@@ -1,16 +1,17 @@
-# Explorer Components (src/ui/frontend/src/components/explorer/)
+# explorer (src/ui/frontend/src/components/explorer/)
 
 ## Purpose
-Manages the File Explorer sidebar, rendering the directory tree, files, and handling file manipulation interactions.
+File explorer component: tree view of workspace folders, file operations (open, rename, delete, new file).
 
 ## Files
-- **vrutti-explorer.ts**: The main explorer component that queries the native backend for directory contents and renders the interactive file tree.
+- **explorerModel.ts**: The `ExplorerItem` module.
+- **iconMapper.ts**: TypeScript module: iconMapper.
+- **TODO.md**: Open questions and planned work for this folder.
+- **vrutti-explorer.ts**: The `VruttiExplorer` module.
 
-## Child Directories
-- (No immediate subdirectories)
-
-
-## Additional Components
-- **explorerModel.ts**: Component implementation.
-- **iconMapper.ts**: Component implementation.
-
+## Public Methods
+- **IFileStat** (exported type)
+- **getIconForFile()**
+- **VruttiExplorer.connectedCallback()**
+- **VruttiExplorer.disconnectedCallback()**
+- **VruttiExplorer.render()**

@@ -1,18 +1,37 @@
-# Concurrency (src/core/concurrency/)
+# concurrency (src/core/concurrency/)
 
 ## Purpose
-Provides utilities and primitives for multi-threading and asynchronous execution within the native C++ engine.
+Concurrency helpers: the thread pool and the async primitives used by the core.
 
 ## Files
-- (To be implemented or contains internal thread abstractions)
+- **Async.h**: Header for the Async component.
+- **CancellationToken.h**: Header for the CancellationToken component.
+- **ThreadPool.cpp**: Implementation of the ThreadPool component.
+- **ThreadPool.h**: Header for the ThreadPool component.
+- **TODO.md**: Open questions and planned work for this folder.
 
-## Child Directories
-- (No immediate subdirectories)
-
-
-## Additional Components
-- **Async.h**: Component implementation.
-- **CancellationToken.h**: Component implementation.
-- **ThreadPool.cpp**: Component implementation.
-- **ThreadPool.h**: Component implementation.
-
+## Public Methods
+- **Delayer::~Delayer()**
+- **Delayer::trigger(std::function<void()>, int)**
+- **std::lock_guard<std::mutex> Delayer::lock(m_mutex)**
+- **cancel()**
+- **Throttler::queue(std::function<void()>)**
+- **Throttler::runNext()**
+- **runNext()**
+- **std::lock_guard<std::mutex> lock(m_mutex)**
+- **CancellationToken::~CancellationToken()**
+- **bool CancellationToken::isCancellationRequested()**
+- **vrutti::core::events::Event<void>& CancellationToken::onCancellationRequested()**
+- **bool NoneCancellationToken::isCancellationRequested()**
+- **vrutti::core::events::Event<void>& NoneCancellationToken::onCancellationRequested()**
+- **CancellationTokenSource::cancel()**
+- **m_token-> fire()**
+- **std::shared_ptr<CancellationToken> token()**
+- **bool MutableToken::isCancellationRequested()**
+- **vrutti::core::events::Event<void>& MutableToken::onCancellationRequested()**
+- **MutableToken::fire()**
+- **ThreadPool::ThreadPool(size_t)**
+- **ThreadPool::~ThreadPool()**
+- **ThreadPool::ThreadPool(const ThreadPool&)**
+- **std::unique_lock<std::mutex> lock(m_queueMutex)**
+- **m_condition. notify_one()**

@@ -1,52 +1,138 @@
-# Plugin System (src/core/plugins/)
+# plugins (src/core/plugins/)
 
 ## Purpose
-Defines the interfaces and loading mechanisms for dynamically loading native C++ plugins (DLLs/Shared Objects) at runtime.
+The plugin system: the native plugin interface and the loader that loads plugin libraries.
 
 ## Files
-- **IPlugin.h**: The core interface that all native plugins (like SearchPlugin) must inherit from.
-- **PluginLoader.cpp**: The implementation for dynamically discovering, loading, and managing the lifecycle of DLL files via OS APIs (LoadLibraryA/dlopen).
-- **PluginLoader.h**: Header for the PluginLoader class.
-- **ExtensionManager.h**: Header for the ExtensionManager DLL plugin.
-- **ExtensionManager.cpp**: Implementation for the dynamically loaded ExtensionManager that handles extension discovery and parsing via C++.
-- **ExtensionScanner.h**: Header for ExtensionScanner, replacing ExtensionManager for extension package scanning.
-- **ExtensionScanner.cpp**: Implementation for statically discovering and scanning extensions.
-- **VSCodeExtHostService.h**: Header for the VSCodeExtHostService DLL plugin.
-- **VSCodeExtHostService.cpp**: Implementation for dynamic VS Code Extension Host initialization payload construction.
-- **MediaController.h**: Header for the MediaController DLL plugin.
-- **MediaController.cpp**: Implementation for managing and aggressively caching background media in the compositor.
-- **VSXRegistryService.h**: Header for the VSXRegistryService DLL plugin.
-- **VSXRegistryService.cpp**: Implementation for OpenVSX registry search and LRU caching mechanism.
-- **DocumentSyncService.h**: Header for the DocumentSyncService DLL plugin, managing the authoritative Piece Table.
-- **DocumentSyncService.cpp**: Implementation for the document translation broker, handling text edits and IPC/RPC batching.
-- **ExtensionLifecycleManager.h**: Header for the ExtensionLifecycleManager DLL plugin.
-- **ExtensionLifecycleManager.cpp**: Implementation for dynamic VS Code extension activation based on activationEvents.
-- **CommandHandlerService.h**: Header for the CommandHandlerService DLL plugin.
-- **CommandHandlerService.cpp**: Implementation for maintaining the registry of active commands and routing execution via RPC.
-- **LanguageFeatureService.h**: Header for LanguageFeatureService DLL plugin.
-- **LanguageFeatureService.cpp**: Implementation for intercepting language features (hover, completion) registrations and requests.
-- **DiagnosticService.h**: Header for DiagnosticService DLL plugin.
-- **DiagnosticService.cpp**: Implementation for managing document diagnostics (errors/warnings) and emitting updates to UI.
-- **FileSystemService.h**: Header for FileSystemService DLL plugin.
-- **FileSystemService.cpp**: Implementation for native file system access and ExtHost FileSystem API bridging.
-- **WorkspaceService.h**: Header for WorkspaceService DLL plugin.
-- **WorkspaceService.cpp**: Implementation for managing workspace folders and ExtHost Workspace API bridging.
-- **DebugAdapterService.h**: Header for DebugAdapterService DLL plugin.
-- **DebugAdapterService.cpp**: Implementation for managing DAP (Debug Adapter Protocol) sessions and process lifecycle.
-- **TerminalService.h**: Header for TerminalService DLL plugin.
-- **TerminalService.cpp**: Implementation for native PTY (Pseudo-Terminal) bridging and shell I/O.
-- **ThemeService.h**: Header for the ThemeService DLL plugin.
-- **ThemeService.cpp**: Implementation for discovering, resolving and translating colour/icon themes.
+- **CommandHandlerService.cpp**: Implementation of the CommandHandlerService component.
+- **CommandHandlerService.h**: Header for the CommandHandlerService component.
+- **DebugAdapterService.cpp**: Implementation of the DebugAdapterService component.
+- **DebugAdapterService.h**: Header for the DebugAdapterService component.
+- **DiagnosticService.cpp**: Implementation of the DiagnosticService component.
+- **DiagnosticService.h**: Header for the DiagnosticService component.
+- **DocumentSyncService.cpp**: Implementation of the DocumentSyncService component.
+- **DocumentSyncService.h**: Header for the DocumentSyncService component.
+- **ExtensionLifecycleManager.cpp**: Implementation of the ExtensionLifecycleManager component.
+- **ExtensionLifecycleManager.h**: Header for the ExtensionLifecycleManager component.
+- **ExtensionManager.cpp**: Implementation of the ExtensionManager component.
+- **ExtensionManager.h**: Header for the ExtensionManager component.
+- **ExtensionScanner.cpp**: Implementation of the ExtensionScanner component.
+- **ExtensionScanner.h**: Header for the ExtensionScanner component.
+- **FileSystemService.cpp**: Implementation of the FileSystemService component.
+- **FileSystemService.h**: Header for the FileSystemService component.
+- **IPlugin.h**: Header for the IPlugin component.
+- **LanguageFeatureService.cpp**: Implementation of the LanguageFeatureService component.
+- **LanguageFeatureService.h**: Header for the LanguageFeatureService component.
+- **MediaController.cpp**: Implementation of the MediaController component.
+- **MediaController.h**: Header for the MediaController component.
+- **PluginLoader.cpp**: Implementation of the PluginLoader component.
+- **PluginLoader.h**: Header for the PluginLoader component.
+- **TerminalService.cpp**: Implementation of the TerminalService component.
+- **TerminalService.h**: Header for the TerminalService component.
+- **ThemeService.cpp**: Implementation of the ThemeService component.
+- **ThemeService.h**: Header for the ThemeService component.
+- **TODO.md**: Open questions and planned work for this folder.
+- **VSCodeExtHostService.cpp**: Implementation of the VSCodeExtHostService component.
+- **VSCodeExtHostService.h**: Header for the VSCodeExtHostService component.
+- **VSXRegistryService.cpp**: Mock for non-windows (would use libcurl usually)
+- **VSXRegistryService.h**: Header for the VSXRegistryService component.
+- **WorkspaceService.cpp**: Implementation of the WorkspaceService component.
+- **WorkspaceService.h**: Header for the WorkspaceService component.
 
 ## Public Methods
-- **IPlugin::initialize()**: Prepares the plugin; returns true when the plugin is ready.
-- **IPlugin::shutdown()**: Releases everything the plugin acquired.
-- **IPlugin::getName()**: Returns the plugin's display name.
-- **IPlugin::executeCommand(command, payload)**: Runs a named command and returns its JSON result.
-- **ThemeService::executeCommand(command, payload)**: `list` / `listIcons` return the available themes; `load` / `loadIcon` return the resolved theme for the given id or label.
-- **PluginLoader::loadPlugin(path)**: Loads a plugin DLL and returns its instance, or null on failure.
-- **PluginLoader::unloadPlugin(name)**: Unloads a previously loaded plugin.
-- **PluginLoader::getPlugin(name)**: Returns an already loaded plugin instance, or null.
-
-## Child Directories
-- (No immediate subdirectories)
+- **CommandHandlerService::CommandHandlerService()**
+- **CommandHandlerService::~CommandHandlerService()**
+- **bool CommandHandlerService::initialize()**
+- **CommandHandlerService::shutdown()**
+- **const char* CommandHandlerService::getName()**
+- **std::string CommandHandlerService::executeCommand(const std::string&, const std::string&)**
+- **DebugAdapterService::DebugAdapterService()**
+- **DebugAdapterService::~DebugAdapterService()**
+- **bool DebugAdapterService::initialize()**
+- **DebugAdapterService::shutdown()**
+- **const char* DebugAdapterService::getName()**
+- **std::string DebugAdapterService::executeCommand(const std::string&, const std::string&)**
+- **DiagnosticService::DiagnosticService()**
+- **DiagnosticService::~DiagnosticService()**
+- **bool DiagnosticService::initialize()**
+- **DiagnosticService::shutdown()**
+- **const char* DiagnosticService::getName()**
+- **std::string DiagnosticService::executeCommand(const std::string&, const std::string&)**
+- **DocumentSyncService::DocumentSyncService()**
+- **DocumentSyncService::~DocumentSyncService()**
+- **bool DocumentSyncService::initialize()**
+- **DocumentSyncService::shutdown()**
+- **const char* DocumentSyncService::getName()**
+- **std::string DocumentSyncService::executeCommand(const std::string&, const std::string&)**
+- **ExtensionLifecycleManager::ExtensionLifecycleManager()**
+- **ExtensionLifecycleManager::~ExtensionLifecycleManager()**
+- **bool ExtensionLifecycleManager::initialize()**
+- **ExtensionLifecycleManager::shutdown()**
+- **const char* ExtensionLifecycleManager::getName()**
+- **std::string ExtensionLifecycleManager::executeCommand(const std::string&, const std::string&)**
+- **ExtensionManager::ExtensionManager()**
+- **ExtensionManager::~ExtensionManager()**
+- **bool ExtensionManager::initialize()**
+- **ExtensionManager::shutdown()**
+- **const char* ExtensionManager::getName()**
+- **std::string ExtensionManager::executeCommand(const std::string&, const std::string&)**
+- **std::string ExtensionScanner::getExtensionsDir()**
+- **std::string ExtensionScanner::getInstalledExtensions()**
+- **FileSystemService::FileSystemService()**
+- **FileSystemService::~FileSystemService()**
+- **bool FileSystemService::initialize()**
+- **FileSystemService::shutdown()**
+- **const char* FileSystemService::getName()**
+- **std::string FileSystemService::executeCommand(const std::string&, const std::string&)**
+- **IPlugin::~IPlugin()**
+- **bool IPlugin::initialize()**
+- **IPlugin::shutdown()**
+- **const char* IPlugin::getName()**
+- **std::string IPlugin::executeCommand(const std::string&, const std::string&)**
+- **LanguageFeatureService::LanguageFeatureService()**
+- **LanguageFeatureService::~LanguageFeatureService()**
+- **bool LanguageFeatureService::initialize()**
+- **LanguageFeatureService::shutdown()**
+- **const char* LanguageFeatureService::getName()**
+- **std::string LanguageFeatureService::executeCommand(const std::string&, const std::string&)**
+- **MediaController::MediaController()**
+- **MediaController::~MediaController()**
+- **bool MediaController::initialize()**
+- **MediaController::shutdown()**
+- **const char* MediaController::getName()**
+- **std::string MediaController::executeCommand(const std::string&, const std::string&)**
+- **PluginLoader::PluginLoader()**
+- **PluginLoader::~PluginLoader()**
+- **IPlugin* PluginLoader::loadPlugin(const std::string&)**
+- **PluginLoader::unloadPlugin(const std::string&)**
+- **IPlugin* PluginLoader::getPlugin(const std::string&)**
+- **TerminalService::TerminalService()**
+- **TerminalService::~TerminalService()**
+- **bool TerminalService::initialize()**
+- **TerminalService::shutdown()**
+- **const char* TerminalService::getName()**
+- **std::string TerminalService::executeCommand(const std::string&, const std::string&)**
+- **ThemeService::ThemeService()**
+- **ThemeService::~ThemeService()**
+- **bool ThemeService::initialize()**
+- **ThemeService::shutdown()**
+- **const char* ThemeService::getName()**
+- **std::string ThemeService::executeCommand(const std::string&, const std::string&)**
+- **VSCodeExtHostService::VSCodeExtHostService()**
+- **VSCodeExtHostService::~VSCodeExtHostService()**
+- **bool VSCodeExtHostService::initialize()**
+- **VSCodeExtHostService::shutdown()**
+- **const char* VSCodeExtHostService::getName()**
+- **std::string VSCodeExtHostService::executeCommand(const std::string&, const std::string&)**
+- **VSXRegistryService::VSXRegistryService()**
+- **VSXRegistryService::~VSXRegistryService()**
+- **bool VSXRegistryService::initialize()**
+- **VSXRegistryService::shutdown()**
+- **const char* VSXRegistryService::getName()**
+- **std::string VSXRegistryService::executeCommand(const std::string&, const std::string&)**
+- **WorkspaceService::WorkspaceService()**
+- **WorkspaceService::~WorkspaceService()**
+- **bool WorkspaceService::initialize()**
+- **WorkspaceService::shutdown()**
+- **const char* WorkspaceService::getName()**
+- **std::string WorkspaceService::executeCommand(const std::string&, const std::string&)**

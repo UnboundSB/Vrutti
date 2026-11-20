@@ -1,10 +1,8 @@
-# Directory: .agents
+# .agents (.agents/)
 
 ## Purpose
-Responsible for organizing .agents related components.
-
-## Child Directories
-*(No child directories)*
+Instructions for the coding agents that work on this repository.
 
 ## Files
-- **AGENTS.md**: Responsible for storing data related to AGENTS.md.
+- **AGENTS.md**: Documentation for AGENTS.
+- **TODO.md**: Open questions and planned work for this folder.

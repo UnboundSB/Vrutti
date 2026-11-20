@@ -1,11 +1,48 @@
-# IPC (src/core/ipc/)
+# ipc (src/core/ipc/)
 
 ## Purpose
-Implements the Inter-Process Communication bridge connecting the native C++ engine and the Node.js extension host over Named Pipes (Windows) or Domain Sockets (Linux).
+Inter-process communication: the pipe transport and the protocol that connects the core to the extension host.
 
 ## Files
-- **IPCClient.cpp**: Contains the implementation of the IPC client that listens for and dispatches JSON RPC messages.
-- **IPCClient.h**: Header for the IPCClient class.
+- **IPCClient.cpp**: Implementation of the IPCClient component.
+- **IPCClient.h**: Header for the IPCClient component.
+- **TODO.md**: Open questions and planned work for this folder.
+- **VSCodeProtocol.cpp**: Implementation of the VSCodeProtocol component.
+- **VSCodeProtocol.h**: Header for the VSCodeProtocol component.
+- **VsCodeProxyIds.generated.h**: Header for the VsCodeProxyIds generated component.
 
-## Child Directories
-- (No immediate subdirectories)
+## Public Methods
+- **IPCClient::IPCClient(const std::string&)**
+- **IPCClient::~IPCClient()**
+- **IPCClient::start()**
+- **IPCClient::stop()**
+- **IPCClient::sendInitData(const std::shared_ptr<vrutti::core::utils::JsonNode>&)**
+- **int IPCClient::sendRequest(int, const std::string&, const std::shared_ptr<vrutti::core::utils::JsonNode>&, std::function<void(const std::shared_ptr<vrutti::core::utils::JsonNode>&)>, std::function<void(const std::string&)>)**
+- **IPCClient::sendReply(int, const std::shared_ptr<vrutti::core::utils::JsonNode>&)**
+- **IPCClient::sendReplyError(int, const std::string&, const std::string&)**
+- **IPCClient::sendAck(int)**
+- **IPCClient::sendCancel(int)**
+- **IPCClient::sendTerminate()**
+- **IPCClient::setOnReady(std::function<void()>)**
+- **IPCClient::setOnRequest(std::function<void(const RpcRequest&)>)**
+- **IPCClient::setOnEvent(std::function<void(const std::string& method, const std::shared_ptr<vrutti::core::utils::JsonNode>& params)>)**
+- **IPCClient::emitEvent(const std::string&, const std::shared_ptr<vrutti::core::utils::JsonNode>&)**
+- **IPCClient::setOnLocalRequest(std::function<void(const std::string& method, const std::shared_ptr<vrutti::core::utils::JsonNode>& params)>)**
+- **IPCClient::sendLocalRequest(const std::string&, const std::shared_ptr<vrutti::core::utils::JsonNode>&)**
+- **IPCClient::setOnConnected(std::function<void()>)**
+- **IPCClient::bindEditorBuffer(vrutti::core::editor::PieceTable*)**
+- **IPCClient::resolvePending(int, const std::shared_ptr<vrutti::core::utils::JsonNode>&, bool, const std::string&)**
+- **IPCClient::handleIncomingMessage(const std::string&)**
+- **bool IPCClient::decodeVSBuffer(const std::shared_ptr<vrutti::core::utils::JsonNode>&, std::vector<uint8_t>&)**
+- **VSCodeProtocol::VSCodeProtocol(IPCClient*)**
+- **VSCodeProtocol::~VSCodeProtocol()**
+- **VSCodeProtocol::initialize()**
+- **VSCodeProtocol::handleRequest(const IPCClient::RpcRequest&)**
+- **VSCodeProtocol::handleLocalRequest(const std::string&, const std::shared_ptr<JsonNode>&)**
+- **int VSCodeProtocol::sendRequest(int, const std::string&, const std::shared_ptr<JsonNode>&, std::function<void(const std::shared_ptr<JsonNode>&)>, std::function<void(const std::string&)>)**
+- **int VSCodeProtocol::sendRequest(const char*, const std::string&, const std::shared_ptr<JsonNode>&, std::function<void(const std::shared_ptr<JsonNode>&)>, std::function<void(const std::string&)>)**
+- **VSCodeProtocol::setWorkspaceFolder(const std::string&)**
+- **const std::string& VSCodeProtocol::workspaceFolder()**
+- **VSCodeProtocol::emitToUi(const std::string&, const std::shared_ptr<JsonNode>&)**
+- **const char* shapeName(int)**
+- **int shapeId(const char*)**

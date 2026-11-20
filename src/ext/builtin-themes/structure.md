@@ -1,11 +1,12 @@
-# Builtin Themes (src/ext/builtin-themes/)
+# builtin-themes (src/ext/builtin-themes/)
 
 ## Purpose
-Contains default bundled themes for Vrutti IDE.
+The themes that ship with the application: the syntax highlighting and the user interface colours.
 
 ## Files
-- **package.json**: Defines the themes contributed by this bundle. Note: Hardcoded media injection scripts have been removed. Background media is now managed natively by the C++ MediaController plugin via Tauri IPC.
-- **default-dark.json**: Vrutti Default Dark Theme.
-- **default-light.json**: Vrutti Default Light Theme.
-- **vrutti-glass-dark.json**: Vrutti Glass Dark Theme.
-- **vrutti-glass-light.json**: Vrutti Glass Light Theme.
+- **default-dark.json**: Package data for default dark.
+- **default-light.json**: Package data for default light.
+- **package.json**: Package data for package.
+- **TODO.md**: Open questions and planned work for this folder.
+- **vrutti-glass-dark.json**: Package data for vrutti glass dark.
+- **vrutti-glass-light.json**: Package data for vrutti glass light.

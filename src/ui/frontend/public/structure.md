@@ -1,16 +1,9 @@
-# Public Assets (src/ui/frontend/public/)
+# public (src/ui/frontend/public/)
 
 ## Purpose
-Stores static assets that are copied directly into the frontend build output.
+Static assets served to the renderer.
 
 ## Files
-- **codicon.css** & **codicon.ttf**: VS Code's iconic font library used for UI icons.
-
-## Child Directories
-- (No immediate subdirectories)
-
-
-## Additional Components
-- **help.html**: Component implementation.
-- **vrutti-logo.png**: Component implementation.
-
+- **help.html**: HTML page: help.
+- **TODO.md**: Open questions and planned work for this folder.
+- **vrutti-logo.png**: Image asset: vrutti logo.

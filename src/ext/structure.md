@@ -1,31 +1,40 @@
-# Extension Host (src/ext/)
+# ext (src/ext/)
 
 ## Purpose
-The Node.js environment responsible for loading extensions, providing the extension API, and booting the IDE's backend services.
+The extension side: the launcher, the extension host entry point, the API surface and the bundled themes.
 
 ## Files
-- **bootstrapper.js**: The initial script executed by Node.js. It connects via IPC to the native C++ engine and bridges the extension environment.
-
-## Child Directories
-- **bin/**: Executable scripts or wrapper binaries used by the extension host.
-- **builtin-themes/**: Default bundled themes (e.g.,  rutti-default-dark) containing syntax highlighting and UI color definitions.
-
-
-## Additional Components
-- **bootstrapper.js**: The initial script executed by Node.js. It connects via IPC to the native C++ engine and bridges the extension environment.
-- **crypto-polyfill.js**: Preloaded module that installs the crypto primitives the extension host expects.
-- **dap-client.js**: Implementation for the Debug Adapter Protocol (DAP) client.
-- **errorCodes.js**: Generated mirror of the central error code registry (see `errcode.md`).
-- **ipc.js**: Inter-process communication handler for the Node.js extension host.
-- **lsp-client.js**: Implementation for Language Server Protocol (LSP) integration.
-- **package-lock.json**: Dependency tree lockfile.
-- **package.json**: Node project definition.
-- **textmate-engine.js**: Engine for parsing and tokenizing text using TextMate grammars.
-- **theme-resolver.js**: Resolves and maps theme files into IDE usable colors.
-- **test_runner.js**: Test execution wrapper for extensions.
+- **bootstrapper.js**: JavaScript module: bootstrapper.
+- **crypto-polyfill.js**: Preload script for the VS Code Extension Host process.
+- **dap-client.js**: JavaScript module: dap client.
+- **errorCodes.js**: JavaScript module: errorCodes.
+- **ipc.js**: JavaScript module: ipc.
+- **lsp-client.js**: JavaScript module: lsp client.
+- **package-lock.json**: Package data for package lock.
+- **package.json**: Package data for package.
+- **test_runner.js**: JavaScript module: test runner.
+- **textmate-engine.js**: JavaScript module: textmate engine.
+- **theme-resolver.js**: JavaScript module: theme resolver.
+- **TODO.md**: Open questions and planned work for this folder.
 
 ## Public Methods
-- **errorCodeId(value)**: Returns the display id of an error code, e.g. "VRU-0102".
-- **errorCodeName(value)**: Returns the symbolic name of an error code.
-- **formatError(value, message)**: Formats an error code and a detail message for a log line.
+- **DapClient()** (exported)
+- **ErrorCode()** (exported)
+- **ERROR_CODE_NAMES()** (exported)
+- **errorCodeId()** (exported)
+- **errorCodeName()** (exported)
+- **formatError()** (exported)
+- **LspClient()** (exported)
+- **initOniguruma()** (exported)
+- **registerGrammars()** (exported)
+- **tokenizeDocument()** (exported)
+- **loadThemeRecursive()** (exported)
 
+## Child Directories
+- **api/**: The public extension API. The shape of the `vscode` namespace that extensions are written against.
+- **bin/**: The runtime binaries shipped with the application, including the Node.js executable.
+- **bridge/**: The bridge between the native core and the extension host: the protocol, the client and the server sides.
+- **builtin-themes/**: The themes that ship with the application: the syntax highlighting and the user interface colours.
+- **exthost/**: The extension host entry point. Vrutti's own launcher for the shared extension host implementation.
+- **legacy/**: The previous standalone extension host, kept for reference only. It is not part of the running pipeline.
+- **protocols/**: Protocol definitions shared between the core and the extension host.

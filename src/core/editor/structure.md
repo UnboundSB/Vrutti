@@ -1,16 +1,20 @@
-# Editor Core (src/core/editor/)
+# editor (src/core/editor/)
 
 ## Purpose
-Manages the backend representation of open documents, text buffers, and editor state.
+Editor core: the text buffer, the piece table and the document model.
 
 ## Files
-- (To be populated as text buffer structures are implemented)
+- **PieceTable.cpp**: Implementation of the PieceTable component.
+- **PieceTable.h**: Header for the PieceTable component.
+- **TODO.md**: Open questions and planned work for this folder.
 
-## Child Directories
-- (No immediate subdirectories)
-
-
-## Additional Components
-- **PieceTable.cpp**: Component implementation.
-- **PieceTable.h**: Component implementation.
-
+## Public Methods
+- **PieceTable::PieceTable(const std::string&, size_t)**
+- **PieceTable::~PieceTable()**
+- **PieceTable::insert(size_t, const std::string&)**
+- **PieceTable::remove(size_t, size_t)**
+- **std::string PieceTable::getText()**
+- **std::string PieceTable::substring(size_t, size_t)**
+- **size_t PieceTable::length()**
+- **PieceTable::garbageCollect()**
+- **TreeNode::init(const Piece&)**

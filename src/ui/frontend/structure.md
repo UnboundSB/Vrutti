@@ -1,20 +1,19 @@
-# Frontend Web App (src/ui/frontend/)
+# frontend (src/ui/frontend/)
 
 ## Purpose
-The root directory of the Vite-based Web Application that renders Vrutti IDE's user interface. It is written in TypeScript and Lit (Web Components).
+The web renderer: a Lit application that draws the workbench.
 
 ## Files
-- **index.html**: The main HTML entry point loaded by the C++ WebView.
-- **package.json**: Defines NPM dependencies and build scripts for the frontend.
-- **vite.config.ts**: Configuration for the Vite bundler.
-- **tsconfig.json**: TypeScript compiler configuration.
+- **Dockerfile**: Container image definition for the renderer.
+- **Dockerfile.frontend**: The Dockerfile file.
+- **index.html**: HTML page: index.
+- **package-lock.json**: Package data for package lock.
+- **package.json**: Package data for package.
+- **TODO.md**: Open questions and planned work for this folder.
+- **tsconfig.json**: Package data for tsconfig.
+- **vite.config.ts**: TypeScript module: vite config.
+- **vite.config.ts.timestamp-1788610053948-8bd4e76edc6be8.mjs**: vite.config.ts
 
 ## Child Directories
-- **public/**: Static assets (fonts, icons) served directly without bundling.
-- **src/**: The core TypeScript source code and Web Components for the IDE interface.
-
-
-## Additional Components
-- **Dockerfile.frontend**: Component implementation.
-- **package-lock.json**: Component implementation.
-
+- **public/**: Static assets served to the renderer.
+- **src/**: The renderer sources: the workbench components, the services and the entry point.

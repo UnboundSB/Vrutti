@@ -1,14 +1,15 @@
-# Source Root (src/)
+# src (src/)
 
 ## Purpose
-The primary root directory containing the complete source code for Vrutti IDE. It houses the native C++ backend engine, the Node.js extension host, dynamic native plugins, and the web-based frontend application.
+The application source: the native core, the extension host and the user interface.
 
 ## Files
-- (No immediate source files; this is purely a structural root directory)
+- **TODO.md**: Open questions and planned work for this folder.
 
 ## Child Directories
-- **app/**: Contains the main application entry point (e.g., main.cpp).
-- **core/**: The core C++ engine, managing IPC, filesystems, memory, concurrency, and plugin lifecycle.
-- **ext/**: Node.js extension host and built-in themes/extensions.
-- **plugins/**: Native C++ plugins (like high-performance search) that compile to DLLs/shared objects.
-- **ui/**: The frontend and presentation layer, including the native C++ window compositor and the web-based user interface.
+- **app/**: The application entry point: it wires the core services together and starts the window.
+- **core/**: The native core: configuration, plugins, IPC, storage and the other services.
+- **ext/**: The extension side: the launcher, the extension host entry point, the API surface and the bundled themes.
+- **plugins/**: Feature plugins that are not part of the core, such as the search implementation.
+- **tests/**: Test suites that ship with the source tree.
+- **ui/**: The user interface layer: the native window and the web renderer.

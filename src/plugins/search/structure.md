@@ -1,11 +1,19 @@
-# Search Plugin (src/plugins/search/)
+# search (src/plugins/search/)
 
 ## Purpose
-A highly-optimized native C++ plugin built as a dynamic library (rutti_search.dll). It performs blazing-fast multi-threaded codebase scanning, regex evaluations, and file filtering without relying on external dependencies like Ripgrep.
+The search plugin: indexing and querying the files of a workspace.
 
 ## Files
-- **SearchPlugin.cpp**: Implements the core logic for recursive file traversal, background indexing, and text matching (using optimized substring search or std::regex).
-- **SearchPlugin.h**: Header defining the SearchPlugin class which inherits from IPlugin.
+- **SearchPlugin.cpp**: Implementation of the SearchPlugin component.
+- **SearchPlugin.h**: Header for the SearchPlugin component.
+- **TODO.md**: Open questions and planned work for this folder.
 
-## Child Directories
-- (No immediate subdirectories)
+## Public Methods
+- **SearchPlugin::SearchPlugin()**
+- **SearchPlugin::~SearchPlugin()**
+- **bool SearchPlugin::initialize()**
+- **SearchPlugin::shutdown()**
+- **const char* SearchPlugin::getName()**
+- **std::string SearchPlugin::executeCommand(const std::string&, const std::string&)**
+- **SearchResponse SearchPlugin::performSearch(const std::string&, const std::string&, const SearchOptions&)**
+- **std::vector<std::string> SearchPlugin::findFiles(const std::string&)**

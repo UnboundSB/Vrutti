@@ -1,14 +1,11 @@
-# Directory: logos
+# logos (logos/)
 
 ## Purpose
-Responsible for storing visual branding assets and logos for the Vrutti IDE.
-
-## Child Directories
-*(No child directories)*
+Brand assets: the logos and the icons of the application.
 
 ## Files
-- **favicon-16x16.png**: Responsible for storing data related to favicon-16x16.png.
-- **favicon-32x32.png**: Responsible for storing data related to favicon-32x32.png.
-- **icon.ico**: Responsible for storing data related to icon.ico.
-- **logo-512x512.png**: Responsible for storing data related to logo-512x512.png.
-- **structure.md**: Documents the purpose of this directory, its child directories, and files.
+- **favicon-16x16.png**: Image asset: favicon 16x16.
+- **favicon-32x32.png**: Image asset: favicon 32x32.
+- **icon.ico**: Icon asset: icon.
+- **logo-512x512.png**: Image asset: logo 512x512.
+- **TODO.md**: Open questions and planned work for this folder.

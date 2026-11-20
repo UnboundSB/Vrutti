@@ -1,55 +1,49 @@
-# Directory: vrutti_ide
+# vrutti_ide (repository root)
 
 ## Purpose
-The root directory of the Vrutti IDE workspace, containing the main build configuration and entry points.
-
-## Child Directories
-- **.agents/**: Responsible for organizing .agents related components.
-- **build-linux/**: Responsible for organizing build-linux related components.
-- **logos/**: Responsible for storing visual branding assets and logos for the Vrutti IDE.
-- **src/**: The main source code directory containing all C++ and frontend components.
+Root of the Vrutti IDE workspace: build configuration, scripts and documentation.
 
 ## Files
-- **.gitignore**: Responsible for storing data related to .gitignore.
-- **CMakeLists.txt**: Configures the CMake build system for the Vrutti IDE.
-- **Dockerfile.test**: Responsible for storing data related to Dockerfile.test.
-- **Makefile**: Responsible for storing data related to Makefile.
-- **README.md**: Responsible for storing data related to README.md.
-- **app_log.txt**: Responsible for storing data related to app_log.txt.
-- **base64_logo.txt**: Responsible for storing data related to base64_logo.txt.
-- **build_error.log**: Responsible for storing data related to build_error.log.
-- **docker-compose.frontend.yml**: Responsible for storing data related to docker-compose.frontend.yml.
-- **docker-compose.test.yml**: Responsible for storing data related to docker-compose.test.yml.
-- **fetch-icons.js**: Implements Javascript execution logic for fetch-icons.
-- **package-lock.json**: Responsible for storing data related to package-lock.json.
-- **package.json**: Defines the NPM dependencies and scripts for the frontend project.
-- **product.json**: Responsible for storing data related to product.json.
-- **structure.md**: Documents the purpose of this directory, its child directories, and files.
-- **summary.md**: Responsible for storing data related to summary.md.
-- **task.md**: Responsible for storing data related to task.md.
-- **tasks.md**: Responsible for storing data related to tasks.md.
-- **test_base64.cpp**: Implements the test_base64 core logic and functionality.
-- **test_base64.exe**: Responsible for storing data related to test_base64.exe.
-- **test_terminal.cpp**: Implements the test_terminal core logic and functionality.
-- **test_terminal.exe**: Responsible for storing data related to test_terminal.exe.
+- **.gitignore**: The ignore rules of the repository.
+- **architecture.md**: Documentation for architecture.
+- **base64_logo.txt**: Text data for base64 logo.
+- **build_installer.ps1**: PowerShell script: build installer.
+- **CMakeLists.txt**: The CMake build definition.
+- **docker-compose.frontend.yml**: YAML configuration for docker compose frontend.
+- **errcode.md**: Documentation for errcode.
+- **fetch-icons.js**: JavaScript module: fetch icons.
+- **gen_docs.ps1**: PowerShell script: gen docs.
+- **LICENSE**: The license the project is published under.
+- **logger.js**: JavaScript module: logger.
+- **Makefile**: Convenience targets for the build.
+- **out.json**: Package data for out.
+- **package-lock.json**: Package data for package lock.
+- **package.json**: Package data for package.
+- **package_release.ps1**: PowerShell script: package release.
+- **problem.md**: Documentation for problem.
+- **product.json**: Package data for product.
+- **README.md**: Documentation for README.
+- **rebase_editor.ps1**: PowerShell script: rebase editor.
+- **repor.md**: Documentation for repor.
+- **ripgrep.zip**: The ripgrep file.
+- **summary.md**: Documentation for summary.
+- **SYSTEM_ARCHITECTURE.md**: Documentation for SYSTEM ARCHITECTURE.
+- **task.md**: Documentation for task.
+- **tasks.md**: Documentation for tasks.
+- **test.vsix**: The test file.
+- **test_install.ps1**: PowerShell script: test install.
+- **test_scanner.cpp**: Implementation of the test scanner component.
+- **test_scanner.exe**: Executable: test scanner.
+- **TODO.md**: Open questions and planned work for this folder.
+- **tsconfig.exthost.json**: Package data for tsconfig exthost.
+- **update_structures.js**: JavaScript module: update structures.
+- **Vrutti_Alpha_0.0.4_SleepyRabbit_Setup.exe**: Executable: Vrutti Alpha 0 0 4 SleepyRabbit Setup.
+- **vrutti_early_release.zip**: The vrutti early release file.
 
-
-## Additional Components
-- **ripgrep**: Component implementation.
-- **build_installer.ps1**: Component implementation.
-- **gen_docs.ps1**: Component implementation.
-- **LICENSE**: Component implementation.
-- **logger.js**: Component implementation.
-- **package_release.ps1**: Component implementation.
-- **rebase_editor.ps1**: Component implementation.
-
-## Roadmap & Planned Architecture
-To match modern IDE capabilities (like VS Code), the following features are planned for future development. Here is the current implementation status:
-1. **Problems / Diagnostics Panel**: Exists: Yes, Dynamic: Yes
-2. **Split Editors**: Exists: Yes, Dynamic: Yes
-3. **Search & Replace**: Exists: Yes, Dynamic: Yes
-4. **LSP (Language Server Protocol)**: Exists: No, Dynamic: No
-5. **Diff Editor**: Exists: No, Dynamic: No
-6. **Minimap & Breadcrumbs**: Exists: No, Dynamic: No
-
-- **Dynamic Backgrounds**: An ultra-lightweight dynamic media renderer for the IDE background that aggressively unmounts/flushes cache when an editor opens, ensuring zero performance impact.
+## Child Directories
+- **.agents/**: Instructions for the coding agents that work on this repository.
+- **bin/**: Executables that ship with the application and are used at runtime.
+- **docs/**: Project documentation: architecture notes, compatibility notes and design records.
+- **logos/**: Brand assets: the logos and the icons of the application.
+- **scripts/**: Build, generation and test scripts used by the development workflow.
+- **src/**: The application source: the native core, the extension host and the user interface.

@@ -1,13 +1,11 @@
-# Directory Structure
+# bridge (src/ext/bridge/)
 
-High-level overview of immediate files and folders.
+## Purpose
+The bridge between the native core and the extension host: the protocol, the client and the server sides.
 
-| Name | Type | Description |
-| :--- | :--- | :--- |
-| `binding.gyp` | File | Project resource or configuration file. |
-| `bridge.cpp` | File | C++ implementation file. |
-| `build` | Folder | Subdirectory containing related modules or components. |
-| `headers` | Folder | Subdirectory containing related modules or components. |
-| `headers.tar.gz` | File | Project resource or configuration file. |
-| `lib` | Folder | Subdirectory containing related modules or components. |
-| `Makefile` | File | Project resource or configuration file. |
+## Files
+- **binding.gyp**: The binding file.
+- **bridge.cpp**: Extension Bridge Linker (Native Addon) Provides a fast-path native linking capability between the Node.js...
+- **headers.tar.gz**: The headers tar file.
+- **Makefile**: Convenience targets for the build.
+- **TODO.md**: Open questions and planned work for this folder.

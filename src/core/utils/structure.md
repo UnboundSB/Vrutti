@@ -1,35 +1,38 @@
-# Utilities (src/core/utils/)
+# utils (src/core/utils/)
 
 ## Purpose
-Contains shared helpers and standard abstractions used globally across the C++ codebase.
+Shared helpers: the JSON parser and serializer, path resolution, string pools and the error code registry.
 
 ## Files
-- **JsonParser.cpp**: A fast, custom JSON parser used for decoding IPC messages and configuration files without heavy third-party dependencies.
-- **JsonParser.h**: Header for the JsonParser class.
-- **JsonSerializer.h**: Utility to serialize C++ objects and strings into valid JSON strings.
-
-## Child Directories
-- (No immediate subdirectories)
-
-
-## Additional Components
-- **Base64.h**: Component implementation.
-- **Json.cpp**: Component implementation.
-- **Json.h**: Component implementation.
-- **LineScanner.cpp**: Component implementation.
-- **LineScanner.h**: Component implementation.
-- **Paths.cpp**: Resolves paths inside the Vrutti installation from the executable location.
-- **Paths.h**: Header for the installation path helpers.
-- **StringPool.cpp**: Component implementation.
-- **StringPool.h**: Component implementation.
+- **Base64.h**: Header for the Base64 component.
+- **ErrorCodes.cpp**: Implementation of the ErrorCodes component.
+- **ErrorCodes.h**: Header for the ErrorCodes component.
+- **Json.cpp**: Implementation of the Json component.
+- **Json.h**: Header for the Json component.
+- **LineScanner.cpp**: Implementation of the LineScanner component.
+- **LineScanner.h**: Header for the LineScanner component.
+- **Paths.cpp**: Implementation of the Paths component.
+- **Paths.h**: Header for the Paths component.
+- **StringPool.cpp**: Implementation of the StringPool component.
+- **StringPool.h**: Header for the StringPool component.
+- **TODO.md**: Open questions and planned work for this folder.
 
 ## Public Methods
-- **JsonParser::parse(source)**: Parses JSON text into a DOM tree; the tree owns its source and decodes escape sequences once.
-- **JsonParser::unescapeString(text)**: Resolves JSON escape sequences; unknown escapes keep their backslash.
-- **JsonSerializer::stringify(node, indentLevel, pretty)**: Serializes a DOM tree back into JSON text.
-- **JsonSerializer::escapeString(text)**: Escapes a string into a quoted JSON literal.
-- **JsonNode::get(key)**: Returns the property of an object node, or null.
-- **makeJsonString(value)**: Creates a string node that owns its text.
-- **appBasePath()**: Returns the root directory of the Vrutti installation.
-- **appResourcePath(relative)**: Returns the path of a resource inside the installation.
-
+- **std::string base64_encode(const std::string&)**
+- **std::string base64_decode(const std::string&)**
+- **std::string errorCodeId(ErrorCode)**
+- **const char* errorCodeName(ErrorCode)**
+- **std::string formatError(ErrorCode, const std::string&)**
+- **reportError(const char*, ErrorCode, const std::string&)**
+- **std::shared_ptr<JsonNode> JsonNode::get(std::string_view)**
+- **std::shared_ptr<JsonNode> makeJsonString(std::string)**
+- **std::shared_ptr<JsonNode> JsonParser::parse(const std::string&)**
+- **std::string JsonParser::unescapeString(std::string_view)**
+- **std::string JsonSerializer::stringify(const std::shared_ptr<JsonNode>&, int, bool)**
+- **std::string JsonSerializer::escapeString(std::string_view)**
+- **std::vector<size_t> LineScanner::computeLineStarts(std::string_view)**
+- **std::filesystem::path appBasePath()**
+- **std::filesystem::path appResourcePath(const std::string&)**
+- **StringPool::StringPool()**
+- **StringPool::~StringPool()**
+- **std::string_view StringPool::intern(std::string_view)**

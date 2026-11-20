@@ -1,47 +1,140 @@
-# UI Components (src/ui/frontend/src/components/)
+# components (src/ui/frontend/src/components/)
 
 ## Purpose
-Houses the modular Web Components (built with the Lit library) that construct the various panels and interactive elements of the IDE.
+The renderer components.
 
 ## Files
-- **vrutti-editor-layout.ts**: The root layout component defining the structural grid (Activity Bar, Sidebar, Editor, Panel, Status Bar).
-- **vrutti-search.ts**: The search sidebar component that triggers IPC search commands and renders results.
-- **vrutti-settings.ts**: The settings panel component.
-- **vrutti-terminal.ts**: Integrates xterm.js for the integrated terminal view.
+- **codicons.ts**: TypeScript module: codicons.
+- **TODO.md**: Open questions and planned work for this folder.
+- **vrutti-context-menu.ts**: The `VruttiContextMenu` module.
+- **vrutti-debug-console.ts**: The `VruttiDebugConsole` module.
+- **vrutti-debug-sidebar.ts**: The `VruttiDebugSidebar` module.
+- **vrutti-diff-editor.ts**: The `VruttiDiffEditor` module.
+- **vrutti-editor-layout.ts**: The `VruttiEditorLayout` module.
+- **vrutti-editor.ts**: The `VruttiEditor` module.
+- **vrutti-explorer-view.ts**: The `VruttiExplorerView` module.
+- **vrutti-extension-details.ts**: The `VruttiExtensionDetails` module.
+- **vrutti-extensions.ts**: The `VruttiExtensions` module.
+- **vrutti-menubar.ts**: The `VruttiMenuBar` module.
+- **vrutti-output-view.ts**: The `VruttiOutputView` module.
+- **vrutti-panel.ts**: The `VruttiPanel` module.
+- **vrutti-problems-view.ts**: The `VruttiProblemsView` module.
+- **vrutti-quick-pick.ts**: The `VruttiQuickPick` module.
+- **vrutti-search.ts**: The `VruttiSearch` module.
+- **vrutti-settings.ts**: The `VruttiSettings` module.
+- **vrutti-sidebar.ts**: The `VruttiSidebar` module.
+- **vrutti-statusbar.ts**: The `VruttiStatusBar` module.
+- **vrutti-task-manager.ts**: The `VruttiTaskManager` module.
+- **vrutti-terminal-view.ts**: The `VruttiTerminalView` module.
+- **vrutti-terminal.ts**: The `VruttiTerminal` module.
+- **vrutti-tree-view.ts**: The `VruttiTreeView` module.
+- **vrutti-webview.ts**: The `VruttiWebview` module.
+- **xterm-css.ts**: TypeScript module: xterm css.
+- **xterm-styles.ts**: TypeScript module: xterm styles.
+- **xterm.css**: Default styles for xterm.js
+
+## Public Methods
+- **icon_files()**
+- **icon_search()**
+- **icon_source_control()**
+- **icon_debug_alt()**
+- **icon_extensions()**
+- **icon_chevron_left()**
+- **icon_chevron_right()**
+- **icon_close()**
+- **icon_git_branch()**
+- **icon_error()**
+- **icon_warning()**
+- **icon_replace_all()**
+- **icon_chevron_down()**
+- **icon_add()**
+- **icon_remove()**
+- **icon_sync()**
+- **icon_check()**
+- **icon_cloud_upload()**
+- **icon_cloud_download()**
+- **VruttiContextMenu.connectedCallback()**
+- **VruttiContextMenu.disconnectedCallback()**
+- **VruttiContextMenu.render()**
+- **VruttiDebugConsole.connectedCallback()**
+- **VruttiDebugConsole.disconnectedCallback()**
+- **VruttiDebugConsole.render()**
+- **VruttiDebugSidebar.disconnectedCallback()**
+- **VruttiDebugSidebar.render()**
+- **VruttiDiffEditor.connectedCallback()**
+- **VruttiDiffEditor.disconnectedCallback()**
+- **VruttiDiffEditor.updated(changedProperties: Map<string, any>)**
+- **VruttiDiffEditor.render()**
+- **LayoutNode** (exported type)
+- **SplitNode** (exported type)
+- **LeafNode** (exported type)
+- **VruttiEditorLayout.connectedCallback()**
+- **VruttiEditorLayout.disconnectedCallback()**
+- **VruttiEditorLayout.updated(changedProperties: Map<string, any>)**
+- **VruttiEditorLayout.render()**
+- **setTokensEffect()**
+- **textmateTokensField()**
+- **VruttiEditor.connectedCallback()**
+- **VruttiEditor.updated(changedProperties: Map<string, any>)**
+- **VruttiEditor.disconnectedCallback()**
+- **VruttiEditor.render()**
+- **VruttiExplorerView.disconnectedCallback()**
+- **VruttiExplorerView.render()**
+- **VruttiExtensionDetails.connectedCallback()**
+- **VruttiExtensionDetails.disconnectedCallback()**
+- **VruttiExtensionDetails.render()**
+- **VruttiExtensions.connectedCallback()**
+- **VruttiExtensions.disconnectedCallback()**
+- **VruttiExtensions.renderExtensionList(list: ExtensionResult[])**
+- **VruttiExtensions.render()**
+- **VruttiMenuBar.connectedCallback()**
+- **VruttiMenuBar.disconnectedCallback()**
+- **VruttiMenuBar.render()**
+- **VruttiOutputView.connectedCallback()**
+- **VruttiOutputView.disconnectedCallback()**
+- **VruttiOutputView.render()**
+- **VruttiPanel.connectedCallback()**
+- **VruttiPanel.disconnectedCallback()**
+- **VruttiPanel.render()**
+- **VruttiProblemsView.disconnectedCallback()**
+- **VruttiProblemsView.render()**
+- **VruttiQuickPick.connectedCallback()**
+- **VruttiQuickPick.disconnectedCallback()**
+- **VruttiQuickPick.render()**
+- **VruttiSearch.connectedCallback()**
+- **VruttiSearch.disconnectedCallback()**
+- **VruttiSearch.render()**
+- **VruttiSettings.connectedCallback()**
+- **VruttiSettings.disconnectedCallback()**
+- **VruttiSettings.render()**
+- **VruttiSidebar.disconnectedCallback()**
+- **VruttiSidebar.selectTab(tab: string)**
+- **VruttiSidebar.toggleSidebar()**
+- **VruttiSidebar.toggleDock()**
+- **VruttiSidebar.render()**
+- **VruttiStatusBar.disconnectedCallback()**
+- **VruttiStatusBar.render()**
+- **TaskDefinition** (exported type)
+- **TasksConfiguration** (exported type)
+- **VruttiTerminalView.connectedCallback()**
+- **VruttiTerminalView.disconnectedCallback()**
+- **VruttiTerminalView.createTerminalGroup()**
+- **VruttiTerminalView.splitTerminalGroup(groupId: string)**
+- **VruttiTerminalView.closeTerminalGroup(groupId: string, e?: Event)**
+- **VruttiTerminalView.closeSplitTerminal(groupId: string, termId: string, e?: Event)**
+- **VruttiTerminalView.setActiveGroup(id: string)**
+- **VruttiTerminalView.setActiveSplit(groupId: string, termId: string)**
+- **VruttiTerminalView.render()**
+- **VruttiTerminal.disconnectedCallback()**
+- **VruttiTerminal.render()**
+- **VruttiTreeView.render()**
+- **VruttiWebview.connectedCallback()**
+- **VruttiWebview.disconnectedCallback()**
+- **VruttiWebview.render()**
+- **xtermStyles()**
 
 ## Child Directories
-- **explorer/**: Components specifically related to the file explorer tree view.
-- **scm/**: Source control management components (e.g., Git integration).
-
-
-## Additional Components
-- **codicons.ts**: SVG icon definitions used across the IDE.
-- **vrutti-context-menu.ts**: Implements the right-click context menu system.
-- **vrutti-debug-console.ts**: The debug console output and REPL view.
-- **vrutti-debug-sidebar.ts**: The debug sidebar containing variables, watch, call stack, and breakpoints.
-- **vrutti-editor.ts**: Code editor wrapper integrating CodeMirror 6.
-- **vrutti-explorer-view.ts**: The file explorer tree view.
-- **vrutti-extension-details.ts**: View for rendering details of a selected extension.
-- **vrutti-extensions.ts**: The extensions marketplace and local management view.
-- **vrutti-menubar.ts**: The top title bar and application menu.
-- **vrutti-output-view.ts**: The output panel for logs and extension output.
-- **vrutti-panel.ts**: The bottom panel container (Terminal, Output, Debug Console, etc).
-- **vrutti-quick-pick.ts**: The command palette and quick input overlay.
-- **vrutti-sidebar.ts**: The main sidebar container which includes the embedded Activity Bar and view panels.
-- **vrutti-statusbar.ts**: The bottom status bar showing editor and workspace information.
-- **vrutti-task-manager.ts**: Manages the running tasks and their processes.
-- **vrutti-terminal-view.ts**: Terminal view implementation.
-- **vrutti-webview.ts**: Wrapper for custom webviews rendered inside the IDE.
-- **xterm-css.ts**: CSS styling for xterm.js integration.
-- **xterm-styles.ts**: Additional styles for xterm.js.
-
-## Planned Components & Roadmap
-The following components are slated for future implementation to achieve parity with modern IDE architectures. Here is the current implementation status:
-1. **vrutti-problems-view.ts (Problems / Diagnostics Panel)**: Exists: Yes, Dynamic: No
-2. **vrutti-editor-layout.ts (Split Editors)**: Exists: Yes, Dynamic: Yes
-3. **vrutti-search.ts (Search & Replace)**: Exists: Yes, Dynamic: Yes
-4. **LSP (Language Server Protocol)**: Exists: No, Dynamic: No
-5. **vrutti-diff-editor.ts (Diff Editor)**: Exists: Yes, Dynamic: No
-6. **Minimap & Breadcrumbs**: Exists: No, Dynamic: No
-
-- **vrutti-dynamic-background.ts**: A lightweight, cache-flushed dynamic background rendering engine to support custom images/videos behind the IDE while optimizing memory on file open.
+- **explorer/**: File explorer component: tree view of workspace folders, file operations (open, rename, delete, new file).
+- **layout/**: Layout components: the panels that arrange the workbench.
+- **scm/**: Source control management: git integration, git graph visualization, diff viewing.
+- **workbench/**: Workbench components: the editor area, the explorer and the side panels.

@@ -24,13 +24,29 @@ dist/
 *.njsproj
 *.sln
 *.sw?
+__pycache__/
 
 # Scratch test scratchpad at the repository root only. The real test suites
 # live in src/tests/ and are tracked.
 /tests/
-V r u t t i _ R e l e a s e  
- v r u t t i _ e a r l y _ r e l e a s e . z i p  
- V r u t t i _ S e t u p . e x e  
- i n s t a l l e r /  
-architecture.md
-problem.md
+
+# Release staging and packaged releases
+/Vrutti_Release/
+/vrutti_early_release.zip
+/Vrutti_Setup.exe
+/Vrutti_Alpha_*_Setup.exe
+
+# Downloaded tools and generated reports
+/ripgrep/
+/ripgrep.zip
+/out.json
+/base64_logo.txt
+/test.vsix
+
+# Logs and scratch output of a local build
+/build_err.txt
+/build_error.log
+/git_log.txt
+/git_show.txt
+/test_output.txt
+/app_log.txt
