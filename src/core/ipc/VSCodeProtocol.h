@@ -81,6 +81,9 @@ private:
     void sendWorkspaceHandshake();
     void sendStartupActivation();
 
+    // Publishes the list of available colour or icon themes to the UI.
+    void emitThemeList(const std::string& method, bool icons);
+
     IPCClient* m_ipc;
     std::unordered_map<std::string, Handler> m_handlers;
 

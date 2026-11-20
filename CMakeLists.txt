@@ -36,6 +36,7 @@ add_library(vrutti_core STATIC
     src/core/fs/Glob.cpp
     src/core/fs/Workspace.cpp
     src/core/utils/Json.cpp
+    src/core/utils/Paths.cpp
     src/core/utils/StringPool.cpp
     src/core/utils/LineScanner.cpp
     src/core/ipc/IPCClient.cpp
@@ -96,6 +97,7 @@ add_vrutti_plugin(MediaController MediaController.cpp)
 add_vrutti_plugin(VSXRegistryService VSXRegistryService.cpp)
 target_link_libraries(VSXRegistryService PRIVATE wininet)
 add_vrutti_plugin(WorkspaceService WorkspaceService.cpp)
+add_vrutti_plugin(ThemeService ThemeService.cpp)
 
 # Rigorous Unit Testing Pipeline
 enable_testing()
@@ -103,6 +105,11 @@ enable_testing()
 add_executable(vrutti_integration_test src/tests/integration/ExtHostIntegrationTest.cpp)
 target_link_libraries(vrutti_integration_test PRIVATE vrutti_core)
 add_test(NAME IntegrationTest COMMAND vrutti_integration_test)
+
+add_executable(vrutti_theme_test src/tests/integration/ThemeServiceTest.cpp)
+target_link_libraries(vrutti_theme_test PRIVATE vrutti_core)
+add_dependencies(vrutti_theme_test ThemeService)
+add_test(NAME ThemeServiceTest COMMAND vrutti_theme_test)
 
 
 

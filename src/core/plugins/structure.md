@@ -35,6 +35,18 @@ Defines the interfaces and loading mechanisms for dynamically loading native C++
 - **DebugAdapterService.cpp**: Implementation for managing DAP (Debug Adapter Protocol) sessions and process lifecycle.
 - **TerminalService.h**: Header for TerminalService DLL plugin.
 - **TerminalService.cpp**: Implementation for native PTY (Pseudo-Terminal) bridging and shell I/O.
+- **ThemeService.h**: Header for the ThemeService DLL plugin.
+- **ThemeService.cpp**: Implementation for discovering, resolving and translating colour/icon themes.
+
+## Public Methods
+- **IPlugin::initialize()**: Prepares the plugin; returns true when the plugin is ready.
+- **IPlugin::shutdown()**: Releases everything the plugin acquired.
+- **IPlugin::getName()**: Returns the plugin's display name.
+- **IPlugin::executeCommand(command, payload)**: Runs a named command and returns its JSON result.
+- **ThemeService::executeCommand(command, payload)**: `list` / `listIcons` return the available themes; `load` / `loadIcon` return the resolved theme for the given id or label.
+- **PluginLoader::loadPlugin(path)**: Loads a plugin DLL and returns its instance, or null on failure.
+- **PluginLoader::unloadPlugin(name)**: Unloads a previously loaded plugin.
+- **PluginLoader::getPlugin(name)**: Returns an already loaded plugin instance, or null.
 
 ## Child Directories
 - (No immediate subdirectories)

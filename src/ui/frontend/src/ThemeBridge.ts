@@ -6,11 +6,9 @@
  */
 
 class ThemeApplier {
-  public static apply(themeData: any): void {
-    if (!themeData || !themeData.colors) return;
+  /** Removes every theme variable that is currently applied inline. */
+  private static clear(): void {
     const root = document.documentElement;
-    const colors = themeData.colors;
-
     const keysToRemove: string[] = [];
     for (let i = 0; i < root.style.length; i++) {
       const key = root.style[i];
@@ -22,6 +20,20 @@ class ThemeApplier {
       root.style.removeProperty(key);
     }
     document.body.style.backgroundColor = '';
+  }
+
+  public static apply(themeData: any): void {
+    if (!themeData || !themeData.colors) {
+      ThemeApplier.reset();
+      return;
+    }
+    const root = document.documentElement;
+    const colors = themeData.colors;
+
+    // Drop the previous theme first. A variable that the new theme does not
+    // define must not survive, otherwise colours leak from one theme into
+    // the next.
+    ThemeApplier.clear();
 
     for (const [key, value] of Object.entries(colors)) {
       if (key.startsWith('--vrutti-')) {
@@ -51,6 +63,22 @@ class ThemeApplier {
     }
 
     console.log(`[ThemeBridge] Applied native Vrutti theme: ${themeData.name || 'Unknown'}`);
+  }
+
+  /**
+   * Drops the applied theme completely and falls back to the built-in
+   * colours. Used when the selected theme cannot be resolved.
+   */
+  public static reset(): void {
+    ThemeApplier.clear();
+    try {
+      localStorage.removeItem('vrutti-theme-colors');
+      localStorage.removeItem('vrutti-applied-theme');
+    } catch (e) {
+      console.warn('[ThemeBridge] Could not clear the persisted theme state.', e);
+    }
+    window.dispatchEvent(new CustomEvent('theme-loaded', { detail: { isDark: true } }));
+    console.log('[ThemeBridge] Reset to the built-in theme.');
   }
   
   public static loadStartupTheme(): void {
@@ -121,8 +149,13 @@ export class ThemeBridge {
 
   private handleIpc = (e: Event) => {
     const msg = (e as CustomEvent).detail;
-    if (msg && msg.method === 'theme/load' && msg.params) {
-      ThemeApplier.apply(msg.params);
+    if (msg && msg.method === 'theme/load') {
+      // A null payload means "fall back to the built-in colours".
+      if (msg.params) {
+        ThemeApplier.apply(msg.params);
+      } else {
+        ThemeApplier.reset();
+      }
     }
     if (msg && msg.method === 'icon_theme/load') {
       if (msg.params) {

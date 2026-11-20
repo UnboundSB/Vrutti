@@ -105,6 +105,35 @@ export class VruttiApp extends LitElement {
       }).catch((e: any) => console.log('Mock CSS not found:', e));
     }
 
+    // Extension contributed CSS is tracked per extension and replaced, never
+    // accumulated. A stale sheet keeps its theme variables alive and would
+    // leak them into the next theme.
+    const injectedStyles = new Map<string, HTMLStyleElement[]>();
+
+    const applyInjections = (owner: string, injections: any[]) => {
+        const previous = injectedStyles.get(owner);
+        if (previous) {
+            for (const el of previous) el.remove();
+            injectedStyles.delete(owner);
+        }
+        if (!Array.isArray(injections) || injections.length === 0) return;
+
+        const created: HTMLStyleElement[] = [];
+        for (const inj of injections) {
+            if (!inj) continue;
+            if (inj.type === 'css') {
+                const style = document.createElement('style');
+                style.textContent = inj.content || '';
+                document.head.appendChild(style);
+                created.push(style);
+            } else if (inj.type === 'js') {
+                // JS injection disabled: extensions must use sandboxed iframes
+                console.warn('[Security] Extension JS injection blocked. Use iframe sandbox instead.');
+            }
+        }
+        if (created.length > 0) injectedStyles.set(owner, created);
+    };
+
     (window as any).vruttiIpcMessage = (b64: string) => {
       try {
         const jsonStr = decodeURIComponent(escape(atob(b64)));
@@ -114,21 +143,14 @@ export class VruttiApp extends LitElement {
         window.dispatchEvent(new CustomEvent('vrutti-ipc', { detail: msg }));
         
         if (msg.method === 'extensions/injections') {
-            const injections = msg.params || [];
-            for (const inj of injections) {
-                if (inj.type === 'css') {
-                    const style = document.createElement('style');
-                    style.textContent = inj.content || '';
-                    document.head.appendChild(style);
-                } else if (inj.type === 'js') {
-                    // JS injection disabled: extensions must use sandboxed iframes
-                    // script.textContent = inj.content || '';
-                    // document.head.appendChild(script);
-                    console.warn('[Security] Extension JS injection blocked. Use iframe sandbox instead.');
-                }
-            }
+            applyInjections('global', msg.params || []);
         } else if (msg.method === 'extensions/installed') {
             const exts = msg.params || [];
+            for (const ext of exts) {
+                if (ext.contributes && ext.contributes.vrutti && ext.contributes.vrutti.injections) {
+                    applyInjections(ext.id || ext.name || 'unknown', ext.contributes.vrutti.injections);
+                }
+            }
             for (const ext of exts) {
                 if (ext.contributes && ext.contributes.viewsContainers && ext.contributes.viewsContainers.activitybar) {
                     for (const container of ext.contributes.viewsContainers.activitybar) {

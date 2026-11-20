@@ -181,6 +181,18 @@ void VSCodeProtocol::emitToUi(const std::string& method, const std::shared_ptr<J
     m_ipc->emitEvent(method, params);
 }
 
+void VSCodeProtocol::emitThemeList(const std::string& method, bool icons) {
+    vrutti::core::plugins::PluginLoader pluginManager;
+    auto plugin = pluginManager.loadPlugin("ThemeService.dll");
+    if (!plugin) return;
+
+    std::string list = plugin->executeCommand(icons ? "listIcons" : "list", "");
+    auto parsed = JsonParser::parse(list);
+    if (!parsed || parsed->type != JsonNode::Type::Array) return;
+
+    emitToUi(method, parsed);
+}
+
 int VSCodeProtocol::sendRequest(int proxyId,
                                 const std::string& method,
                                 const std::shared_ptr<JsonNode>& args,
@@ -439,6 +451,56 @@ void VSCodeProtocol::handleLocalRequest(const std::string& method,
         auto ev = makeObject();
         setProp(ev, "extensions", parsed);
         emitToUi("extensions/installed", ev);
+
+        // The settings UI lists the available themes next to the installed
+        // extensions, so they are published together.
+        emitThemeList("themes/available", false);
+        emitThemeList("icon_themes/available", true);
+        return;
+    }
+
+    if (method == "themes/available" || method == "icon_themes/available") {
+        emitThemeList(method, method == "icon_themes/available");
+        return;
+    }
+
+    if (method == "theme/set" || method == "icon_theme/set") {
+        bool icons = (method == "icon_theme/set");
+        std::string wanted;
+        if (params && params->type == JsonNode::Type::Object) {
+            if (auto nameNode = params->get("name");
+                nameNode && nameNode->type == JsonNode::Type::String) {
+                wanted = std::string(nameNode->stringValue);
+            }
+            if (wanted.empty()) {
+                if (auto idNode = params->get("id");
+                    idNode && idNode->type == JsonNode::Type::String) {
+                    wanted = std::string(idNode->stringValue);
+                }
+            }
+        }
+
+        // "default" means: fall back to the built-in colours.
+        if (wanted.empty() || wanted == "default") {
+            emitToUi(icons ? "icon_theme/load" : "theme/load", makeNull());
+            return;
+        }
+
+        vrutti::core::plugins::PluginLoader pluginManager;
+        auto plugin = pluginManager.loadPlugin("ThemeService.dll");
+        if (!plugin) {
+            std::cerr << "[VSCodeProtocol] Could not load ThemeService.dll -- "
+                         "the theme cannot be applied\n";
+            return;
+        }
+
+        std::string payload = plugin->executeCommand(icons ? "loadIcon" : "load", wanted);
+        auto theme = JsonParser::parse(payload);
+        if (!theme || theme->type != JsonNode::Type::Object) {
+            std::cerr << "[VSCodeProtocol] Theme '" << wanted << "' could not be loaded\n";
+            return;
+        }
+        emitToUi(icons ? "icon_theme/load" : "theme/load", theme);
         return;
     }
 
