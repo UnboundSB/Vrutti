@@ -7,9 +7,15 @@
 // plain `.js` file.
 //
 // This script bundles `src/ext/exthost/extensionHostProcess.ts` and everything
-// it pulls in into a single CommonJS file:
+// it pulls in into a single ES module:
 //
-//     src/ext/exthost/extensionHostProcess.js
+//     src/ext/exthost/extensionHostProcess.mjs
+//
+// The output is an ES module and not CommonJS because the service layer uses
+// `import.meta.url` and `import.meta.dirname`.  In a CommonJS bundle those
+// are empty, and the extension host then cannot resolve the modules of an
+// extension.  `import.meta.dirname` needs Node.js 20.11 or newer, which the
+// bundled runtime provides.
 //
 // Usage:
 //     node scripts/build_exthost.js [--watch] [--minify]
@@ -21,7 +27,7 @@ const fs = require('fs');
 
 const REPO_ROOT = path.resolve(__dirname, '..');
 const ENTRY = path.join(REPO_ROOT, 'src', 'ext', 'exthost', 'extensionHostProcess.ts');
-const OUTFILE = path.join(REPO_ROOT, 'src', 'ext', 'exthost', 'extensionHostProcess.js');
+const OUTFILE = path.join(REPO_ROOT, 'src', 'ext', 'exthost', 'extensionHostProcess.mjs');
 
 /**
  * Native or optional modules that must not be bundled. They are either
@@ -31,6 +37,7 @@ const OUTFILE = path.join(REPO_ROOT, 'src', 'ext', 'exthost', 'extensionHostProc
 const EXTERNAL = [
     '@vscode/native-watchdog',
     '@vscode/spdlog',
+    '@vscode/windows-ca-certs',
     'electron',
     'keytar',
     'kerberos',
@@ -62,10 +69,15 @@ async function main() {
         entryPoints: [ENTRY],
         bundle: true,
         platform: 'node',
-        format: 'cjs',
-        target: 'node18',
+        format: 'esm',
+        target: 'node20',
         outfile: OUTFILE,
         external: EXTERNAL,
+        // The native modules are copied next to the bundle so that the
+        // release does not need a node_modules directory at runtime.
+        loader: {
+            '.node': 'copy',
+        },
         minify,
         sourcemap: minify ? false : 'linked',
         logLevel: 'info',
@@ -78,6 +90,12 @@ async function main() {
                 ' * Bundles the MIT licensed extension host service layer of the VS Code',
                 ' * source tree. See THIRD_PARTY_NOTICES.md for the required notice.',
                 ' */',
+                // The service layer contains CommonJS modules that call
+                // `require()` for the Node.js built-ins. An ES module has no
+                // `require`, so one is created here. Without it the bundle
+                // stops with "Dynamic require of ... is not supported".
+                "import { createRequire as __vruttiCreateRequire } from 'module';",
+                'const require = __vruttiCreateRequire(import.meta.url);',
             ].join('\n'),
         },
     };

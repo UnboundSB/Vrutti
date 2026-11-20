@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <string>
 
 namespace vrutti::core::utils {
 
@@ -15,5 +16,14 @@ namespace vrutti::core::utils {
 
     // Resolves a path inside the installation, e.g. "src/ext/bin/node.exe".
     std::filesystem::path appResourcePath(const std::string& relative);
+
+    // Resolves the path of a plugin library.
+    //
+    // During development the plugin libraries are built into `<root>/build`,
+    // in a release they sit next to the executable. Both layouts are checked,
+    // so the same code works in both. The name that is returned first is the
+    // one that exists on disk; when none does, the release layout is
+    // returned, because that is the one the error message should name.
+    std::filesystem::path pluginPath(const std::string& name);
 
 } // namespace vrutti::core::utils

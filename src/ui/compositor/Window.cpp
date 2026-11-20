@@ -214,6 +214,7 @@ namespace {
 #include "../vendor/webview.h"
 #include "../../core/utils/Json.h"
 #include "../../core/utils/Base64.h"
+#include "../../core/utils/Paths.h"
 #include "../../core/config/SettingsManager.h"
 #include "../../core/plugins/PluginLoader.h"
 #include "../../core/plugins/ExtensionScanner.h"
@@ -243,12 +244,15 @@ namespace vrutti::ui {
     bool Window::init() {
         std::cout << "[UI] Initializing Native Webview Window..." << std::endl;
         
-        m_searchPlugin = m_pluginLoader.loadPlugin("build/vrutti_search.dll");
+        m_searchPlugin = m_pluginLoader.loadPlugin(
+            vrutti::core::utils::pluginPath("vrutti_search.dll").string());
         if (m_searchPlugin) {
             m_searchPlugin->initialize();
             std::cout << "[Window] Successfully loaded search plugin dynamically." << std::endl;
         } else {
-            std::cerr << "[Window] Failed to load search plugin from: build/vrutti_search.dll" << std::endl;
+            std::cerr << "[Window] Failed to load search plugin from: "
+                      << vrutti::core::utils::pluginPath("vrutti_search.dll").string()
+                      << std::endl;
         }
         
         // Ensure webview.h compiles by setting up a dummy handle
@@ -453,7 +457,8 @@ namespace vrutti::ui {
 
             vrutti::core::plugins::IPlugin* vsxPlugin = m_pluginLoader.getPlugin("VSXRegistryService");
             if (!vsxPlugin) {
-                vsxPlugin = m_pluginLoader.loadPlugin("build/VSXRegistryService.dll");
+                vsxPlugin = m_pluginLoader.loadPlugin(
+                    vrutti::core::utils::pluginPath("VSXRegistryService.dll").string());
                 if (vsxPlugin) {
                     vsxPlugin->initialize();
                 }
@@ -466,7 +471,8 @@ namespace vrutti::ui {
         });
 
         w->bind("vruttiSetBackgroundMedia", [this](const std::string& req) -> std::string {
-            vrutti::core::plugins::IPlugin* mediaPlugin = m_pluginLoader.loadPlugin("build/MediaController.dll");
+            vrutti::core::plugins::IPlugin* mediaPlugin = m_pluginLoader.loadPlugin(
+                vrutti::core::utils::pluginPath("MediaController.dll").string());
             if (mediaPlugin) {
                 mediaPlugin->initialize();
                 return mediaPlugin->executeCommand("set_background_media", req);
@@ -475,7 +481,8 @@ namespace vrutti::ui {
         });
 
         w->bind("vruttiDocumentOpened", [this](const std::string& req) -> std::string {
-            vrutti::core::plugins::IPlugin* docPlugin = m_pluginLoader.loadPlugin("build/DocumentSyncService.dll");
+            vrutti::core::plugins::IPlugin* docPlugin = m_pluginLoader.loadPlugin(
+                vrutti::core::utils::pluginPath("DocumentSyncService.dll").string());
             if (docPlugin) {
                 docPlugin->initialize();
                 return docPlugin->executeCommand("document_opened", req);
@@ -484,7 +491,8 @@ namespace vrutti::ui {
         });
 
         w->bind("vruttiDocumentClosed", [this](const std::string& req) -> std::string {
-            vrutti::core::plugins::IPlugin* docPlugin = m_pluginLoader.loadPlugin("build/DocumentSyncService.dll");
+            vrutti::core::plugins::IPlugin* docPlugin = m_pluginLoader.loadPlugin(
+                vrutti::core::utils::pluginPath("DocumentSyncService.dll").string());
             if (docPlugin) {
                 docPlugin->initialize();
                 return docPlugin->executeCommand("document_closed", req);
@@ -493,7 +501,8 @@ namespace vrutti::ui {
         });
 
         w->bind("vruttiDocumentEdited", [this](const std::string& req) -> std::string {
-            vrutti::core::plugins::IPlugin* docPlugin = m_pluginLoader.loadPlugin("build/DocumentSyncService.dll");
+            vrutti::core::plugins::IPlugin* docPlugin = m_pluginLoader.loadPlugin(
+                vrutti::core::utils::pluginPath("DocumentSyncService.dll").string());
             if (docPlugin) {
                 docPlugin->initialize();
                 return docPlugin->executeCommand("document_edited", req);
@@ -502,7 +511,8 @@ namespace vrutti::ui {
         });
 
         w->bind("vruttiSelectionChanged", [this](const std::string& req) -> std::string {
-            vrutti::core::plugins::IPlugin* docPlugin = m_pluginLoader.loadPlugin("build/DocumentSyncService.dll");
+            vrutti::core::plugins::IPlugin* docPlugin = m_pluginLoader.loadPlugin(
+                vrutti::core::utils::pluginPath("DocumentSyncService.dll").string());
             if (docPlugin) {
                 docPlugin->initialize();
                 return docPlugin->executeCommand("selection_changed", req);
@@ -511,7 +521,8 @@ namespace vrutti::ui {
         });
 
         w->bind("vruttiGetActiveCommands", [this](const std::string& req) -> std::string {
-            vrutti::core::plugins::IPlugin* cmdPlugin = m_pluginLoader.loadPlugin("build/CommandHandlerService.dll");
+            vrutti::core::plugins::IPlugin* cmdPlugin = m_pluginLoader.loadPlugin(
+                vrutti::core::utils::pluginPath("CommandHandlerService.dll").string());
             if (cmdPlugin) {
                 cmdPlugin->initialize();
                 return cmdPlugin->executeCommand("get_active_commands", req);
@@ -520,7 +531,8 @@ namespace vrutti::ui {
         });
 
         w->bind("vruttiExecuteCommand", [this](const std::string& req) -> std::string {
-            vrutti::core::plugins::IPlugin* cmdPlugin = m_pluginLoader.loadPlugin("build/CommandHandlerService.dll");
+            vrutti::core::plugins::IPlugin* cmdPlugin = m_pluginLoader.loadPlugin(
+                vrutti::core::utils::pluginPath("CommandHandlerService.dll").string());
             if (cmdPlugin) {
                 cmdPlugin->initialize();
                 return cmdPlugin->executeCommand("execute_command", req);
@@ -529,7 +541,8 @@ namespace vrutti::ui {
         });
 
         w->bind("vruttiRequestCompletions", [this](const std::string& req) -> std::string {
-            vrutti::core::plugins::IPlugin* plugin = m_pluginLoader.loadPlugin("build/LanguageFeatureService.dll");
+            vrutti::core::plugins::IPlugin* plugin = m_pluginLoader.loadPlugin(
+                vrutti::core::utils::pluginPath("LanguageFeatureService.dll").string());
             if (plugin) {
                 plugin->initialize();
                 return plugin->executeCommand("request_completions", req);
@@ -538,7 +551,8 @@ namespace vrutti::ui {
         });
 
         w->bind("vruttiRequestHover", [this](const std::string& req) -> std::string {
-            vrutti::core::plugins::IPlugin* plugin = m_pluginLoader.loadPlugin("build/LanguageFeatureService.dll");
+            vrutti::core::plugins::IPlugin* plugin = m_pluginLoader.loadPlugin(
+                vrutti::core::utils::pluginPath("LanguageFeatureService.dll").string());
             if (plugin) {
                 plugin->initialize();
                 return plugin->executeCommand("request_hover", req);
@@ -547,7 +561,8 @@ namespace vrutti::ui {
         });
 
         w->bind("vruttiGetDiagnostics", [this](const std::string& req) -> std::string {
-            vrutti::core::plugins::IPlugin* plugin = m_pluginLoader.loadPlugin("build/DiagnosticService.dll");
+            vrutti::core::plugins::IPlugin* plugin = m_pluginLoader.loadPlugin(
+                vrutti::core::utils::pluginPath("DiagnosticService.dll").string());
             if (plugin) {
                 plugin->initialize();
                 return plugin->executeCommand("get_diagnostics", req);
@@ -556,7 +571,8 @@ namespace vrutti::ui {
         });
 
         w->bind("vrutti_fs_read_dir", [this](const std::string& req) -> std::string {
-            vrutti::core::plugins::IPlugin* plugin = m_pluginLoader.loadPlugin("build/FileSystemService.dll");
+            vrutti::core::plugins::IPlugin* plugin = m_pluginLoader.loadPlugin(
+                vrutti::core::utils::pluginPath("FileSystemService.dll").string());
             if (plugin) {
                 plugin->initialize();
                 return plugin->executeCommand("read_directory", req);
@@ -565,7 +581,8 @@ namespace vrutti::ui {
         });
 
         w->bind("vrutti_fs_read_file", [this](const std::string& req) -> std::string {
-            vrutti::core::plugins::IPlugin* plugin = m_pluginLoader.loadPlugin("build/FileSystemService.dll");
+            vrutti::core::plugins::IPlugin* plugin = m_pluginLoader.loadPlugin(
+                vrutti::core::utils::pluginPath("FileSystemService.dll").string());
             if (plugin) {
                 plugin->initialize();
                 return plugin->executeCommand("read_file", req);
@@ -574,7 +591,8 @@ namespace vrutti::ui {
         });
 
         w->bind("vrutti_debug_start", [this](const std::string& req) -> std::string {
-            vrutti::core::plugins::IPlugin* plugin = m_pluginLoader.loadPlugin("build/DebugAdapterService.dll");
+            vrutti::core::plugins::IPlugin* plugin = m_pluginLoader.loadPlugin(
+                vrutti::core::utils::pluginPath("DebugAdapterService.dll").string());
             if (plugin) {
                 plugin->initialize();
                 return plugin->executeCommand("debug_start", req);
@@ -583,7 +601,8 @@ namespace vrutti::ui {
         });
 
         w->bind("vrutti_debug_set_breakpoints", [this](const std::string& req) -> std::string {
-            vrutti::core::plugins::IPlugin* plugin = m_pluginLoader.loadPlugin("build/DebugAdapterService.dll");
+            vrutti::core::plugins::IPlugin* plugin = m_pluginLoader.loadPlugin(
+                vrutti::core::utils::pluginPath("DebugAdapterService.dll").string());
             if (plugin) {
                 plugin->initialize();
                 return plugin->executeCommand("debug_set_breakpoints", req);
@@ -592,7 +611,8 @@ namespace vrutti::ui {
         });
 
         w->bind("vrutti_debug_action", [this](const std::string& req) -> std::string {
-            vrutti::core::plugins::IPlugin* plugin = m_pluginLoader.loadPlugin("build/DebugAdapterService.dll");
+            vrutti::core::plugins::IPlugin* plugin = m_pluginLoader.loadPlugin(
+                vrutti::core::utils::pluginPath("DebugAdapterService.dll").string());
             if (plugin) {
                 plugin->initialize();
                 return plugin->executeCommand("debug_action", req);
@@ -601,7 +621,8 @@ namespace vrutti::ui {
         });
 
         w->bind("vrutti_terminal_create", [this](const std::string& req) -> std::string {
-            vrutti::core::plugins::IPlugin* plugin = m_pluginLoader.loadPlugin("build/TerminalService.dll");
+            vrutti::core::plugins::IPlugin* plugin = m_pluginLoader.loadPlugin(
+                vrutti::core::utils::pluginPath("TerminalService.dll").string());
             if (plugin) {
                 plugin->initialize();
                 return plugin->executeCommand("terminal_create", req);
@@ -610,7 +631,8 @@ namespace vrutti::ui {
         });
 
         w->bind("vrutti_terminal_write", [this](const std::string& req) -> std::string {
-            vrutti::core::plugins::IPlugin* plugin = m_pluginLoader.loadPlugin("build/TerminalService.dll");
+            vrutti::core::plugins::IPlugin* plugin = m_pluginLoader.loadPlugin(
+                vrutti::core::utils::pluginPath("TerminalService.dll").string());
             if (plugin) {
                 plugin->initialize();
                 return plugin->executeCommand("terminal_write", req);
@@ -619,7 +641,8 @@ namespace vrutti::ui {
         });
 
         w->bind("vrutti_terminal_resize", [this](const std::string& req) -> std::string {
-            vrutti::core::plugins::IPlugin* plugin = m_pluginLoader.loadPlugin("build/TerminalService.dll");
+            vrutti::core::plugins::IPlugin* plugin = m_pluginLoader.loadPlugin(
+                vrutti::core::utils::pluginPath("TerminalService.dll").string());
             if (plugin) {
                 plugin->initialize();
                 return plugin->executeCommand("terminal_resize", req);

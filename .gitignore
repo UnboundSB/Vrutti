@@ -50,3 +50,8 @@ __pycache__/
 /git_show.txt
 /test_output.txt
 /app_log.txt
+
+# The extension host bundle is built by scripts/build_exthost.js
+/src/ext/exthost/extensionHostProcess.mjs
+/src/ext/exthost/extensionHostProcess.mjs.map
+/src/ext/exthost/*.node

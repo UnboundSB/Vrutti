@@ -8,6 +8,7 @@ if (Test-Path $ReleaseDir) { Remove-Item -Recurse -Force $ReleaseDir }
 Write-Host "Creating release structure..."
 New-Item -ItemType Directory -Force -Path "$ReleaseDir" | Out-Null
 New-Item -ItemType Directory -Force -Path "$ReleaseDir\src\ext\bin" | Out-Null
+New-Item -ItemType Directory -Force -Path "$ReleaseDir\src\ext\exthost" | Out-Null
 New-Item -ItemType Directory -Force -Path "$ReleaseDir\src\ext\builtin-themes" | Out-Null
 New-Item -ItemType Directory -Force -Path "$ReleaseDir\src\ui\frontend\dist" | Out-Null
 
@@ -34,6 +35,31 @@ if (Test-Path "src\ext\bin\node.exe") {
 }
 if (Test-Path "src\ext\builtin-themes") {
     Copy-Item "src\ext\builtin-themes\*" "$ReleaseDir\src\ext\builtin-themes\" -Recurse
+}
+
+# The extension host is bundled so that the release does not need a
+# TypeScript loader and no node_modules directory at runtime.
+Write-Host "Building the extension host bundle..."
+$node = "node"
+if (Test-Path "src\ext\bin\node.exe") { $node = "src\ext\bin\node.exe" }
+& $node "scripts\build_exthost.js"
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "ERROR: the extension host bundle could not be built."
+    exit 1
+}
+if (Test-Path "src\ext\exthost\extensionHostProcess.mjs") {
+    Copy-Item "src\ext\exthost\extensionHostProcess.mjs" "$ReleaseDir\src\ext\exthost\"
+    Copy-Item "src\ext\exthost\*.node" "$ReleaseDir\src\ext\exthost\" -ErrorAction SilentlyContinue
+    Write-Host "  Copied: extensionHostProcess.mjs"
+} else {
+    Write-Host "ERROR: src\ext\exthost\extensionHostProcess.mjs not found after the build."
+    exit 1
+}
+
+Write-Host "Copying the license and the third party notices..."
+Copy-Item "LICENSE" "$ReleaseDir\LICENSE"
+if (Test-Path "THIRD_PARTY_NOTICES.md") {
+    Copy-Item "THIRD_PARTY_NOTICES.md" "$ReleaseDir\THIRD_PARTY_NOTICES.md"
 }
 
 Write-Host "Copying UI frontend bundle (src\ui\frontend\dist)..."

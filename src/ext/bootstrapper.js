@@ -83,8 +83,11 @@ function resolveEntryPoint() {
     }
 
     // 2. bundled build shipped alongside this file
-    const bundled = path.resolve(extDir, 'exthost', 'extensionHostProcess.js');
-    if (exists(bundled)) {
+    const bundled = [
+        path.resolve(extDir, 'exthost', 'extensionHostProcess.mjs'),
+        path.resolve(extDir, 'exthost', 'extensionHostProcess.js'),
+    ].find(exists);
+    if (bundled) {
         return { file: bundled, useTsx: false };
     }
 
@@ -130,6 +133,7 @@ if (!entry) {
         'could not locate the extension host entry point'));
     console.error('[Bootstrapper] Searched:');
     console.error(`  - $VRUTTI_EXTHOST_ENTRY (${process.env.VRUTTI_EXTHOST_ENTRY || 'unset'})`);
+    console.error(`  - ${path.resolve(extDir, 'exthost', 'extensionHostProcess.mjs')}`);
     console.error(`  - ${path.resolve(extDir, 'exthost', 'extensionHostProcess.js')}`);
     if (vscodeRoot) {
         console.error(`  - ${path.join(vscodeRoot, 'out', 'vr', 'workbench', 'api', 'node', 'extensionHostProcess.js')}`);

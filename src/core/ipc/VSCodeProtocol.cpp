@@ -1,5 +1,6 @@
 #include "VSCodeProtocol.h"
 #include "../utils/ErrorCodes.h"
+#include "../utils/Paths.h"
 #include "VsCodeProxyIds.generated.h"
 #include <iostream>
 #include <algorithm>
@@ -184,7 +185,8 @@ void VSCodeProtocol::emitToUi(const std::string& method, const std::shared_ptr<J
 
 void VSCodeProtocol::emitThemeList(const std::string& method, bool icons) {
     vrutti::core::plugins::PluginLoader pluginManager;
-    auto plugin = pluginManager.loadPlugin("ThemeService.dll");
+    auto plugin = pluginManager.loadPlugin(
+        vrutti::core::utils::pluginPath("ThemeService.dll").string());
     if (!plugin) return;
 
     std::string list = plugin->executeCommand(icons ? "listIcons" : "list", "");
@@ -249,7 +251,8 @@ void VSCodeProtocol::onExtensionHostReady() {
 
 void VSCodeProtocol::sendInitData() {
     vrutti::core::plugins::PluginLoader pluginManager;
-    auto plugin = pluginManager.loadPlugin("VSCodeExtHostService.dll");
+    auto plugin = pluginManager.loadPlugin(
+        vrutti::core::utils::pluginPath("VSCodeExtHostService.dll").string());
     if (!plugin) {
         vrutti::core::utils::reportError("VSCodeProtocol",
             vrutti::core::utils::ErrorCode::PluginLoadFailed,
@@ -453,7 +456,8 @@ void VSCodeProtocol::handleLocalRequest(const std::string& method,
 
     if (method == "extensions/request_installed") {
         vrutti::core::plugins::PluginLoader pluginManager;
-        auto plugin = pluginManager.loadPlugin("ExtensionManager.dll");
+        auto plugin = pluginManager.loadPlugin(
+            vrutti::core::utils::pluginPath("ExtensionManager.dll").string());
         if (!plugin) return;
         std::string list = plugin->executeCommand("list", "");
         auto parsed = JsonParser::parse(list);

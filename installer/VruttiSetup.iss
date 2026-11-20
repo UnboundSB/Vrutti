@@ -23,6 +23,10 @@ Source: "..\Vrutti_Release\vrutti.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\logos\icon.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\Vrutti_Release\*.dll"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 
+; The license and the notices of the bundled third party code
+Source: "..\Vrutti_Release\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\Vrutti_Release\THIRD_PARTY_NOTICES.md"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
+
 ; The extension host dependencies
 Source: "..\Vrutti_Release\src\ext\*"; DestDir: "{app}\src\ext"; Flags: ignoreversion recursesubdirs createallsubdirs
 
