@@ -2,6 +2,8 @@ const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
+const { ErrorCode, formatError } = require('./errorCodes');
+
 /**
  * Vrutti IDE bootstrapper.
  *
@@ -33,7 +35,8 @@ const fs = require('fs');
 
 const pipeArg = process.argv.find(arg => arg.startsWith('--pipe='));
 if (!pipeArg) {
-    console.error('[Bootstrapper] FATAL: --pipe=<name> argument is missing.');
+    console.error('[Bootstrapper] FATAL: ' + formatError(ErrorCode.CoreInvalidArgument,
+        '--pipe=<name> is missing'));
     process.exit(1);
 }
 const pipeName = pipeArg.split('=').slice(1).join('=');
@@ -123,7 +126,8 @@ function resolveEntryPoint() {
 const entry = resolveEntryPoint();
 
 if (!entry) {
-    console.error('[Bootstrapper] FATAL: could not locate the VS Code Extension Host.');
+    console.error('[Bootstrapper] FATAL: ' + formatError(ErrorCode.IpcHostSpawnFailed,
+        'could not locate the extension host entry point'));
     console.error('[Bootstrapper] Searched:');
     console.error(`  - $VRUTTI_EXTHOST_ENTRY (${process.env.VRUTTI_EXTHOST_ENTRY || 'unset'})`);
     console.error(`  - ${path.resolve(extDir, 'exthost', 'extensionHostProcess.js')}`);
@@ -131,7 +135,7 @@ if (!entry) {
         console.error(`  - ${path.join(vscodeRoot, 'out', 'vr', 'workbench', 'api', 'node', 'extensionHostProcess.js')}`);
         console.error(`  - ${path.join(vscodeRoot, 'src', 'vr', 'workbench', 'api', 'node', 'extensionHostProcess.ts')} (via tsx)`);
     } else {
-        console.error(`  - VS Code root was not found (checked ${vscodeRootCandidates.join(', ')})`);
+        console.error(`  - the upstream source root was not found (checked ${vscodeRootCandidates.join(', ')})`);
     }
     console.error('[Bootstrapper] The extension host is unavailable; extensions will not load.');
     process.exit(1);
@@ -200,13 +204,17 @@ child.on('message', (msg) => {
 });
 
 child.on('error', (err) => {
-    console.error(`[Bootstrapper] FATAL: failed to spawn the extension host: ${err.message}`);
+    console.error('[Bootstrapper] FATAL: ' + formatError(ErrorCode.IpcHostSpawnFailed, err.message));
     process.exit(1);
 });
 
 child.on('exit', (code, signal) => {
     if (signal) {
-        console.error(`[Bootstrapper] Extension Host terminated by signal ${signal}.`);
+        console.error('[Bootstrapper] ' + formatError(ErrorCode.IpcHostCrashed,
+            `the extension host was terminated by signal ${signal}`));
+    } else if (code !== 0 && code !== null) {
+        console.error('[Bootstrapper] ' + formatError(ErrorCode.IpcHostCrashed,
+            `the extension host exited with code ${code}`));
     } else {
         console.log(`[Bootstrapper] Extension Host exited with code ${code}.`);
     }

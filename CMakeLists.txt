@@ -37,6 +37,7 @@ add_library(vrutti_core STATIC
     src/core/fs/Workspace.cpp
     src/core/utils/Json.cpp
     src/core/utils/Paths.cpp
+    src/core/utils/ErrorCodes.cpp
     src/core/utils/StringPool.cpp
     src/core/utils/LineScanner.cpp
     src/core/ipc/IPCClient.cpp

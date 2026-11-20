@@ -1,4 +1,5 @@
 #include "IPCClient.h"
+#include "../utils/ErrorCodes.h"
 #include <iostream>
 #include <thread>
 #include <algorithm>
@@ -15,6 +16,7 @@
 #endif
 
 using namespace vrutti::core::utils;
+using vrutti::core::utils::ErrorCode;
 
 namespace vrutti::core::ipc {
 
@@ -70,7 +72,13 @@ void IPCClient::start() {
 
     std::thread([this]() {
         try { this->listenLoop(); }
-        catch (...) { std::cerr << "[IPC] Fatal error in listen loop!\n"; }
+        catch (const std::exception& e) {
+            reportError("IPC", ErrorCode::IpcConnectionFailed,
+                        std::string("the listen loop stopped: ") + e.what());
+        }
+        catch (...) {
+            reportError("IPC", ErrorCode::IpcConnectionFailed, "the listen loop stopped unexpectedly");
+        }
     }).detach();
 
     std::cout << "[IPC] Bound to pipe/socket: " << m_pipeName << "\n";
@@ -117,7 +125,8 @@ void IPCClient::sendRaw(const std::string& payload) {
                 if (GetLastError() == ERROR_IO_PENDING) {
                     GetOverlappedResult(static_cast<HANDLE>(m_connectionHandle), &ol, &bytesWritten, TRUE);
                 } else {
-                    std::cerr << "[IPC] WriteFile failed. Error: " << GetLastError() << "\n";
+                    reportError("IPC", ErrorCode::IpcWriteFailed,
+                                "WriteFile failed, error " + std::to_string(GetLastError()));
                 }
             }
             CloseHandle(ol.hEvent);
@@ -374,7 +383,7 @@ void IPCClient::handleIncomingMessage(const std::string& jsonMessage) {
             m_onEvent(type, paramsNode ? paramsNode : nullNode());
         }
     } catch (const std::exception& e) {
-        std::cerr << "[IPC] Failed to parse message: " << e.what() << "\n";
+        reportError("IPC", ErrorCode::IpcFrameDecodeFailed, e.what());
     }
 }
 
@@ -389,7 +398,9 @@ void IPCClient::listenLoop() {
             1, 4096, 4096, 0, NULL);
 
         if (hPipe == INVALID_HANDLE_VALUE) {
-            std::cerr << "[IPC] Failed to create named pipe. Error: " << GetLastError() << "\n";
+            reportError("IPC", ErrorCode::IpcPipeCreateFailed,
+                        "CreateNamedPipe failed for " + pipePath +
+                        ", error " + std::to_string(GetLastError()));
             return;
         }
 

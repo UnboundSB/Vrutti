@@ -1,4 +1,5 @@
 #include "VSCodeProtocol.h"
+#include "../utils/ErrorCodes.h"
 #include "VsCodeProxyIds.generated.h"
 #include <iostream>
 #include <algorithm>
@@ -208,7 +209,9 @@ int VSCodeProtocol::sendRequest(const char* shapeName,
                                 std::function<void(const std::string&)> onReject) {
     int id = proxy::shapeId(shapeName);
     if (id < 0) {
-        std::cerr << "[VSCodeProtocol] Unknown extension host shape: " << shapeName << "\n";
+        vrutti::core::utils::reportError("VSCodeProtocol",
+            vrutti::core::utils::ErrorCode::IpcUnknownShape,
+            std::string("unknown extension host shape: ") + shapeName);
         if (onReject) onReject(std::string("Unknown extension host shape: ") + shapeName);
         return -1;
     }
@@ -248,14 +251,17 @@ void VSCodeProtocol::sendInitData() {
     vrutti::core::plugins::PluginLoader pluginManager;
     auto plugin = pluginManager.loadPlugin("VSCodeExtHostService.dll");
     if (!plugin) {
-        std::cerr << "[VSCodeProtocol] Could not load VSCodeExtHostService.dll -- "
-                     "the extension host will not initialise\n";
+        vrutti::core::utils::reportError("VSCodeProtocol",
+            vrutti::core::utils::ErrorCode::PluginLoadFailed,
+            "VSCodeExtHostService.dll -- the extension host will not initialise");
         return;
     }
 
     std::string payload = plugin->executeCommand("getInitData", m_workspaceFolder);
     if (payload.empty() || payload == "{}") {
-        std::cerr << "[VSCodeProtocol] Extension host init data was empty\n";
+        vrutti::core::utils::reportError("VSCodeProtocol",
+            vrutti::core::utils::ErrorCode::IpcHandshakeFailed,
+            "the extension host init data was empty");
         return;
     }
 
@@ -263,7 +269,9 @@ void VSCodeProtocol::sendInitData() {
     // string containing JSON (that was the original bug).
     auto initData = JsonParser::parse(payload);
     if (!initData || initData->type != JsonNode::Type::Object) {
-        std::cerr << "[VSCodeProtocol] Extension host init data was not a JSON object\n";
+        vrutti::core::utils::reportError("VSCodeProtocol",
+            vrutti::core::utils::ErrorCode::JsonRootNotObject,
+            "the extension host init data is not a JSON object");
         return;
     }
 
@@ -373,7 +381,9 @@ void VSCodeProtocol::handleRequest(const IPCClient::RpcRequest& req) {
     auto it = m_handlers.find(key);
     if (it == m_handlers.end()) {
         // Answer anyway. An unanswered request wedges the calling extension.
-        std::cerr << "[VSCodeProtocol] Unhandled extension host call: " << key << "\n";
+        vrutti::core::utils::reportError("VSCodeProtocol",
+            vrutti::core::utils::ErrorCode::IpcHandlerMissing,
+            "no handler for " + key);
         m_ipc->sendReplyError(req.reqId,
             "Vrutti does not implement " + key +
             (shape ? std::string(" (shape '") + shape + "')" : std::string()));

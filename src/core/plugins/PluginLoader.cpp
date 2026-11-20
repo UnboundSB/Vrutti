@@ -1,4 +1,5 @@
 #include "PluginLoader.h"
+#include "../utils/ErrorCodes.h"
 #include <iostream>
 #include <mutex>
 
@@ -38,7 +39,9 @@ namespace vrutti::core::plugins {
 #endif
 
         if (!handle) {
-            std::cerr << "[PluginLoader] Failed to load DLL: " << path << std::endl;
+            vrutti::core::utils::reportError("PluginLoader",
+                vrutti::core::utils::ErrorCode::PluginLoadFailed,
+                "could not load " + path);
             return nullptr;
         }
 
@@ -54,7 +57,9 @@ namespace vrutti::core::plugins {
 #endif
 
         if (!createFunc || !destroyFunc) {
-            std::cerr << "[PluginLoader] Failed to find entry points in DLL: " << path << std::endl;
+            vrutti::core::utils::reportError("PluginLoader",
+                vrutti::core::utils::ErrorCode::PluginLoadFailed,
+                "no entry points in " + path);
 #ifdef _WIN32
             FreeLibrary(static_cast<HMODULE>(handle));
 #else
@@ -65,7 +70,9 @@ namespace vrutti::core::plugins {
 
         IPlugin* plugin = createFunc();
         if (!plugin) {
-            std::cerr << "[PluginLoader] CreatePlugin returned null for: " << path << std::endl;
+            vrutti::core::utils::reportError("PluginLoader",
+                vrutti::core::utils::ErrorCode::PluginLoadFailed,
+                "createPlugin returned null for " + path);
 #ifdef _WIN32
             FreeLibrary(static_cast<HMODULE>(handle));
 #else

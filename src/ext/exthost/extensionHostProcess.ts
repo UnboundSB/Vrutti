@@ -35,6 +35,8 @@
 
 import * as net from 'net';
 
+import { ErrorCode, formatError } from '../errorCodes';
+
 import { VSBuffer } from '../../../../src/vr/base/common/buffer.js';
 import { isCancellationError, isSigPipeError, onUnexpectedError } from '../../../../src/vr/base/common/errors.js';
 import type { IURITransformer } from '../../../../src/vr/base/common/uriIpc.js';
@@ -212,14 +214,14 @@ class VruttiJSONBridge implements IMessagePassingProtocol {
 		try {
 			frame = JSON.parse(line) as BridgeFrame;
 		} catch (err) {
-			log(`failed to parse incoming frame: ${err}`);
+			log(formatError(ErrorCode.IpcFrameDecodeFailed, `incoming frame: ${err}`));
 			return;
 		}
 
 		try {
 			this._handleFrame(frame);
 		} catch (err) {
-			log(`failed to handle '${frame.type}' frame: ${err}`);
+			log(formatError(ErrorCode.IpcProtocolMismatch, `'${frame.type}' frame: ${err}`));
 		}
 	}
 
@@ -228,7 +230,8 @@ class VruttiJSONBridge implements IMessagePassingProtocol {
 			case 'init': {
 				const data = frame.data as IExtensionHostInitData;
 				if (!data || typeof data !== 'object') {
-					this._rejectInit(new Error('init frame carries no data object'));
+					this._rejectInit(new Error(formatError(ErrorCode.IpcHandshakeFailed,
+						'the init frame carries no data object')));
 					return;
 				}
 				this._resolveInit(data);
@@ -414,7 +417,7 @@ class VruttiJSONBridge implements IMessagePassingProtocol {
 		try {
 			this._socket.write(JSON.stringify(frame) + '\n');
 		} catch (err) {
-			log(`failed to write frame: ${err}`);
+			log(formatError(ErrorCode.IpcWriteFailed, `frame: ${err}`));
 		}
 	}
 }
@@ -437,10 +440,16 @@ async function run(): Promise<void> {
 
 	const pipeName = process.env.VSCODE_EXTHOST_IPC_HOOK;
 	if (!pipeName) {
-		throw new Error('VSCODE_EXTHOST_IPC_HOOK is not set; the extension host cannot connect to the renderer.');
+		throw new Error(formatError(ErrorCode.IpcHostNotReady,
+			'VSCODE_EXTHOST_IPC_HOOK is not set; the extension host cannot connect to the renderer.'));
 	}
 
-	const socket = await connect(pipeName);
+	let socket: net.Socket;
+	try {
+		socket = await connect(pipeName);
+	} catch (err) {
+		throw new Error(formatError(ErrorCode.IpcConnectionFailed, `pipe ${pipeName}: ${err}`));
+	}
 	const bridge = new VruttiJSONBridge(socket);
 
 	// Let the launcher know the transport is up.
@@ -498,6 +507,6 @@ process.on('uncaughtException', (err: Error) => {
 });
 
 run().catch((err: unknown) => {
-	log(`fatal: ${err instanceof Error ? err.stack : String(err)}`);
+	log(formatError(ErrorCode.IpcHostCrashed, err instanceof Error ? (err.stack ?? err.message) : String(err)));
 	nativeExit(1);
 });
