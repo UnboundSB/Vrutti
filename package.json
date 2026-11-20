@@ -14,7 +14,11 @@
     "build:exthost": "node scripts/build_exthost.js",
     "build:structure": "python scripts/generate_structure_docs.py",
     "check:structure": "python scripts/generate_structure_docs.py --check",
-    "check:errors": "python scripts/generate_error_codes.py --check"
+    "check:errors": "python scripts/generate_error_codes.py --check",
+    "check:proxyids": "python scripts/generate_proxy_ids.py --check",
+    "check:fallbacks": "python scripts/generate_exthost_fallbacks.py --check",
+    "audit:exthost": "python scripts/audit_exthost_handlers.py",
+    "test:exthost": "node scripts/test_exthost_activation.js"
   },
   "dependencies": {
     "adm-zip": "^0.6.1",

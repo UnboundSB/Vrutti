@@ -2,6 +2,7 @@
 #include <string>
 #include <functional>
 #include <memory>
+#include <set>
 #include <unordered_map>
 #include <vector>
 #include "IPCClient.h"
@@ -37,6 +38,11 @@ public:
 
     // Dispatches one inbound RPC request and sends the corresponding reply.
     void handleRequest(const IPCClient::RpcRequest& req);
+
+    // True when Vrutti has a handler for the call. A call without a handler is
+    // answered with the benign default of its return type, so this tells a
+    // caller whether the answer is the real value or the default.
+    bool hasHandler(const std::string& shape, const std::string& method) const;
 
     // Handles a request issued by the webview (app-level, not extension host RPC).
     void handleLocalRequest(const std::string& method,
@@ -86,6 +92,11 @@ private:
 
     IPCClient* m_ipc;
     std::unordered_map<std::string, Handler> m_handlers;
+
+    // The calls that were answered with the default because Vrutti has no
+    // implementation for them. Each one is reported only once, so the log
+    // shows the gap without repeating it on every call.
+    std::set<std::string> m_reportedGaps;
 
     // Commands registered by extensions through MainThreadCommands.$registerCommand.
     std::vector<std::string> m_registeredCommands;

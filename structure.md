@@ -34,6 +34,7 @@ Root of the Vrutti IDE workspace: build configuration, scripts and documentation
 - **test_install.ps1**: PowerShell script: test install.
 - **test_scanner.cpp**: Implementation of the test scanner component.
 - **test_scanner.exe**: Executable: test scanner.
+- **THIRD_PARTY_NOTICES.md**: Documentation for THIRD PARTY NOTICES.
 - **TODO.md**: Open questions and planned work for this folder.
 - **tsconfig.exthost.json**: Package data for tsconfig exthost.
 - **update_structures.js**: JavaScript module: update structures.

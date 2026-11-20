@@ -1,0 +1,134 @@
+# Backend hardening plan
+
+The backend is the native core, the IPC layer and the extension host
+contract. This is the order in which it is made airtight, and why.
+
+The rule that drives everything: **an extension that works in the reference
+editor must work in Vrutti**. That means the extension host must never be
+surprised by the renderer.
+
+---
+
+## P0 -- The extension host contract
+
+### P0.1 Never answer a missing feature with an error
+
+The extension host turns an error reply into a rejected promise. Most of
+those calls are not awaited, so the rejection becomes an unhandled rejection,
+which the host reports as an extension error. An extension that uses a
+feature Vrutti does not have would look broken instead of limited.
+
+So a call without an implementation is answered with the benign default of
+its declared return type:
+
+| Return type | Answer |
+| ----------- | ------ |
+| `void`, `Promise<void>` | `null` |
+| `Promise<string>` | `""` |
+| `Promise<number>` | `0` |
+| `Promise<boolean>` | `false` |
+| `Promise<Some[]>` | `[]` |
+| `Promise<Some \| undefined>` | `null` |
+
+The table is generated from the upstream protocol definition by
+`scripts/generate_exthost_fallbacks.py`, so it cannot drift from the
+signatures it was derived from.
+
+An error reply is still correct when a handler exists and the operation
+genuinely failed, and when the peer broke the protocol.
+
+### P0.2 Know the gap
+
+`scripts/audit_exthost_handlers.py` compares the upstream protocol with the
+handlers Vrutti registers and prints what is missing, grouped by shape. The
+current state:
+
+```
+upstream shapes:   87
+upstream methods:  516
+handled:            75
+missing:           441
+```
+
+A missing call is a missing feature, not a failure -- but it is a gap, and
+the gap is the backlog.
+
+### P0.3 Implement the shapes an ordinary extension touches
+
+Priority order, by how likely an extension is to use them:
+
+| # | Shape | Why |
+| - | ----- | --- |
+| 1 | `MainThreadDocuments` | Opening, editing and saving the documents an extension works on. Without it no extension can do anything with a file. |
+| 2 | `MainThreadFileSystem` | Reading and writing files. |
+| 3 | `MainThreadEditor` | The visible state of an editor: selections, visible ranges. |
+| 4 | `MainThreadLanguages` | Diagnostics, tokenization, the language of a document. |
+| 5 | `MainThreadLanguageFeatures` | The completion, hover and signature providers an extension registers. |
+| 6 | `MainThreadTerminal` | Terminal creation and shell integration. |
+| 7 | `MainThreadTask` | Task providers and execution. |
+| 8 | `MainThreadQuickInput` | Input boxes and pickers. |
+| 9 | `MainThreadNotification`, `MainThreadMessageService` | Progress and messages. |
+| 10 | `MainThreadDebugService` | Debug adapters. |
+| 11 | `MainThreadSearch` | File and text search providers. |
+| 12 | `MainThreadWebview` | Webview panels and views. |
+| 13 | `MainThreadConsole` | The output channel of an extension. |
+
+The shapes that belong to features Vrutti does not have -- chat, agents,
+embeddings, browsers, authentication, notebooks -- stay on the fallback
+answer. That is a deliberate, documented decision, not an oversight.
+
+---
+
+## P1 -- Nothing may hang
+
+* Every request that the core sends to the extension host gets a timeout.
+  A promise that never settles is a memory leak and a wedged extension.
+* The reply to a request that was cancelled is dropped, not delivered.
+* The terminal shuts down without a deadlock.
+* The settings writer does not block the caller.
+
+---
+
+## P2 -- Nothing may crash
+
+* The JSON parser is fuzzed with random and truncated input.
+* The IPC frame decoder rejects a frame that claims a length it does not
+  have, and a frame that is larger than the limit.
+* A malformed frame never takes the core down: the frame is dropped, the
+  error code is logged, the connection continues.
+* Every handler is wrapped so that an exception becomes an error reply
+  instead of a crash.
+
+---
+
+## P3 -- Nothing may leak
+
+* The pending request table of the IPC client is bounded and is emptied when
+  a request is cancelled, times out or the peer dies.
+* Plugins are unloaded when they are not used any more, so their libraries
+  do not stay locked in the process.
+* The buffers of the editor are released when a document is closed.
+
+---
+
+## P4 -- Nothing may be reached that should not be
+
+* The named pipe is restricted to the user that owns the session.
+* The webview bridge validates every message before it reaches the core.
+* The paths that come from an extension are resolved inside the workspace
+  before they are used.
+
+---
+
+## How it is verified
+
+| Check | Command |
+| ----- | ------- |
+| The extension contract has no unhandled failure | `python scripts/audit_exthost_handlers.py` |
+| The fallback table matches the upstream signatures | `python scripts/generate_exthost_fallbacks.py --check` |
+| The proxy ids match the upstream tree | `python scripts/generate_proxy_ids.py --check` |
+| The error code registry is in sync | `python scripts/generate_error_codes.py --check` |
+| Every folder is documented | `python scripts/generate_structure_docs.py --check` |
+| The extension host activates | `node scripts/test_exthost_activation.js` |
+| The JSON layer is correct | `build/test_json.exe` |
+| The theme service is correct | `build/vrutti_theme_test.exe` |

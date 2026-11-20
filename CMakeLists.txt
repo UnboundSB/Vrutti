@@ -112,6 +112,14 @@ target_link_libraries(vrutti_theme_test PRIVATE vrutti_core)
 add_dependencies(vrutti_theme_test ThemeService)
 add_test(NAME ThemeServiceTest COMMAND vrutti_theme_test)
 
+# The contract of the extension host router: a call without an implementation
+# must be answered with the benign default of its return type, never with an
+# error. The extension host turns an error into an unhandled rejection and
+# marks the extension as broken.
+add_executable(vrutti_protocol_fallback_test src/tests/integration/ProtocolFallbackTest.cpp)
+target_link_libraries(vrutti_protocol_fallback_test PRIVATE vrutti_core)
+add_test(NAME ProtocolFallbackTest COMMAND vrutti_protocol_fallback_test)
+
 
 
 

@@ -33,6 +33,7 @@ Shared helpers: the JSON parser and serializer, path resolution, string pools an
 - **std::vector<size_t> LineScanner::computeLineStarts(std::string_view)**
 - **std::filesystem::path appBasePath()**
 - **std::filesystem::path appResourcePath(const std::string&)**
+- **std::filesystem::path pluginPath(const std::string&)**
 - **StringPool::StringPool()**
 - **StringPool::~StringPool()**
 - **std::string_view StringPool::intern(std::string_view)**

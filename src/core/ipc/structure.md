@@ -9,6 +9,7 @@ Inter-process communication: the pipe transport and the protocol that connects t
 - **TODO.md**: Open questions and planned work for this folder.
 - **VSCodeProtocol.cpp**: Implementation of the VSCodeProtocol component.
 - **VSCodeProtocol.h**: Header for the VSCodeProtocol component.
+- **VsCodeProxyFallbacks.generated.h**: Header for the VsCodeProxyFallbacks generated component.
 - **VsCodeProxyIds.generated.h**: Header for the VsCodeProxyIds generated component.
 
 ## Public Methods
@@ -38,6 +39,7 @@ Inter-process communication: the pipe transport and the protocol that connects t
 - **VSCodeProtocol::~VSCodeProtocol()**
 - **VSCodeProtocol::initialize()**
 - **VSCodeProtocol::handleRequest(const IPCClient::RpcRequest&)**
+- **bool VSCodeProtocol::hasHandler(const std::string&, const std::string&)**
 - **VSCodeProtocol::handleLocalRequest(const std::string&, const std::shared_ptr<JsonNode>&)**
 - **int VSCodeProtocol::sendRequest(int, const std::string&, const std::shared_ptr<JsonNode>&, std::function<void(const std::shared_ptr<JsonNode>&)>, std::function<void(const std::string&)>)**
 - **int VSCodeProtocol::sendRequest(const char*, const std::string&, const std::shared_ptr<JsonNode>&, std::function<void(const std::shared_ptr<JsonNode>&)>, std::function<void(const std::string&)>)**

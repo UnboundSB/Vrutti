@@ -2,11 +2,13 @@
 #include "../utils/ErrorCodes.h"
 #include "../utils/Paths.h"
 #include "VsCodeProxyIds.generated.h"
+#include "VsCodeProxyFallbacks.generated.h"
 #include <iostream>
 #include <algorithm>
 #include <filesystem>
 #include <cctype>
 #include <sstream>
+#include <set>
 #include "core/utils/Json.h"
 #include "core/plugins/PluginLoader.h"
 
@@ -69,6 +71,33 @@ namespace {
 
     std::shared_ptr<JsonNode> makeArray() {
         return std::make_shared<JsonNode>(JsonNode::Type::Array);
+    }
+
+    // --- the benign answer for a call without an implementation ---------------
+
+    // The fallback table is sorted by key, so it can be searched.
+    const vrutti::core::ipc::FallbackEntry* findFallback(const std::string& key) {
+        int low = 0;
+        int high = vrutti::core::ipc::FALLBACK_COUNT - 1;
+        while (low <= high) {
+            int middle = (low + high) / 2;
+            int order = key.compare(vrutti::core::ipc::FALLBACKS[middle].key);
+            if (order == 0) return &vrutti::core::ipc::FALLBACKS[middle];
+            if (order < 0) high = middle - 1;
+            else low = middle + 1;
+        }
+        return nullptr;
+    }
+
+    std::shared_ptr<JsonNode> fallbackValue(vrutti::core::ipc::FallbackKind kind) {
+        switch (kind) {
+            case vrutti::core::ipc::FallbackKind::EmptyString: return makeString("");
+            case vrutti::core::ipc::FallbackKind::Zero:       return makeNumber(0);
+            case vrutti::core::ipc::FallbackKind::False:      return makeBool(false);
+            case vrutti::core::ipc::FallbackKind::EmptyArray: return makeArray();
+            case vrutti::core::ipc::FallbackKind::Null:
+            default:                                          return makeNull();
+        }
     }
 
     void setProp(const std::shared_ptr<JsonNode>& obj, const std::string& key,
@@ -369,6 +398,10 @@ void VSCodeProtocol::sendStartupActivation() {
 // Inbound dispatch
 // -----------------------------------------------------------------------------
 
+bool VSCodeProtocol::hasHandler(const std::string& shape, const std::string& method) const {
+    return m_handlers.find(shape + "." + method) != m_handlers.end();
+}
+
 void VSCodeProtocol::handleRequest(const IPCClient::RpcRequest& req) {
     const char* shape = proxy::shapeName(req.proxyId);
     std::string key;
@@ -383,13 +416,24 @@ void VSCodeProtocol::handleRequest(const IPCClient::RpcRequest& req) {
 
     auto it = m_handlers.find(key);
     if (it == m_handlers.end()) {
-        // Answer anyway. An unanswered request wedges the calling extension.
-        vrutti::core::utils::reportError("VSCodeProtocol",
-            vrutti::core::utils::ErrorCode::IpcHandlerMissing,
-            "no handler for " + key);
-        m_ipc->sendReplyError(req.reqId,
-            "Vrutti does not implement " + key +
-            (shape ? std::string(" (shape '") + shape + "')" : std::string()));
+        // The feature is not implemented. The extension host turns an error
+        // reply into a rejected promise, and most of these calls are not
+        // awaited, so the rejection becomes an unhandled rejection and the
+        // extension looks broken instead of limited.
+        //
+        // So the call is answered with the benign default of its return type.
+        // The gap is still reported, but only once per call, so the log
+        // shows what is missing without drowning in it.
+        const bool firstTime = m_reportedGaps.insert(key).second;
+        if (firstTime) {
+            vrutti::core::utils::reportError("VSCodeProtocol",
+                vrutti::core::utils::ErrorCode::IpcHandlerMissing,
+                "no handler for " + key + " -- answered with the default");
+        }
+
+        const auto* fallback = findFallback(key);
+        m_ipc->sendReply(req.reqId,
+            fallback ? fallbackValue(fallback->kind) : makeNull());
         return;
     }
 
