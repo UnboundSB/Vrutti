@@ -78,8 +78,18 @@ function findTsx() {
 
 function resolveEntryPoint() {
     // 1. explicit override
-    if (process.env.VRUTTI_EXTHOST_ENTRY && exists(process.env.VRUTTI_EXTHOST_ENTRY)) {
-        return { file: process.env.VRUTTI_EXTHOST_ENTRY, useTsx: false };
+    //
+    // The override is resolved against the directory of this file, never
+    // against the working directory: the child process is started with the
+    // upstream source tree as its working directory, so a relative path
+    // would point somewhere else entirely.
+    if (process.env.VRUTTI_EXTHOST_ENTRY) {
+        const override = path.isAbsolute(process.env.VRUTTI_EXTHOST_ENTRY)
+            ? process.env.VRUTTI_EXTHOST_ENTRY
+            : path.resolve(extDir, process.env.VRUTTI_EXTHOST_ENTRY);
+        if (exists(override)) {
+            return { file: override, useTsx: false };
+        }
     }
 
     // 2. bundled build shipped alongside this file
