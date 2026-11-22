@@ -1,0 +1,153 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720" font-family="'Segoe UI', Ubuntu, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif">
+  <title>Vrutti IDE</title>
+  <desc>The Vrutti workbench: activity bar, explorer, editor with tabs, terminal panel and status bar.</desc>
+
+  <defs>
+    <linearGradient id="brand" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0%" stop-color="#3b4261"/>
+      <stop offset="45%" stop-color="#7aa2f7"/>
+      <stop offset="100%" stop-color="#f7768e"/>
+    </linearGradient>
+    <clipPath id="codeClip"><rect x="296" y="96" width="960" height="380"/></clipPath>
+  </defs>
+
+  <!-- window -->
+  <rect width="1280" height="720" rx="12" fill="#16161e"/>
+  <rect x="0.75" y="0.75" width="1278.5" height="718.5" rx="11.25" fill="none" stroke="#292e42" stroke-width="1.5"/>
+
+  <!-- title bar -->
+  <rect x="1" y="1" width="1278" height="36" rx="11" fill="#1a1b26"/>
+  <rect x="1" y="24" width="1278" height="13" fill="#1a1b26"/>
+  <circle cx="26" cy="19" r="5.5" fill="#f7768e"/>
+  <circle cx="44" cy="19" r="5.5" fill="#e0af68"/>
+  <circle cx="62" cy="19" r="5.5" fill="#9ece6a"/>
+  <rect x="600" y="8" width="80" height="22" rx="6" fill="#16161e" stroke="#292e42" stroke-width="1"/>
+  <text x="640" y="23" fill="#a9b1d6" font-size="12" text-anchor="middle" font-family="Consolas, monospace">vrutti</text>
+  <g font-size="12.5" fill="#a9b1d6">
+    <text x="700" y="23">Vrutti — src/core/ipc/VSCodeProtocol.cpp</text>
+  </g>
+
+  <!-- menu bar -->
+  <rect x="1" y="37" width="1278" height="26" fill="#1a1b26"/>
+  <g font-size="12.5" fill="#a9b1d6">
+    <text x="22" y="55">File</text><text x="58" y="55">Edit</text><text x="98" y="55">Selection</text><text x="158" y="55">View</text><text x="206" y="55">Run</text><text x="244" y="55">Terminal</text><text x="310" y="55">Help</text>
+  </g>
+  <line x1="1" y1="63" x2="1279" y2="63" stroke="#292e42" stroke-width="1"/>
+
+  <!-- activity bar -->
+  <rect x="1" y="64" width="50" height="606" fill="#1a1b26"/>
+  <line x1="51" y1="64" x2="51" y2="670" stroke="#292e42" stroke-width="1"/>
+  <g stroke="#565f89" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <!-- explorer: two files -->
+    <path d="M14 88 h11 l4 4 h13 v18 h-28 z"/><path d="M14 88 v-4 h9 l4 4"/>
+    <!-- search -->
+    <circle cx="26" cy="140" r="8"/><path d="M32 146 l6 6"/>
+    <!-- git -->
+    <circle cx="18" cy="188" r="3.2"/><circle cx="34" cy="200" r="3.2"/><circle cx="18" cy="212" r="3.2"/><path d="M18 191 v18 M18 200 h13"/>
+    <!-- extensions: puzzle -->
+    <path d="M19 236 h6 v-3 a3 3 0 0 1 6 0 v3 h6 v6 h3 a3 3 0 0 1 0 6 h-3 v6 h-8 v-3 a3 3 0 0 0-6 0 v3 h-4 v-8 h-3 a3 3 0 0 1 0-6 h3 z"/>
+    <!-- debug -->
+    <path d="M20 300 l6-8 6 8 -6 8 z"/><path d="M26 292 v-8"/>
+  </g>
+  <!-- active indicator -->
+  <rect x="1" y="76" width="3" height="34" rx="1.5" fill="url(#brand)"/>
+  <!-- settings gear -->
+  <g stroke="#565f89" stroke-width="1.7" fill="none" stroke-linecap="round">
+    <circle cx="26" cy="636" r="8"/>
+    <path d="M26 622 v5 M26 645 v5 M12 636 h5 M35 636 h5 M16 626 l4 4 M32 642 l4 4 M36 626 l-4 4 M20 642 l-4 4"/>
+  </g>
+
+  <!-- sidebar -->
+  <rect x="52" y="64" width="212" height="606" fill="#1a1b26"/>
+  <line x1="264" y1="64" x2="264" y2="670" stroke="#292e42" stroke-width="1"/>
+  <text x="68" y="88" fill="#a9b1d6" font-size="11" font-weight="700" letter-spacing="1.1">EXPLORER</text>
+  <text x="228" y="88" fill="#565f89" font-size="13">···</text>
+  <g font-size="12.5" fill="#c0caf5">
+    <text x="68" y="114" font-weight="700">VRUTTI-IDE</text>
+    <text x="82" y="136">▾ src</text>
+    <text x="96" y="158">▾ core</text>
+    <text x="110" y="180">▾ ipc</text>
+    <text x="124" y="202" fill="#7aa2f7">VSCodeProtocol.cpp</text>
+    <text x="124" y="224">IPCClient.cpp</text>
+    <text x="110" y="246">▸ fs</text>
+    <text x="110" y="268">▸ utils</text>
+    <text x="96" y="290">▸ ext</text>
+    <text x="82" y="312">▸ ui</text>
+    <text x="68" y="334">▸ tests</text>
+    <text x="68" y="356">▸ package.json</text>
+    <text x="68" y="378">▸ README.md</text>
+  </g>
+  <g fill="#7aa2f7"><circle cx="72" cy="202" r="3.2"/></g>
+  <g fill="#e0af68"><circle cx="72" cy="224" r="3.2"/></g>
+
+  <!-- tabs -->
+  <rect x="265" y="64" width="1014" height="32" fill="#16161e"/>
+  <rect x="265" y="64" width="152" height="32" fill="#1a1b26"/>
+  <rect x="265" y="64" width="152" height="2" fill="url(#brand)"/>
+  <g font-size="12.5" fill="#c0caf5">
+    <text x="280" y="85">VSCodeProtocol.cpp</text>
+    <text x="436" y="85" fill="#7e88b3">FileService.cpp</text>
+    <text x="562" y="85" fill="#7e88b3">extensionHostProcess.ts</text>
+  </g>
+  <text x="410" y="85" fill="#565f89" font-size="13">×</text>
+  <line x1="417" y1="64" x2="417" y2="96" stroke="#292e42" stroke-width="1"/>
+  <line x1="265" y1="96" x2="1279" y2="96" stroke="#292e42" stroke-width="1"/>
+
+  <!-- editor -->
+  <rect x="265" y="97" width="1014" height="379" fill="#1a1b26"/>
+  <rect x="265" y="97" width="31" height="379" fill="#1a1b26"/>
+  <g font-size="12" fill="#4b537d" text-anchor="end" font-family="Consolas, monospace">
+    <text x="284" y="132">1</text><text x="284" y="150">2</text><text x="284" y="186">3</text><text x="284" y="204">4</text><text x="284" y="222">5</text><text x="284" y="258">6</text><text x="284" y="276">7</text><text x="284" y="294">8</text><text x="284" y="330">9</text><text x="284" y="348">10</text><text x="284" y="366">11</text><text x="284" y="384">12</text>
+  </g>
+  <!-- active line -->
+  <rect x="296" y="260" width="983" height="18" fill="#202233"/>
+  <rect x="296" y="260" width="983" height="18" fill="#7aa2f7" opacity="0.05"/>
+
+  <g clip-path="url(#codeClip)" font-family="Consolas, 'JetBrains Mono', monospace" font-size="12.5">
+    <text x="300" y="132" fill="#565f89">// The native core and the extension host, one pipe.</text>
+    <text x="300" y="150"><tspan fill="#bb9af7">import</tspan><tspan fill="#c0caf5"> { </tspan><tspan fill="#7aa2f7">createRequire</tspan><tspan fill="#c0caf5"> } </tspan><tspan fill="#bb9af7">from</tspan><tspan fill="#c0caf5"> </tspan><tspan fill="#9ece6a">'node:module'</tspan><tspan fill="#c0caf5">;</tspan></text>
+    <text x="300" y="186"><tspan fill="#bb9af7">export class</tspan><tspan fill="#7aa2f7"> VruttiBridge</tspan><tspan fill="#c0caf5"> {</tspan></text>
+    <text x="300" y="204"><tspan fill="#bb9af7">  private</tspan><tspan fill="#c0caf5"> </tspan><tspan fill="#c0caf5">pending</tspan><tspan fill="#c0caf5"> = </tspan><tspan fill="#bb9af7">new</tspan><tspan fill="#7aa2f7"> Map</tspan><tspan fill="#89ddff">&lt;</tspan><tspan fill="#e0af68">number</tspan><tspan fill="#89ddff">,</tspan><tspan fill="#e0af68"> Reply</tspan><tspan fill="#89ddff">&gt;</tspan><tspan fill="#c0caf5">();</tspan></text>
+    <text x="300" y="258"><tspan fill="#bb9af7">  async</tspan><tspan fill="#7aa2f7"> request</tspan><tspan fill="#c0caf5">(</tspan><tspan fill="#c0caf5">method</tspan><tspan fill="#89ddff">:</tspan><tspan fill="#e0af68"> string</tspan><tspan fill="#89ddff">,</tspan><tspan fill="#c0caf5">args</tspan><tspan fill="#89ddff">:</tspan><tspan fill="#e0af68"> unknown</tspan><tspan fill="#89ddff">[]</tspan><tspan fill="#c0caf5">) {</tspan></text>
+    <text x="300" y="276"><tspan fill="#bb9af7">    const</tspan><tspan fill="#c0caf5"> </tspan><tspan fill="#c0caf5">id</tspan><tspan fill="#89ddff"> = </tspan><tspan fill="#c0caf5">this</tspan><tspan fill="#89ddff">.</tspan><tspan fill="#c0caf5">nextId</tspan><tspan fill="#c0caf5">++;</tspan></text>
+    <text x="300" y="312"><tspan fill="#c0caf5">    </tspan><tspan fill="#c0caf5">this</tspan><tspan fill="#89ddff">.</tspan><tspan fill="#7aa2f7">write</tspan><tspan fill="#c0caf5">({ </tspan><tspan fill="#c0caf5">type</tspan><tspan fill="#89ddff">: </tspan><tspan fill="#9ece6a">'request'</tspan><tspan fill="#89ddff">, </tspan><tspan fill="#c0caf5">reqId</tspan><tspan fill="#89ddff">: </tspan><tspan fill="#c0caf5">id</tspan><tspan fill="#89ddff">, </tspan><tspan fill="#c0caf5">method</tspan><tspan fill="#89ddff">, </tspan><tspan fill="#c0caf5">args</tspan><tspan fill="#c0caf5"> });</tspan></text>
+    <text x="300" y="330"><tspan fill="#bb9af7">    return</tspan><tspan fill="#c0caf5"> </tspan><tspan fill="#c0caf5">this</tspan><tspan fill="#89ddff">.</tspan><tspan fill="#c0caf5">pending</tspan><tspan fill="#89ddff">.</tspan><tspan fill="#7aa2f7">get</tspan><tspan fill="#c0caf5">(</tspan><tspan fill="#c0caf5">id</tspan><tspan fill="#c0caf5">);</tspan></text>
+    <text x="300" y="348" fill="#c0caf5">  }</text>
+    <text x="300" y="366" fill="#c0caf5">}</text>
+  </g>
+  <!-- caret -->
+  <rect x="296" y="260" width="2" height="17" fill="#c0caf5"/>
+
+  <!-- panel: terminal -->
+  <rect x="265" y="476" width="1014" height="194" fill="#16161e"/>
+  <line x1="265" y1="476" x2="1279" y2="476" stroke="#292e42" stroke-width="1"/>
+  <g font-size="11" font-weight="700" letter-spacing="1">
+    <text x="284" y="500" fill="#c0caf5">TERMINAL</text>
+    <text x="360" y="500" fill="#565f89">PROBLEMS</text>
+    <text x="442" y="500" fill="#565f89">OUTPUT</text>
+    <text x="510" y="500" fill="#565f89">DEBUG CONSOLE</text>
+  </g>
+  <g font-family="Consolas, monospace" font-size="12.5">
+    <text x="284" y="532" fill="#a9b1d6"><tspan fill="#9ece6a">vrutti</tspan><tspan fill="#c0caf5"> on </tspan><tspan fill="#7aa2f7">main</tspan><tspan fill="#c0caf5"> via </tspan><tspan fill="#f7768e">vrutti</tspan><tspan fill="#c0caf5"> ✕</tspan></text>
+    <text x="284" y="554" fill="#7aa2f7">❯ </text>
+    <text x="308" y="554" fill="#c0caf5">cmake --build build</text>
+    <text x="284" y="576" fill="#565f89">[ 82%] Building CXX object vrutti_core.dir/src/core/ipc/VSCodeProtocol.cpp.obj</text>
+    <text x="284" y="598" fill="#565f89">[ 91%] Linking CXX static library vrutti_core.lib</text>
+    <text x="284" y="620" fill="#9ece6a">✓ built in 47s</text>
+    <text x="284" y="642" fill="#7aa2f7">❯ </text>
+  </g>
+
+  <!-- status bar -->
+  <rect x="1" y="670" width="1278" height="49" fill="#1a1b26"/>
+  <line x1="1" y1="670" x2="1279" y2="670" stroke="#292e42" stroke-width="1"/>
+  <rect x="1" y="670" width="14" height="49" fill="url(#brand)"/>
+  <g font-size="12" fill="#a9b1d6">
+    <text x="30" y="700">main*</text>
+    <text x="96" y="700">⎇ 0</text>
+    <text x="146" y="700">✕ 0</text>
+    <text x="196" y="700">⚠ 0</text>
+    <text x="1110" y="700" text-anchor="end">Ln 6, Col 18</text>
+    <text x="1198" y="700" text-anchor="end">UTF-8</text>
+    <text x="1256" y="700" text-anchor="end">C++</text>
+  </g>
+</svg>

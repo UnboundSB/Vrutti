@@ -1,0 +1,160 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="420" viewBox="0 0 1280 420" font-family="'Segoe UI', Ubuntu, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif">
+  <title>Vrutti IDE</title>
+  <desc>A tree of circuitry, the mark of Vrutti, drawn in the brand gradient.</desc>
+
+  <defs>
+    <radialGradient id="field" cx="50%" cy="62%" r="70%">
+      <stop offset="0%" stop-color="#272b42"/>
+      <stop offset="48%" stop-color="#1a1c2a"/>
+      <stop offset="100%" stop-color="#0c0d14"/>
+    </radialGradient>
+    <linearGradient id="brand" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0%" stop-color="#3b4261"/>
+      <stop offset="32%" stop-color="#5f7ce8"/>
+      <stop offset="68%" stop-color="#9d7cf5"/>
+      <stop offset="100%" stop-color="#f7768e"/>
+    </linearGradient>
+    <linearGradient id="brandSoft" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0%" stop-color="#3b4261" stop-opacity="0.20"/>
+      <stop offset="60%" stop-color="#7aa2f7" stop-opacity="0.42"/>
+      <stop offset="100%" stop-color="#f7768e" stop-opacity="0.55"/>
+    </linearGradient>
+    <linearGradient id="trunk" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0%" stop-color="#7aa2f7"/>
+      <stop offset="100%" stop-color="#f7768e"/>
+    </linearGradient>
+    <filter id="soft" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="9"/>
+    </filter>
+    <filter id="softer" x="-70%" y="-70%" width="240%" height="240%">
+      <feGaussianBlur stdDeviation="34"/>
+    </filter>
+    <filter id="pin" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="2.4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#3b4261" stroke-width="1" opacity="0.16"/>
+    </pattern>
+    <pattern id="dots" width="20" height="20" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1" fill="#565f89" opacity="0.28"/>
+    </pattern>
+  </defs>
+
+  <rect width="1280" height="420" fill="url(#field)"/>
+  <rect width="1280" height="420" fill="url(#grid)"/>
+  <rect width="1280" height="420" fill="url(#dots)"/>
+
+  <!-- ambient bloom -->
+  <ellipse cx="640" cy="250" rx="360" ry="170" fill="#7aa2f7" opacity="0.17" filter="url(#softer)"/>
+  <ellipse cx="830" cy="140" rx="240" ry="130" fill="#f7768e" opacity="0.14" filter="url(#softer)"/>
+  <ellipse cx="450" cy="160" rx="220" ry="120" fill="#5f7ce8" opacity="0.14" filter="url(#softer)"/>
+
+  <!-- ================= the soft copy behind ================= -->
+  <g stroke="url(#brandSoft)" stroke-width="14" fill="none" stroke-linecap="round" filter="url(#soft)">
+    <path d="M640 396 L640 244"/>
+    <path d="M640 252 C618 216 566 190 504 180"/>
+    <path d="M640 252 C662 216 714 190 776 180"/>
+    <path d="M504 180 C456 168 406 162 354 164"/>
+    <path d="M776 180 C824 168 874 162 926 164"/>
+    <path d="M574 206 C534 210 492 220 452 236"/>
+    <path d="M706 206 C746 210 788 220 828 236"/>
+    <path d="M600 226 C576 232 548 240 522 252"/>
+    <path d="M680 226 C704 232 732 240 758 252"/>
+  </g>
+
+  <!-- ================= the crisp mark ================= -->
+  <g stroke="url(#brand)" stroke-width="3.4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <!-- trunk -->
+    <path d="M640 396 L640 244"/>
+    <!-- the two main branches -->
+    <path d="M640 252 C618 216 566 190 504 180"/>
+    <path d="M640 252 C662 216 714 190 776 180"/>
+    <!-- the outer branches -->
+    <path d="M504 180 C456 168 406 162 354 164"/>
+    <path d="M776 180 C824 168 874 162 926 164"/>
+    <!-- the lower branches -->
+    <path d="M574 206 C534 210 492 220 452 236"/>
+    <path d="M706 206 C746 210 788 220 828 236"/>
+    <path d="M600 226 C576 232 548 240 522 252"/>
+    <path d="M680 226 C704 232 732 240 758 252"/>
+  </g>
+
+  <!-- the trunk is lit from below -->
+  <path d="M640 396 L640 244" stroke="url(#trunk)" stroke-width="3.4" fill="none" stroke-linecap="round" opacity="0.9"/>
+
+  <!-- ================= circuit traces ================= -->
+  <g stroke="#565f89" stroke-width="1.6" fill="none" opacity="0.85" stroke-linecap="square">
+    <path d="M354 164 L300 164 L300 118"/>
+    <path d="M926 164 L980 164 L980 118"/>
+    <path d="M452 236 L414 236 L414 268"/>
+    <path d="M828 236 L866 236 L866 268"/>
+    <path d="M522 252 L498 252 L498 288"/>
+    <path d="M758 252 L782 252 L782 288"/>
+    <path d="M640 396 L640 410"/>
+  </g>
+  <g fill="#16161e" stroke="#565f89" stroke-width="1.6">
+    <rect x="294" y="112" width="12" height="12" rx="2"/>
+    <rect x="974" y="112" width="12" height="12" rx="2"/>
+    <rect x="408" y="262" width="12" height="12" rx="2"/>
+    <rect x="860" y="262" width="12" height="12" rx="2"/>
+    <rect x="492" y="282" width="12" height="12" rx="2"/>
+    <rect x="776" y="282" width="12" height="12" rx="2"/>
+  </g>
+  <g fill="#7aa2f7" opacity="0.7">
+    <rect x="297" y="115" width="6" height="6" rx="1"/>
+    <rect x="977" y="115" width="6" height="6" rx="1"/>
+    <rect x="411" y="265" width="6" height="6" rx="1"/>
+    <rect x="863" y="265" width="6" height="6" rx="1"/>
+  </g>
+
+  <!-- ================= nodes ================= -->
+  <g fill="#16161e" stroke="url(#brand)" stroke-width="2.2">
+    <circle cx="354" cy="164" r="6.5"/>
+    <circle cx="926" cy="164" r="6.5"/>
+    <circle cx="452" cy="236" r="6"/>
+    <circle cx="828" cy="236" r="6"/>
+    <circle cx="522" cy="252" r="5.5"/>
+    <circle cx="758" cy="252" r="5.5"/>
+    <circle cx="504" cy="180" r="5"/>
+    <circle cx="776" cy="180" r="5"/>
+    <circle cx="640" cy="244" r="5"/>
+  </g>
+  <g fill="url(#brand)" filter="url(#pin)">
+    <circle cx="354" cy="164" r="2.6"/>
+    <circle cx="926" cy="164" r="2.6"/>
+    <circle cx="452" cy="236" r="2.3"/>
+    <circle cx="828" cy="236" r="2.3"/>
+    <circle cx="522" cy="252" r="2.1"/>
+    <circle cx="758" cy="252" r="2.1"/>
+    <circle cx="504" cy="180" r="2"/>
+    <circle cx="776" cy="180" r="2"/>
+    <circle cx="640" cy="244" r="2"/>
+  </g>
+
+  <!-- the two bright leaves that anchor the crown -->
+  <g fill="url(#brand)" filter="url(#pin)">
+    <ellipse cx="574" cy="204" rx="4.5" ry="2.2"/>
+    <ellipse cx="706" cy="204" rx="4.5" ry="2.2"/>
+  </g>
+
+  <!-- ================= floating dust ================= -->
+  <g fill="#c0caf5">
+    <circle cx="228" cy="112" r="1.7" opacity="0.5"/>
+    <circle cx="306" cy="296" r="1.3" opacity="0.4"/>
+    <circle cx="176" cy="228" r="1.1" opacity="0.35"/>
+    <circle cx="1024" cy="150" r="1.7" opacity="0.5"/>
+    <circle cx="1096" cy="278" r="1.2" opacity="0.4"/>
+    <circle cx="962" cy="332" r="1.4" opacity="0.35"/>
+    <circle cx="406" cy="78" r="1.2" opacity="0.45"/>
+    <circle cx="872" cy="66" r="1.5" opacity="0.4"/>
+    <circle cx="112" cy="336" r="1.3" opacity="0.3"/>
+    <circle cx="1176" cy="82" r="1.2" opacity="0.3"/>
+    <circle cx="392" cy="352" r="1.1" opacity="0.28"/>
+    <circle cx="900" cy="368" r="1.2" opacity="0.28"/>
+  </g>
+
+  <!-- the horizon -->
+  <path d="M0 396 L1280 396" stroke="#3b4261" stroke-width="1" opacity="0.3"/>
+  <ellipse cx="640" cy="396" rx="210" ry="11" fill="#7aa2f7" opacity="0.11" filter="url(#soft)"/>
+</svg>

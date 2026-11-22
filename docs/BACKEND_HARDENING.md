@@ -46,12 +46,15 @@ current state:
 ```
 upstream shapes:   87
 upstream methods:  516
-handled:            75
-missing:           441
+handled:            87
+missing:           429
 ```
 
 A missing call is a missing feature, not a failure -- but it is a gap, and
 the gap is the backlog.
+
+The audit counts the handlers that answer later as well, so the number it
+prints is the number that is really answered.
 
 ### P0.3 Implement the shapes an ordinary extension touches
 
@@ -132,3 +135,4 @@ answer. That is a deliberate, documented decision, not an oversight.
 | The extension host activates | `node scripts/test_exthost_activation.js` |
 | The JSON layer is correct | `build/test_json.exe` |
 | The theme service is correct | `build/vrutti_theme_test.exe` |
+| The file system surface is correct | `build/vrutti_exthost_fs_test.exe` |
