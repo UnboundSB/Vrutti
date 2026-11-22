@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <memory>
 #include "../../core/utils/Json.h"
+#include "../../core/utils/Paths.h"
 
 #ifdef _WIN32
 #define PLUGIN_EXPORT __declspec(dllexport)
@@ -24,6 +25,37 @@ extern "C" {
 }
 
 namespace vrutti::plugins::search {
+
+namespace {
+
+    // The ripgrep binary is shipped inside the installation. The bare name is
+    // not enough, because the installation directory is not on the PATH of
+    // the process, and the path may hold spaces. When the binary cannot be
+    // found inside the installation, the name is used, so a system wide
+    // installation still works.
+    std::string ripgrepCommand() {
+        namespace fs = std::filesystem;
+
+#ifdef _WIN32
+        const char* binary = "rg.exe";
+#else
+        const char* binary = "rg";
+#endif
+        const fs::path releaseLayout = vrutti::core::utils::appResourcePath(binary);
+        const fs::path developmentLayout = vrutti::core::utils::appResourcePath(
+            (fs::path("bin") / fs::path(binary)).string());
+
+        std::error_code error;
+        if (fs::exists(releaseLayout, error)) {
+            return "\"" + releaseLayout.string() + "\"";
+        }
+        if (fs::exists(developmentLayout, error)) {
+            return "\"" + developmentLayout.string() + "\"";
+        }
+        return binary;
+    }
+
+} // namespace
 
     SearchPlugin::SearchPlugin() {
         std::cout << "[SearchPlugin] Constructor called.\n";
@@ -148,7 +180,7 @@ namespace vrutti::plugins::search {
         SearchResponse response;
         std::cout << "[SearchPlugin] Ripgrep Searching for '" << query << "' in " << directory << "...\n";
         
-        std::string cmd = "rg --json ";
+        std::string cmd = ripgrepCommand() + " --json ";
         if (!options.matchCase) cmd += "-i ";
         if (options.wholeWord) cmd += "-w ";
         if (!options.useRegex) cmd += "-F ";
@@ -310,7 +342,7 @@ namespace vrutti::plugins::search {
         std::vector<std::string> files;
         std::cout << "[SearchPlugin] Ripgrep Finding files in " << directory << "...\n";
         
-        std::string cmd = "rg --files \"" + directory + "\"";
+        std::string cmd = ripgrepCommand() + " --files \"" + directory + "\"";
 #ifdef _WIN32
         FILE* pipe = _popen(cmd.c_str(), "r");
 #else

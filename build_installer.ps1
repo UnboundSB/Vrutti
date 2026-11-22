@@ -42,8 +42,20 @@ if (Test-Path "src\ext\builtin-themes") {
 Write-Host "Building the extension host bundle..."
 $node = "node"
 if (Test-Path "src\ext\bin\node.exe") { $node = "src\ext\bin\node.exe" }
-& $node "scripts\build_exthost.js"
-if ($LASTEXITCODE -ne 0) {
+# esbuild writes its progress to stderr. PowerShell turns that into an error
+# record, and with `$ErrorActionPreference = "Stop"` it would stop the script,
+# so the build runs with both streams redirected to files.
+$logDir = ".tmp-storage"
+New-Item -ItemType Directory -Force -Path $logDir | Out-Null
+$outLog = Join-Path $logDir "build_exthost.log"
+$errLog = Join-Path $logDir "build_exthost.err.log"
+Remove-Item $outLog, $errLog -ErrorAction SilentlyContinue
+$process = Start-Process -FilePath $node -ArgumentList "scripts\build_exthost.js" `
+    -NoNewWindow -Wait -PassThru -RedirectStandardOutput $outLog -RedirectStandardError $errLog
+$exitCode = $process.ExitCode
+if (Test-Path $outLog) { Get-Content $outLog | Write-Host }
+if (Test-Path $errLog) { Get-Content $errLog | Write-Host }
+if ($exitCode -ne 0) {
     Write-Host "ERROR: the extension host bundle could not be built."
     exit 1
 }
@@ -60,6 +72,16 @@ Write-Host "Copying the license and the third party notices..."
 Copy-Item "LICENSE" "$ReleaseDir\LICENSE"
 if (Test-Path "THIRD_PARTY_NOTICES.md") {
     Copy-Item "THIRD_PARTY_NOTICES.md" "$ReleaseDir\THIRD_PARTY_NOTICES.md"
+}
+
+# The search plugin runs ripgrep. The binary travels with the installation,
+# because the installation directory is not on the PATH of the process.
+Write-Host "Copying ripgrep..."
+if (Test-Path "bin\rg.exe") {
+    Copy-Item "bin\rg.exe" "$ReleaseDir\rg.exe"
+    Write-Host "  Copied: rg.exe"
+} else {
+    Write-Host "WARNING: bin\rg.exe not found. File search will not work."
 }
 
 Write-Host "Copying UI frontend bundle (src\ui\frontend\dist)..."
@@ -85,7 +107,7 @@ if (-Not (Test-Path $ISCC)) {
 if (Test-Path $ISCC) {
     Write-Host "Found Inno Setup at $ISCC. Compiling installer..."
     & $ISCC "installer\VruttiSetup.iss"
-    Write-Host "Done! Installer created at Vrutti_Setup.exe"
+    Write-Host "Done! Installer created at Vrutti_Alpha_0.0.4_SleepyRabbit_Setup.exe"
 } else {
     Write-Host "WARNING: Inno Setup compiler (ISCC.exe) not found!"
     Write-Host "The release folder was built, but the installer executable was not created."
