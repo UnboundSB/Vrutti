@@ -31,9 +31,9 @@ and every build output (`build*`, `dist*`, `Vrutti_Release/`).
 - [ ] **R2.** Move build/release scripts (`build_installer.ps1`, `package_release.ps1`, `test_install.ps1`, `gen_docs.ps1`, `update_structures.js`) into `scripts/`.
 - [ ] **R3.** Verify `product.json` has all required fields (nameShort, nameLong, applicationName, dataFolderName, win32MutexName, urlProtocol, extensionAllowedProposedApi).
 - [ ] **R4.** Ensure `.gitignore` excludes `build/`, `dist/`, `dist_new/`, `node_modules/`, `.git/`, `*.exe`, `*.zip`, `*.vsix`.
-- [ ] **R5.** Confirm `CMakeLists.txt` builds all 16 plugin DLLs + `vrutti_core` static lib + `vrutti_app.exe`.
+- [x] **R5.** Confirm `CMakeLists.txt` builds all 15 plugin DLLs + `vrutti_core` static lib + `vrutti.exe`.
 - [ ] **R6.** Confirm `package.json` at root (if any) or `src/ui/frontend/package.json` builds the Lit frontend via Vite.
-- [ ] **R7.** Confirm `build_installer.ps1` + Inno Setup 6 (`ISCC.exe`) produces `Vrutti_Setup.exe` from `Vrutti_Release/`.
+- [x] **R7.** Confirm `build_installer.ps1` + Inno Setup 6 (`ISCC.exe`) produces `Vrutti_Alpha_0.0.4_SleepyRabbit_Setup.exe` from `Vrutti_Release/`.
 
 ## Roadmap & Planned Architecture
 The feature status of the workbench. "Dynamic" means the panels are created

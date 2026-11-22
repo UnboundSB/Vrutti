@@ -13,19 +13,19 @@ Installer and packaging scripts: Inno Setup 6 (`.exe` installer) and PowerShell 
 | `test_install.ps1` | Installer testing | Present |
 
 ## Tasks (Priority Order)
-- [ ] **INS1.** Verify `build_installer.ps1` includes `vrutti_app.exe`, all plugin DLLs, frontend `dist/`, `node.exe`, `rg.exe`.
-- [ ] **INS2.** Confirm Inno Setup 6 (`ISCC.exe`) is installed and `installer\VruttiSetup.iss` compiles to `Vrutti_Setup.exe`.
-- [ ] **INS3.** Verify `package_release.ps1` creates a working portable ZIP.
+- [x] **INS1.** Verify `build_installer.ps1` includes `vrutti.exe`, all plugin DLLs, frontend `dist/`, `node.exe`, the extension host bundle and `rg.exe`.
+- [x] **INS2.** Confirm Inno Setup 6 (`ISCC.exe`) is installed and `installer\VruttiSetup.iss` compiles to `Vrutti_Alpha_0.0.4_SleepyRabbit_Setup.exe`.
+- [x] **INS3.** Verify `package_release.ps1` creates a working portable ZIP.
 - [ ] **INS4.** Add installer uninstaller that cleans up `.vrutti` data folder (optional, user-configurable).
 - [ ] **INS5.** Add code signing for the installer executable.
 - [ ] **INS6.** Test installer on clean Windows VM (no dev tools installed).
 
 ## Build Pipeline (Distribution)
 ```
-CMake/Makefile  →  build\vrutti_app.exe + *.dll
+CMake/Makefile  →  build\vrutti.exe + *.dll
 Vite            →  src\ui\frontend\dist
 build_installer.ps1 → copies all into Vrutti_Release/
-Inno Setup 6    →  installer\VruttiSetup.iss → Vrutti_Setup.exe
+Inno Setup 6    →  installer\VruttiSetup.iss → Vrutti_Alpha_0.0.4_SleepyRabbit_Setup.exe
 ```
 
 ## Related

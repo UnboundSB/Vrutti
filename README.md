@@ -37,7 +37,7 @@ Node.js extension host against the real `vscode` API — not a shim, not a mock.
 
 | ⚡ Native core | 🧩 Real extensions | 🎨 Modern interface | 🪶 Light footprint |
 |:---:|:---:|:---:|:---:|
-| Buffers, files, terminals, tasks and search live in C++ | Your marketplace extensions load and activate unmodified | Lit web components, dark and pastel themes, a Git graph you can actually drag | One native process, one extension host, no Electron tax |
+| Buffers, files, terminals and search live in C++ | Your marketplace extensions load and activate unmodified | Lit web components, dark and pastel themes, a Git graph you can actually drag | One native process, one extension host, no Electron tax |
 
 </div>
 
@@ -50,7 +50,7 @@ Node.js extension host against the real `vscode` API — not a shim, not a mock.
 | | 🪟 Windows installer | 📦 Source code | 📚 Older builds |
 |---|:---:|:---:|:---:|
 | **What** | `Vrutti_Alpha_0.0.4_SleepyRabbit_Setup.exe` | The full repository | Every tagged release |
-| **Size** | 22.0 MB | — | — |
+| **Size** | 31.0 MB | — | — |
 | **Format** | Inno Setup 6, LZMA2 | `.tar.gz` / `.zip` | `.exe` |
 | **Needs admin** | Yes — installs to `Program Files` | No | — |
 | **Get it** | [**Download →**](https://github.com/UnboundSB/Vrutti/releases/download/vrutti-early-release0.0.4/Vrutti_Alpha_0.0.4_SleepyRabbit_Setup.exe) | [**Download →**](https://github.com/UnboundSB/Vrutti/archive/refs/tags/vrutti-early-release0.0.4.tar.gz) | [**Releases →**](https://github.com/UnboundSB/Vrutti/releases) |
@@ -68,7 +68,7 @@ Get-FileHash .\Vrutti_Alpha_0.0.4_SleepyRabbit_Setup.exe -Algorithm SHA256
 ```
 
 ```
-SHA256: f1c8cec50fbdad662fa8184ced94fb52c82111ef3088c3c3c0b236abe0782764
+SHA256: a24a6f1234dc7aad26ed87eb77f7d4236f2f6d624770d64137f99d994df68ab9
 ```
 
 ### System requirements
@@ -77,7 +77,7 @@ SHA256: f1c8cec50fbdad662fa8184ced94fb52c82111ef3088c3c3c0b236abe0782764
 |---|---|
 | **Operating system** | Windows 10 or 11, 64-bit |
 | **Memory** | 512 MB free |
-| **Disk** | 150 MB for the installation |
+| **Disk** | 200 MB for the installation |
 | **Runtime** | None — the extension host runtime ships with the app |
 
 ---
@@ -113,8 +113,8 @@ host makes and answers them from native code.
 
 **⚙️ A native core that does the work**
 
-File operations, the piece-table text model, terminals, tasks, search, settings
-and themes are implemented in C++ behind a plugin interface. The UI is a thin
+File operations, the piece-table text model, terminals, search, settings and
+themes are implemented in C++ behind a plugin interface. The UI is a thin
 client of that core.
 
 </td>
@@ -186,7 +186,7 @@ broken extension.
 |---|---|
 | **Protocol shapes** | 87 |
 | **Protocol methods** | 516 |
-| **Implemented and answered** | 87 |
+| **Methods answered** | 87 of 516 |
 | **Audit** | `python scripts/audit_exthost_handlers.py` prints the live backlog |
 
 The audit is part of the build, not a document that drifts. The same is true
@@ -238,9 +238,12 @@ feature can be added without touching the router.
 | Tool | Version | Why |
 |---|---|---|
 | CMake | 3.20+ | Builds the native core |
-| A C++20 compiler | MSVC 2022, MinGW-w64 or Clang | Builds the native core |
+| A C++20 compiler | MinGW-w64 (ucrt64) | Builds the native core |
 | Node.js | 20.11+ | Builds the frontend and the extension host bundle |
 | [Inno Setup 6](https://jrsoftware.org/isdl.php) | 6.x | Packages the installer |
+
+<sub>The native core is built and tested with MinGW-w64 (ucrt64). The CMake
+configuration targets that toolchain.</sub>
 
 **Steps**
 
@@ -270,9 +273,9 @@ npm run build:exthost
 ```
 
 ```powershell
-# 4. A portable build, then an installer
-.\package_release.ps1
-.\build_installer.ps1
+# 4. A portable zip, then the installer
+.\package_release.ps1     # vrutti_early_release.zip
+.\build_installer.ps1     # Vrutti_Setup.exe
 ```
 
 **Checks**
@@ -281,6 +284,8 @@ npm run build:exthost
 ctest --test-dir build --output-on-failure     # the native test suites
 python scripts/audit_exthost_handlers.py       # the extension host backlog
 python scripts/generate_error_codes.py --check # the error code registry
+python scripts/generate_exthost_fallbacks.py --check # the fallback table
+python scripts/generate_structure_docs.py --check    # the generated folder docs
 ```
 
 </details>
@@ -297,7 +302,8 @@ vrutti_ide/
 │   │   ├── fs/        #   the file service behind workspace.fs
 │   │   ├── editor/    #   the piece-table text model
 │   │   ├── plugins/   #   the native plugin host
-│   │   └── ...        #   terminal, tasks, search, themes, settings
+│   │   └── ...        #   terminal, configuration, themes, webview
+│   ├── plugins/       # the lazily loaded search plugin
 │   ├── ui/frontend/   # the Lit workbench
 │   ├── ext/           # the extension host, the bridge, the built-in themes
 │   └── tests/         # native and integration test suites
