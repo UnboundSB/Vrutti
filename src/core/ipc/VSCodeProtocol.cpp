@@ -3,6 +3,8 @@
 #include "../utils/Paths.h"
 #include "VsCodeProxyIds.generated.h"
 #include "VsCodeProxyFallbacks.generated.h"
+#include "core/fs/FileService.h"
+#include "core/fs/URI.h"
 #include <iostream>
 #include <algorithm>
 #include <filesystem>
@@ -13,7 +15,9 @@
 #include "core/plugins/PluginLoader.h"
 
 using namespace vrutti::core::utils;
-namespace fs = std::filesystem;
+// The alias is not `fs`: the enclosing namespace `vrutti::core` has a folder
+// called `fs`, and that name would win over a global alias.
+namespace stdfs = std::filesystem;
 
 namespace {
 
@@ -40,6 +44,16 @@ namespace {
     bool argBool(const std::shared_ptr<JsonNode>& args, size_t index) {
         auto node = argAt(args, index);
         if (!node || node->type != JsonNode::Type::Boolean) return false;
+        return node->boolValue;
+    }
+
+    // A flag of an options object, for example `overwrite` of the options of
+    // a rename. The flag keeps the value it was given when it is missing.
+    bool optionBool(const std::shared_ptr<JsonNode>& options, const char* name,
+                    bool fallback = false) {
+        if (!options || options->type != JsonNode::Type::Object) return fallback;
+        auto node = options->get(name);
+        if (!node || node->type != JsonNode::Type::Boolean) return fallback;
         return node->boolValue;
     }
 
@@ -172,6 +186,28 @@ namespace {
         return out;
     }
 
+    // The scheme of a URI object, for example "file".
+    std::string uriScheme(const std::shared_ptr<JsonNode>& uri) {
+        if (!uri || uri->type != JsonNode::Type::Object) return "";
+        auto node = uri->get("scheme");
+        if (!node || node->type != JsonNode::Type::String) return "";
+        return std::string(node->stringValue.data(), node->stringValue.length());
+    }
+
+    // The options of a file system call: an object with the flag `overwrite`
+    // or `recursive` and the other flags that travel with it.
+    std::shared_ptr<JsonNode> boolOption(const std::shared_ptr<JsonNode>& options,
+                                         const char* name, bool fallback) {
+        auto result = makeObject();
+        bool value = fallback;
+        if (options && options->type == JsonNode::Type::Object) {
+            auto node = options->get(name);
+            if (node && node->type == JsonNode::Type::Boolean) value = node->boolValue;
+        }
+        setProp(result, name, makeBool(value));
+        return result;
+    }
+
 } // namespace
 
 namespace vrutti::core::ipc {
@@ -229,7 +265,7 @@ int VSCodeProtocol::sendRequest(int proxyId,
                                 const std::string& method,
                                 const std::shared_ptr<JsonNode>& args,
                                 std::function<void(const std::shared_ptr<JsonNode>&)> onResolve,
-                                std::function<void(const std::string&)> onReject) {
+                                std::function<void(const std::string&, const std::string&)> onReject) {
     return m_ipc->sendRequest(proxyId, method, args, std::move(onResolve), std::move(onReject));
 }
 
@@ -237,13 +273,16 @@ int VSCodeProtocol::sendRequest(const char* shapeName,
                                 const std::string& method,
                                 const std::shared_ptr<JsonNode>& args,
                                 std::function<void(const std::shared_ptr<JsonNode>&)> onResolve,
-                                std::function<void(const std::string&)> onReject) {
+                                std::function<void(const std::string&, const std::string&)> onReject) {
     int id = proxy::shapeId(shapeName);
     if (id < 0) {
         vrutti::core::utils::reportError("VSCodeProtocol",
             vrutti::core::utils::ErrorCode::IpcUnknownShape,
             std::string("unknown extension host shape: ") + shapeName);
-        if (onReject) onReject(std::string("Unknown extension host shape: ") + shapeName);
+        if (onReject) {
+            onReject(std::string("Unknown extension host shape: ") + shapeName,
+                     "UnknownShape");
+        }
         return -1;
     }
     return sendRequest(id, method, args, std::move(onResolve), std::move(onReject));
@@ -332,7 +371,7 @@ void VSCodeProtocol::sendConfigurationHandshake() {
         [](const std::shared_ptr<JsonNode>&) {
             std::cout << "[VSCodeProtocol] Configuration initialised on the extension host\n";
         },
-        [](const std::string& err) {
+        [](const std::string& err, const std::string&) {
             std::cerr << "[VSCodeProtocol] $initializeConfiguration failed: " << err << "\n";
         });
 }
@@ -346,7 +385,7 @@ void VSCodeProtocol::sendWorkspaceHandshake() {
     std::string name = "Vrutti Workspace";
 
     if (!folder.empty()) {
-        fs::path p(folder);
+        stdfs::path p(folder);
         name = p.filename().string();
         if (name.empty()) name = folder;
         id = sanitizeExtensionId(name);
@@ -374,7 +413,7 @@ void VSCodeProtocol::sendWorkspaceHandshake() {
         [](const std::shared_ptr<JsonNode>&) {
             std::cout << "[VSCodeProtocol] Workspace initialised on the extension host\n";
         },
-        [](const std::string& err) {
+        [](const std::string& err, const std::string&) {
             std::cerr << "[VSCodeProtocol] $initializeWorkspace failed: " << err << "\n";
         });
 }
@@ -389,7 +428,7 @@ void VSCodeProtocol::sendStartupActivation() {
         [](const std::shared_ptr<JsonNode>&) {
             std::cout << "[VSCodeProtocol] Startup activation requested\n";
         },
-        [](const std::string& err) {
+        [](const std::string& err, const std::string&) {
             std::cerr << "[VSCodeProtocol] $activateByEvent failed: " << err << "\n";
         });
 }
@@ -399,7 +438,14 @@ void VSCodeProtocol::sendStartupActivation() {
 // -----------------------------------------------------------------------------
 
 bool VSCodeProtocol::hasHandler(const std::string& shape, const std::string& method) const {
-    return m_handlers.find(shape + "." + method) != m_handlers.end();
+    const std::string key = shape + "." + method;
+    return m_handlers.find(key) != m_handlers.end() ||
+           m_asyncHandlers.find(key) != m_asyncHandlers.end();
+}
+
+void VSCodeProtocol::setAsyncHandler(const std::string& shape, const std::string& method,
+                                     AsyncHandler handler) {
+    m_asyncHandlers[shape + "." + method] = std::move(handler);
 }
 
 void VSCodeProtocol::handleRequest(const IPCClient::RpcRequest& req) {
@@ -413,6 +459,29 @@ void VSCodeProtocol::handleRequest(const IPCClient::RpcRequest& req) {
 
     // Acknowledge first so the host knows the request was received.
     m_ipc->sendAck(req.reqId);
+
+    // A handler that answers later gets the callbacks it must use. The
+    // router keeps its hands off the request until one of them is called.
+    auto asyncIt = m_asyncHandlers.find(key);
+    if (asyncIt != m_asyncHandlers.end()) {
+        const int reqId = req.reqId;
+        try {
+            asyncIt->second(
+                req.args,
+                [this, reqId](const std::shared_ptr<JsonNode>& value) {
+                    m_ipc->sendReply(reqId, value ? value : makeNull());
+                },
+                [this, reqId](const std::string& message, const std::string& name) {
+                    m_ipc->sendReplyError(reqId, message, name);
+                });
+        } catch (const std::exception& e) {
+            m_ipc->sendReplyError(reqId, e.what(), "Error");
+        } catch (...) {
+            m_ipc->sendReplyError(reqId,
+                "Unknown error in extension host RPC handler", "Error");
+        }
+        return;
+    }
 
     auto it = m_handlers.find(key);
     if (it == m_handlers.end()) {
@@ -492,7 +561,7 @@ void VSCodeProtocol::handleLocalRequest(const std::string& method,
         args->arrayElements.push_back(makeNumber(0)); // ActivationKind.Normal
         sendRequest(proxy::Ext::ExtHostExtensionService, "$activateByEvent", args,
             [](const std::shared_ptr<JsonNode>&) {},
-            [event](const std::string& err) {
+            [event](const std::string& err, const std::string&) {
                 std::cerr << "[VSCodeProtocol] $activateByEvent('" << event << "') failed: " << err << "\n";
             });
         return;
@@ -579,7 +648,7 @@ void VSCodeProtocol::handleLocalRequest(const std::string& method,
             [command](const std::shared_ptr<JsonNode>&) {
                 std::cout << "[VSCodeProtocol] Command executed: " << command << "\n";
             },
-            [command](const std::string& err) {
+            [command](const std::string& err, const std::string&) {
                 std::cerr << "[VSCodeProtocol] Command '" << command << "' failed: " << err << "\n";
             });
         return;
@@ -1078,6 +1147,345 @@ void VSCodeProtocol::registerHandlers() {
         emitToUi("documents/save", ev);
         return okResult(makeBool(true));
     };
+
+    // --- MainThreadFileSystem ---------------------------------------------------
+    //
+    // This is the `vscode.workspace.fs` surface: the way an extension reads
+    // and writes a file. The extension host calls these actors when an
+    // extension uses `workspace.fs`.
+    //
+    // The `file:` scheme is served by the core. A scheme that an extension
+    // registered is served by that extension: the call is forwarded to the
+    // extension host, which knows the provider.
+    //
+    // The calls are answered later, because the answer of a provider comes
+    // from the extension host itself.
+
+    m_handlers["MainThreadFileSystem.$registerFileSystemProvider"] =
+        [this](const std::shared_ptr<JsonNode>& args) -> HR {
+            const int handle = static_cast<int>(argNumber(args, 0));
+            const std::string scheme = argString(args, 1);
+            if (!scheme.empty()) {
+                m_fsProviders[scheme] = handle;
+                m_fsProviderSchemes[handle] = scheme;
+            }
+            return okResult();
+        };
+
+    m_handlers["MainThreadFileSystem.$unregisterProvider"] =
+        [this](const std::shared_ptr<JsonNode>& args) -> HR {
+            const int handle = static_cast<int>(argNumber(args, 0));
+            auto it = m_fsProviderSchemes.find(handle);
+            if (it != m_fsProviderSchemes.end()) {
+                m_fsProviders.erase(it->second);
+                m_fsProviderSchemes.erase(it);
+            }
+            return okResult();
+        };
+
+    m_handlers["MainThreadFileSystem.$onFileSystemChange"] =
+        [this](const std::shared_ptr<JsonNode>& args) -> HR {
+            // The changes are published to the UI, so an open editor can pick
+            // up a file that an extension changed.
+            auto changes = argAt(args, 1);
+            emitToUi("files/changed", changes ? changes : makeArray());
+            return okResult();
+        };
+
+    m_handlers["MainThreadFileSystem.$ensureActivation"] =
+        [this](const std::shared_ptr<JsonNode>&) -> HR {
+            // The extension that owns the provider is already running: it is
+            // the one that called this method.
+            return okResult();
+        };
+
+    // $stat(uri) -> IStat
+    setAsyncHandler("MainThreadFileSystem", "$stat",
+        [this](const std::shared_ptr<JsonNode>& args,
+               std::function<void(const std::shared_ptr<JsonNode>&)> reply,
+               std::function<void(const std::string&, const std::string&)> fail) {
+            auto uri = argAt(args, 0);
+            const int provider = providerForUri(uri);
+            if (provider >= 0) {
+                forwardToProvider(provider, "$stat", { uri }, reply, fail);
+                return;
+            }
+
+            const std::string path = vrutti::core::fs::uriToNativePath(uri);
+            if (path.empty()) {
+                fail("no file system can serve this URI", "Unavailable");
+                return;
+            }
+
+            vrutti::core::fs::FileStat stat;
+            const auto result = m_fileService.stat(path, stat);
+            if (!result.ok) {
+                fail(result.errorMessage, result.errorCode);
+                return;
+            }
+
+            auto answer = makeObject();
+            setProp(answer, "type", makeNumber(stat.type));
+            setProp(answer, "ctime", makeNumber(static_cast<double>(stat.ctime)));
+            setProp(answer, "mtime", makeNumber(static_cast<double>(stat.mtime)));
+            setProp(answer, "size", makeNumber(static_cast<double>(stat.size)));
+            if (stat.permissions != 0) {
+                setProp(answer, "permissions", makeNumber(stat.permissions));
+            }
+            reply(answer);
+        });
+
+    // $readdir(uri) -> [name, FileType][]
+    setAsyncHandler("MainThreadFileSystem", "$readdir",
+        [this](const std::shared_ptr<JsonNode>& args,
+               std::function<void(const std::shared_ptr<JsonNode>&)> reply,
+               std::function<void(const std::string&, const std::string&)> fail) {
+            auto uri = argAt(args, 0);
+            const int provider = providerForUri(uri);
+            if (provider >= 0) {
+                forwardToProvider(provider, "$readdir", { uri }, reply, fail);
+                return;
+            }
+
+            const std::string path = vrutti::core::fs::uriToNativePath(uri);
+            if (path.empty()) {
+                fail("no file system can serve this URI", "Unavailable");
+                return;
+            }
+
+            std::vector<vrutti::core::fs::DirectoryEntry> entries;
+            const auto result = m_fileService.readDirectory(path, entries);
+            if (!result.ok) {
+                fail(result.errorMessage, result.errorCode);
+                return;
+            }
+
+            auto answer = makeArray();
+            for (const auto& entry : entries) {
+                auto pair = makeArray();
+                pair->arrayElements.push_back(makeString(entry.name));
+                pair->arrayElements.push_back(makeNumber(entry.type));
+                answer->arrayElements.push_back(pair);
+            }
+            reply(answer);
+        });
+
+    // $readFile(uri) -> VSBuffer
+    setAsyncHandler("MainThreadFileSystem", "$readFile",
+        [this](const std::shared_ptr<JsonNode>& args,
+               std::function<void(const std::shared_ptr<JsonNode>&)> reply,
+               std::function<void(const std::string&, const std::string&)> fail) {
+            auto uri = argAt(args, 0);
+            const int provider = providerForUri(uri);
+            if (provider >= 0) {
+                forwardToProvider(provider, "$readFile", { uri }, reply, fail);
+                return;
+            }
+
+            const std::string path = vrutti::core::fs::uriToNativePath(uri);
+            if (path.empty()) {
+                fail("no file system can serve this URI", "Unavailable");
+                return;
+            }
+
+            std::vector<uint8_t> content;
+            const auto result = m_fileService.readFile(path, content);
+            if (!result.ok) {
+                fail(result.errorMessage, result.errorCode);
+                return;
+            }
+            reply(IPCClient::encodeVSBuffer(content));
+        });
+
+    // $writeFile(uri, content) -> void
+    setAsyncHandler("MainThreadFileSystem", "$writeFile",
+        [this](const std::shared_ptr<JsonNode>& args,
+               std::function<void(const std::shared_ptr<JsonNode>&)> reply,
+               std::function<void(const std::string&, const std::string&)> fail) {
+            auto uri = argAt(args, 0);
+            auto content = argAt(args, 1);
+            const int provider = providerForUri(uri);
+            if (provider >= 0) {
+                // The provider of an extension takes the options of the
+                // write as well.
+                auto options = makeObject();
+                setProp(options, "create", makeBool(true));
+                setProp(options, "overwrite", makeBool(true));
+                forwardToProvider(provider, "$writeFile",
+                                  { uri, content, options }, reply, fail);
+                return;
+            }
+
+            const std::string path = vrutti::core::fs::uriToNativePath(uri);
+            if (path.empty()) {
+                fail("no file system can serve this URI", "Unavailable");
+                return;
+            }
+
+            std::vector<uint8_t> bytes;
+            if (!IPCClient::decodeVSBuffer(content, bytes)) {
+                fail("the content of the file is not a binary payload", "Unavailable");
+                return;
+            }
+
+            const auto result = m_fileService.writeFile(path, bytes);
+            if (!result.ok) {
+                fail(result.errorMessage, result.errorCode);
+                return;
+            }
+            reply(makeNull());
+        });
+
+    // $mkdir(uri) -> void
+    setAsyncHandler("MainThreadFileSystem", "$mkdir",
+        [this](const std::shared_ptr<JsonNode>& args,
+               std::function<void(const std::shared_ptr<JsonNode>&)> reply,
+               std::function<void(const std::string&, const std::string&)> fail) {
+            auto uri = argAt(args, 0);
+            const int provider = providerForUri(uri);
+            if (provider >= 0) {
+                forwardToProvider(provider, "$mkdir", { uri }, reply, fail);
+                return;
+            }
+
+            const std::string path = vrutti::core::fs::uriToNativePath(uri);
+            if (path.empty()) {
+                fail("no file system can serve this URI", "Unavailable");
+                return;
+            }
+
+            const auto result = m_fileService.createDirectory(path);
+            if (!result.ok) {
+                fail(result.errorMessage, result.errorCode);
+                return;
+            }
+            reply(makeNull());
+        });
+
+    // $delete(uri, options) -> void
+    setAsyncHandler("MainThreadFileSystem", "$delete",
+        [this](const std::shared_ptr<JsonNode>& args,
+               std::function<void(const std::shared_ptr<JsonNode>&)> reply,
+               std::function<void(const std::string&, const std::string&)> fail) {
+            auto uri = argAt(args, 0);
+            auto options = argAt(args, 1);
+            const int provider = providerForUri(uri);
+            if (provider >= 0) {
+                forwardToProvider(provider, "$delete", { uri, options }, reply, fail);
+                return;
+            }
+
+            const std::string path = vrutti::core::fs::uriToNativePath(uri);
+            if (path.empty()) {
+                fail("no file system can serve this URI", "Unavailable");
+                return;
+            }
+
+            const bool recursive = optionBool(options, "recursive");
+            const auto result = m_fileService.remove(path, recursive);
+            if (!result.ok) {
+                fail(result.errorMessage, result.errorCode);
+                return;
+            }
+            reply(makeNull());
+        });
+
+    // $rename(source, target, options) -> void
+    setAsyncHandler("MainThreadFileSystem", "$rename",
+        [this](const std::shared_ptr<JsonNode>& args,
+               std::function<void(const std::shared_ptr<JsonNode>&)> reply,
+               std::function<void(const std::string&, const std::string&)> fail) {
+            auto source = argAt(args, 0);
+            auto target = argAt(args, 1);
+            auto options = argAt(args, 2);
+            const int provider = providerForUri(source);
+            if (provider >= 0) {
+                forwardToProvider(provider, "$rename",
+                                  { source, target, options }, reply, fail);
+                return;
+            }
+
+            const std::string from = vrutti::core::fs::uriToNativePath(source);
+            const std::string to = vrutti::core::fs::uriToNativePath(target);
+            if (from.empty() || to.empty()) {
+                fail("no file system can serve this URI", "Unavailable");
+                return;
+            }
+
+            const bool overwrite = optionBool(options, "overwrite");
+            const auto result = m_fileService.rename(from, to, overwrite);
+            if (!result.ok) {
+                fail(result.errorMessage, result.errorCode);
+                return;
+            }
+            reply(makeNull());
+        });
+
+    // $copy(source, target, options) -> void
+    setAsyncHandler("MainThreadFileSystem", "$copy",
+        [this](const std::shared_ptr<JsonNode>& args,
+               std::function<void(const std::shared_ptr<JsonNode>&)> reply,
+               std::function<void(const std::string&, const std::string&)> fail) {
+            auto source = argAt(args, 0);
+            auto target = argAt(args, 1);
+            auto options = argAt(args, 2);
+            const int provider = providerForUri(source);
+            if (provider >= 0) {
+                forwardToProvider(provider, "$copy",
+                                  { source, target, options }, reply, fail);
+                return;
+            }
+
+            const std::string from = vrutti::core::fs::uriToNativePath(source);
+            const std::string to = vrutti::core::fs::uriToNativePath(target);
+            if (from.empty() || to.empty()) {
+                fail("no file system can serve this URI", "Unavailable");
+                return;
+            }
+
+            const bool overwrite = optionBool(options, "overwrite");
+            const auto result = m_fileService.copy(from, to, overwrite);
+            if (!result.ok) {
+                fail(result.errorMessage, result.errorCode);
+                return;
+            }
+            reply(makeNull());
+        });
+}
+
+// -----------------------------------------------------------------------------
+// The file system
+// -----------------------------------------------------------------------------
+
+int VSCodeProtocol::providerForUri(const std::shared_ptr<JsonNode>& uri) const {
+    const std::string scheme = uriScheme(uri);
+    if (scheme.empty() || scheme == "file") return -1;
+    auto it = m_fsProviders.find(scheme);
+    if (it == m_fsProviders.end()) return -1;
+    return it->second;
+}
+
+void VSCodeProtocol::forwardToProvider(
+        int handle,
+        const char* method,
+        const std::vector<std::shared_ptr<JsonNode>>& args,
+        const std::function<void(const std::shared_ptr<JsonNode>&)>& reply,
+        const std::function<void(const std::string&, const std::string&)>& fail) {
+    // The call on the `ExtHostFileSystem` actor takes the handle of the
+    // provider as its first argument.
+    auto callArgs = makeArray();
+    callArgs->arrayElements.push_back(makeNumber(handle));
+    for (const auto& arg : args) {
+        callArgs->arrayElements.push_back(arg ? arg : makeNull());
+    }
+
+    sendRequest(proxy::Ext::ExtHostFileSystem, method, callArgs,
+        [reply](const std::shared_ptr<JsonNode>& value) {
+            reply(value ? value : makeNull());
+        },
+        [fail](const std::string& message, const std::string& name) {
+            fail(message, name.empty() ? std::string("Unavailable") : name);
+        });
 }
 
 } // namespace vrutti::core::ipc

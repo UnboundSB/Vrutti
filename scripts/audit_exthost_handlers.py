@@ -38,6 +38,12 @@ UPSTREAM_PROTOCOL_CANDIDATES = [
 
 HANDLER_RE = re.compile(r'm_handlers\["(?P<key>[^"]+)"\]')
 
+# A handler that answers later is registered with the shape and the method
+# separately. The router joins them with a dot, so the audit has to do the
+# same to see the same key.
+ASYNC_HANDLER_RE = re.compile(
+    r'setAsyncHandler\(\s*"(?P<shape>[^"]+)"\s*,\s*"(?P<method>[^"]+)"')
+
 
 def match_braces(text: str, open_index: int) -> int:
     """Returns the index of the brace that closes the one at `open_index`."""
@@ -97,7 +103,10 @@ def interface_methods(text: str, name: str) -> list[str]:
 def registered_handlers() -> set[str]:
     """Returns the handler keys that Vrutti registers."""
     text = PROTOCOL_CPP.read_text(encoding="utf-8", errors="replace")
-    return set(HANDLER_RE.findall(text))
+    keys = set(HANDLER_RE.findall(text))
+    for match in ASYNC_HANDLER_RE.finditer(text):
+        keys.add(f"{match.group('shape')}.{match.group('method')}")
+    return keys
 
 
 def main() -> int:

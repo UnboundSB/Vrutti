@@ -35,6 +35,7 @@ add_library(vrutti_core STATIC
     src/core/fs/Path.cpp
     src/core/fs/Glob.cpp
     src/core/fs/Workspace.cpp
+    src/core/fs/FileService.cpp
     src/core/utils/Json.cpp
     src/core/utils/Paths.cpp
     src/core/utils/ErrorCodes.cpp
@@ -119,6 +120,11 @@ add_test(NAME ThemeServiceTest COMMAND vrutti_theme_test)
 add_executable(vrutti_protocol_fallback_test src/tests/integration/ProtocolFallbackTest.cpp)
 target_link_libraries(vrutti_protocol_fallback_test PRIVATE vrutti_core)
 add_test(NAME ProtocolFallbackTest COMMAND vrutti_protocol_fallback_test)
+
+# `vscode.workspace.fs`: the way an extension reads and writes a file.
+add_executable(vrutti_exthost_fs_test src/tests/integration/ExthostFileSystemTest.cpp)
+target_link_libraries(vrutti_exthost_fs_test PRIVATE vrutti_core)
+add_test(NAME ExthostFileSystemTest COMMAND vrutti_exthost_fs_test)
 
 
 

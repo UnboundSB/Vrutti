@@ -2,8 +2,29 @@
 #include <string>
 #include <string_view>
 #include <cstdint>
+#include <memory>
+
+#include "core/utils/Json.h"
 
 namespace vrutti::core::fs {
+
+    // The URI components that travel over the wire.
+    //
+    // The extension host sends a URI as an object with the fields `scheme`,
+    // `authority`, `path`, `query` and `fragment`. The helpers below turn
+    // that object into a native path and back.
+    using UriComponents = std::shared_ptr<vrutti::core::utils::JsonNode>;
+
+    // Converts a `file:` URI into a native path.
+    //
+    // Returns an empty string when the URI belongs to another scheme, or
+    // when it carries no path. The caller decides what an empty result
+    // means: for the file system it means "not my scheme".
+    std::string uriToNativePath(const UriComponents& uri);
+
+    // Builds the URI of a native path. The result is a `file:` URI with the
+    // same shape the extension host uses.
+    UriComponents nativePathToUri(const std::string& path);
 
     // A memory-optimized, lazy-evaluated URI (Uniform Resource Identifier).
     // To achieve ultra-low RAM consumption, it avoids allocating separate strings

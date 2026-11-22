@@ -18,7 +18,7 @@ Inter-process communication: the pipe transport and the protocol that connects t
 - **IPCClient::start()**
 - **IPCClient::stop()**
 - **IPCClient::sendInitData(const std::shared_ptr<vrutti::core::utils::JsonNode>&)**
-- **int IPCClient::sendRequest(int, const std::string&, const std::shared_ptr<vrutti::core::utils::JsonNode>&, std::function<void(const std::shared_ptr<vrutti::core::utils::JsonNode>&)>, std::function<void(const std::string&)>)**
+- **int IPCClient::sendRequest(int, const std::string&, const std::shared_ptr<vrutti::core::utils::JsonNode>&, std::function<void(const std::shared_ptr<vrutti::core::utils::JsonNode>&)>, std::function<void(const std::string&, const std::string&)>, int)**
 - **IPCClient::sendReply(int, const std::shared_ptr<vrutti::core::utils::JsonNode>&)**
 - **IPCClient::sendReplyError(int, const std::string&, const std::string&)**
 - **IPCClient::sendAck(int)**
@@ -35,16 +35,18 @@ Inter-process communication: the pipe transport and the protocol that connects t
 - **IPCClient::resolvePending(int, const std::shared_ptr<vrutti::core::utils::JsonNode>&, bool, const std::string&)**
 - **IPCClient::handleIncomingMessage(const std::string&)**
 - **bool IPCClient::decodeVSBuffer(const std::shared_ptr<vrutti::core::utils::JsonNode>&, std::vector<uint8_t>&)**
+- **std::shared_ptr<vrutti::core::utils::JsonNode> IPCClient::encodeVSBuffer(const std::vector<uint8_t>&)**
 - **VSCodeProtocol::VSCodeProtocol(IPCClient*)**
 - **VSCodeProtocol::~VSCodeProtocol()**
 - **VSCodeProtocol::initialize()**
 - **VSCodeProtocol::handleRequest(const IPCClient::RpcRequest&)**
 - **bool VSCodeProtocol::hasHandler(const std::string&, const std::string&)**
 - **VSCodeProtocol::handleLocalRequest(const std::string&, const std::shared_ptr<JsonNode>&)**
-- **int VSCodeProtocol::sendRequest(int, const std::string&, const std::shared_ptr<JsonNode>&, std::function<void(const std::shared_ptr<JsonNode>&)>, std::function<void(const std::string&)>)**
-- **int VSCodeProtocol::sendRequest(const char*, const std::string&, const std::shared_ptr<JsonNode>&, std::function<void(const std::shared_ptr<JsonNode>&)>, std::function<void(const std::string&)>)**
+- **int VSCodeProtocol::sendRequest(int, const std::string&, const std::shared_ptr<JsonNode>&, std::function<void(const std::shared_ptr<JsonNode>&)>, std::function<void(const std::string&, const std::string&)>)**
+- **int VSCodeProtocol::sendRequest(const char*, const std::string&, const std::shared_ptr<JsonNode>&, std::function<void(const std::shared_ptr<JsonNode>&)>, std::function<void(const std::string&, const std::string&)>)**
 - **VSCodeProtocol::setWorkspaceFolder(const std::string&)**
 - **const std::string& VSCodeProtocol::workspaceFolder()**
 - **VSCodeProtocol::emitToUi(const std::string&, const std::shared_ptr<JsonNode>&)**
+- **VSCodeProtocol::setAsyncHandler(const std::string&, const std::string&, AsyncHandler)**
 - **const char* shapeName(int)**
 - **int shapeId(const char*)**

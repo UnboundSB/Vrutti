@@ -4,6 +4,8 @@
 File system services: watching, reading and writing files.
 
 ## Files
+- **FileService.cpp**: Implementation of the FileService component.
+- **FileService.h**: Header for the FileService component.
 - **Glob.cpp**: Implementation of the Glob component.
 - **Glob.h**: Header for the Glob component.
 - **Path.cpp**: Implementation of the Path component.
@@ -16,6 +18,17 @@ File system services: watching, reading and writing files.
 - **Workspace.h**: Header for the Workspace component.
 
 ## Public Methods
+- **FileResult FileResult::success()**
+- **FileResult FileResult::failure(const std::string&, const std::string&)**
+- **FileService::FileService()**
+- **FileResult FileService::stat(const std::string&, FileStat&)**
+- **FileResult FileService::readDirectory(const std::string&, std::vector<DirectoryEntry>&)**
+- **FileResult FileService::readFile(const std::string&, std::vector<uint8_t>&)**
+- **FileResult FileService::writeFile(const std::string&, const std::vector<uint8_t>&)**
+- **FileResult FileService::rename(const std::string&, const std::string&, bool)**
+- **FileResult FileService::copy(const std::string&, const std::string&, bool)**
+- **FileResult FileService::createDirectory(const std::string&)**
+- **FileResult FileService::remove(const std::string&, bool)**
 - **bool Glob::match(const std::string&, const std::string&)**
 - **std::string Path::basename(const std::string&)**
 - **std::string Path::dirname(const std::string&)**
@@ -34,6 +47,8 @@ File system services: watching, reading and writing files.
 - **StreamBuffer::append(const StreamChunk&)**
 - **std::string StreamBuffer::toString()**
 - **StreamBuffer::clear()**
+- **std::string uriToNativePath(const UriComponents&)**
+- **UriComponents nativePathToUri(const std::string&)**
 - **URI::URI(std::string)**
 - **URI::URI()**
 - **std::string_view URI::scheme()**

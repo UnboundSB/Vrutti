@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <vector>
 #include "IPCClient.h"
+#include "core/fs/FileService.h"
 #include "core/utils/Json.h"
 
 namespace vrutti::core::ipc {
@@ -53,14 +54,14 @@ public:
                     const std::string& method,
                     const std::shared_ptr<JsonNode>& args,
                     std::function<void(const std::shared_ptr<JsonNode>&)> onResolve = nullptr,
-                    std::function<void(const std::string&)> onReject = nullptr);
+                    std::function<void(const std::string&, const std::string&)> onReject = nullptr);
 
     // Sends a request to an Extension Host actor, addressed by shape name.
     int sendRequest(const char* shapeName,
                     const std::string& method,
                     const std::shared_ptr<JsonNode>& args,
                     std::function<void(const std::shared_ptr<JsonNode>&)> onResolve = nullptr,
-                    std::function<void(const std::string&)> onReject = nullptr);
+                    std::function<void(const std::string&, const std::string&)> onReject = nullptr);
 
     // Absolute path of the folder that was opened on startup (may be empty).
     void setWorkspaceFolder(const std::string& path) { m_workspaceFolder = path; }
@@ -79,6 +80,25 @@ public:
 
     using Handler = std::function<HandlerResult(const std::shared_ptr<JsonNode>& args)>;
 
+    // A handler that answers later.
+    //
+    // Some calls cannot be answered on the spot: the answer may come from the
+    // extension host itself, which is the peer that sent the request. The
+    // handler gets the callbacks it must use to answer, and the router keeps
+    // its hands off the request until one of them is called.
+    //
+    // The failure callback takes the message and the name of the error. The
+    // name is the code the extension host expects, for example
+    // "FileNotFound".
+    using AsyncHandler = std::function<void(
+        const std::shared_ptr<JsonNode>& args,
+        std::function<void(const std::shared_ptr<JsonNode>&)> reply,
+        std::function<void(const std::string&, const std::string&)> fail)>;
+
+    // Registers a handler that answers later.
+    void setAsyncHandler(const std::string& shape, const std::string& method,
+                         AsyncHandler handler);
+
 private:
     void registerHandlers();
     void onExtensionHostReady();
@@ -90,8 +110,34 @@ private:
     // Publishes the list of available colour or icon themes to the UI.
     void emitThemeList(const std::string& method, bool icons);
 
+    // --- the file system ------------------------------------------------------
+
+    // The handle of the provider that serves the scheme of the URI, or -1
+    // when the URI belongs to the native file system.
+    int providerForUri(const std::shared_ptr<JsonNode>& uri) const;
+
+    // Forwards a file system call to the provider of an extension.
+    //
+    // The handle of the provider is the first argument of the call on the
+    // `ExtHostFileSystem` actor, the rest follows.
+    void forwardToProvider(int handle,
+                           const char* method,
+                           const std::vector<std::shared_ptr<JsonNode>>& args,
+                           const std::function<void(const std::shared_ptr<JsonNode>&)>& reply,
+                           const std::function<void(const std::string&, const std::string&)>& fail);
+
+    // The file system of the core, used for the `file:` scheme.
+    vrutti::core::fs::FileService m_fileService;
+
+    // The providers that extensions registered, by scheme and by handle.
+    std::unordered_map<std::string, int> m_fsProviders;
+    std::unordered_map<int, std::string> m_fsProviderSchemes;
+
     IPCClient* m_ipc;
     std::unordered_map<std::string, Handler> m_handlers;
+
+    // The handlers that answer later.
+    std::unordered_map<std::string, AsyncHandler> m_asyncHandlers;
 
     // The calls that were answered with the default because Vrutti has no
     // implementation for them. Each one is reported only once, so the log

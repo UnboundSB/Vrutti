@@ -10,6 +10,10 @@ End-to-end integration tests that launch the full Vrutti IDE and verify workflow
       implementation must be answered with the benign default of its return
       type, never with an error. (`ProtocolFallbackTest.cpp`, driven over the
       real named pipe.)
+- [x] **INT0b.** The `workspace.fs` surface: an extension writes a file,
+      reads it back, stats it, lists a directory, creates a folder, renames,
+      copies, deletes, and gets the upstream error names for the failures.
+      (`ExthostFileSystemTest.cpp`, over the real named pipe.)
 - [ ] **INT1.** Test harness: script to launch `vrutti_app.exe` with a test workspace.
 - [ ] **INT2.** E2E: open folder → verify workspace folders in UI.
 - [ ] **INT3.** E2E: open file → edit → save → verify file on disk changed.
@@ -20,7 +24,10 @@ End-to-end integration tests that launch the full Vrutti IDE and verify workflow
 - [ ] **INT8.** Fuzz the JSON parser with random and truncated input.
 - [ ] **INT9.** Fuzz the IPC frame decoder: a frame that claims a length it
       does not have must be dropped, not crash the core.
+- [ ] **INT10.** A request that is never answered must fail on its deadline
+      instead of hanging forever.
 
 ## Related
 - `src/tests/TODO.md` — overall test strategy
 - `src/app/TODO.md` — app launch for tests
+- `ExtHostPipeClient.h` — the pipe client the integration tests share

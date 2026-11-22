@@ -18,7 +18,7 @@ core cannot answer must therefore never become an error reply -- see
 | File | Purpose | Status |
 |------|---------|--------|
 | `IPCClient.cpp/.h` | Pipe transport, frame decoding, pending-call tracking | Working |
-| `VSCodeProtocol.cpp/.h` | The router for the `MainThread*` / `ExtHost*` shapes | 76 handlers |
+| `VSCodeProtocol.cpp/.h` | The router for the `MainThread*` / `ExtHost*` shapes | 87 handlers |
 | `VsCodeProxyIds.generated.h` | The numeric proxy id of every shape | Generated |
 | `VsCodeProxyFallbacks.generated.h` | The benign answer of every call | Generated |
 
@@ -39,12 +39,15 @@ core cannot answer must therefore never become an error reply -- see
       `scripts/generate_exthost_fallbacks.py`, so it cannot drift.
 - [x] **P0.2.** Know the gap. `scripts/audit_exthost_handlers.py` compares the
       upstream protocol with the registered handlers and prints the backlog.
-      Current state: 87 shapes, 516 methods, 76 handled, 440 missing.
+      Current state: 87 shapes, 516 methods, 87 handled, 429 missing.
 - [ ] **P0.3.** Implement the shapes an ordinary extension touches, in this
       order:
   - [ ] `MainThreadDocuments` — opening, editing and saving the documents an
         extension works on.
-  - [ ] `MainThreadFileSystem` — reading and writing files.
+  - [x] `MainThreadFileSystem` — reading and writing files. The file service
+        lives in `src/core/fs/FileService.cpp`; the twelve file operations are
+        answered by the router, and the provider calls are forwarded to the
+        extension host when an extension registered a provider for the scheme.
   - [ ] `MainThreadEditor` — the visible state of an editor.
   - [ ] `MainThreadLanguages` — diagnostics and the language of a document.
   - [ ] `MainThreadLanguageFeatures` — completion, hover, signature providers.
@@ -57,8 +60,8 @@ core cannot answer must therefore never become an error reply -- see
   - [ ] `MainThreadSearch` — file and text search providers.
   - [ ] `MainThreadWebview` — webview panels and views.
   - [ ] `MainThreadConsole` — the output channel of an extension.
-- [ ] **P1.1.** Give every outbound request a timeout, so a promise that never
-      settles cannot leak.
+- [x] **P1.1.** Give every outbound request a timeout, so a promise that never
+      settles cannot leak. The watchdog lives in `IPCClient`.
 - [ ] **P1.2.** Drop the reply of a request that was cancelled.
 - [ ] **P1.3.** Shut the terminal down without a deadlock.
 - [ ] **P1.4.** Write the settings without blocking the caller.

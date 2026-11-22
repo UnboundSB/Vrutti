@@ -274,9 +274,9 @@ int main() {
           "$tryApplyWorkspaceEdit", "[{}]", Default::False,
           "a call that returns a boolean" },
 
-        // `Promise<[string, FileType][]>` upstream -- no file system provider.
-        { proxy::Main::MainThreadFileSystem, "MainThreadFileSystem",
-          "$readdir", "[{\"scheme\":\"file\",\"path\":\"/tmp\"}]", Default::EmptyArray,
+        // `Promise<tasks.ITaskDTO[]>` upstream -- no task engine.
+        { proxy::Main::MainThreadTask, "MainThreadTask",
+          "$fetchTasks", "[{}]", Default::EmptyArray,
           "a call that returns a list" },
 
         // `Promise<string>` upstream -- no task engine.

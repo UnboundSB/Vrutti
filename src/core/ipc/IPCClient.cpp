@@ -1,5 +1,6 @@
 #include "IPCClient.h"
 #include "../utils/ErrorCodes.h"
+#include "../utils/Base64.h"
 #include <iostream>
 #include <thread>
 #include <algorithm>
@@ -81,6 +82,10 @@ void IPCClient::start() {
         }
     }).detach();
 
+    // The watchdog gives up on the calls the extension host never answers.
+    // Without it, a promise on the other side would wait forever.
+    m_watchdog = std::thread([this]() { this->watchPendingCalls(); });
+
     std::cout << "[IPC] Bound to pipe/socket: " << m_pipeName << "\n";
     std::cout << "[IPC] Awaiting connection from Node.js Extension Host...\n";
 }
@@ -88,6 +93,13 @@ void IPCClient::start() {
 void IPCClient::stop() {
     if (!m_running) return;
     m_running = false;
+
+    // The watchdog is woken up and joined, so it cannot touch the table
+    // after this object is gone.
+    m_watchdogSignal.notify_all();
+    if (m_watchdog.joinable()) {
+        m_watchdog.join();
+    }
 
 #ifndef _WIN32
     if (m_connectionHandle) {
@@ -104,6 +116,13 @@ void IPCClient::stop() {
         m_connectionHandle = nullptr;
     }
 #endif
+
+    // The calls that are still open are given up on, so nothing waits for an
+    // answer that can no longer arrive.
+    {
+        std::lock_guard<std::mutex> pendingLock(m_pendingMutex);
+        m_pendingCalls.clear();
+    }
 }
 
 std::string IPCClient::serializeJson(const std::shared_ptr<JsonNode>& node) {
@@ -167,11 +186,18 @@ int IPCClient::sendRequest(int proxyId,
                            const std::string& method,
                            const std::shared_ptr<JsonNode>& args,
                            std::function<void(const std::shared_ptr<JsonNode>&)> onResolve,
-                           std::function<void(const std::string&)> onReject) {
+                           std::function<void(const std::string&, const std::string&)> onReject,
+                           int timeoutMs) {
     int id = ++m_nextId;
     {
         std::lock_guard<std::mutex> lock(m_pendingMutex);
-        m_pendingCalls[id] = { std::move(onResolve), std::move(onReject) };
+        PendingCall call;
+        call.resolve = std::move(onResolve);
+        call.reject = std::move(onReject);
+        call.deadline = std::chrono::steady_clock::now() +
+                        std::chrono::milliseconds(timeoutMs > 0 ? timeoutMs
+                                                                : kDefaultRequestTimeoutMs);
+        m_pendingCalls[id] = std::move(call);
     }
 
     auto frame = std::make_shared<JsonNode>(JsonNode::Type::Object);
@@ -185,6 +211,48 @@ int IPCClient::sendRequest(int proxyId,
             : std::make_shared<JsonNode>(JsonNode::Type::Array));
     sendRaw(serializeJson(frame) + "\n");
     return id;
+}
+
+// -----------------------------------------------------------------------------
+// The watchdog
+// -----------------------------------------------------------------------------
+
+void IPCClient::watchPendingCalls() {
+    std::unique_lock<std::mutex> lock(m_watchdogMutex);
+    while (m_running) {
+        // The table is checked often enough that a call is given up on
+        // shortly after its time is up, and rarely enough that the check
+        // costs nothing.
+        m_watchdogSignal.wait_for(lock, std::chrono::milliseconds(250), [this]() {
+            return !m_running;
+        });
+        if (!m_running) break;
+
+        std::vector<std::pair<int, std::function<void(const std::string&, const std::string&)>>> expired;
+        {
+            std::lock_guard<std::mutex> pendingLock(m_pendingMutex);
+            auto now = std::chrono::steady_clock::now();
+            for (auto it = m_pendingCalls.begin(); it != m_pendingCalls.end();) {
+                if (it->second.deadline <= now) {
+                    if (it->second.reject) {
+                        expired.emplace_back(it->first, it->second.reject);
+                    }
+                    it = m_pendingCalls.erase(it);
+                } else {
+                    ++it;
+                }
+            }
+        }
+
+        // The callbacks run outside the lock: a callback may answer a
+        // request, which touches the table again.
+        for (auto& entry : expired) {
+            reportError("IPC", ErrorCode::IpcTimeout,
+                        "the extension host did not answer request " +
+                        std::to_string(entry.first) + " in time");
+            entry.second("the extension host did not answer in time", "TimeoutError");
+        }
+    }
 }
 
 void IPCClient::sendReply(int reqId, const std::shared_ptr<JsonNode>& result) {
@@ -240,7 +308,7 @@ void IPCClient::resolvePending(int requestId,
                                bool isError,
                                const std::string& errorMessage) {
     std::function<void(const std::shared_ptr<JsonNode>&)> resolveCb;
-    std::function<void(const std::string&)> rejectCb;
+    std::function<void(const std::string&, const std::string&)> rejectCb;
     {
         std::lock_guard<std::mutex> lock(m_pendingMutex);
         auto it = m_pendingCalls.find(requestId);
@@ -250,34 +318,95 @@ void IPCClient::resolvePending(int requestId,
         m_pendingCalls.erase(it);
     }
     if (isError) {
-        if (rejectCb) rejectCb(errorMessage);
+        // The name of the error is the code the extension host expects, for
+        // example "FileNotFound". It is carried by the error object.
+        std::string name = "Error";
+        if (payload && payload->type == JsonNode::Type::Object) {
+            auto nameNode = payload->get("name");
+            if (nameNode && nameNode->type == JsonNode::Type::String) {
+                name = std::string(nameNode->stringValue.data(), nameNode->stringValue.length());
+            }
+        }
+        if (rejectCb) rejectCb(errorMessage, name);
     } else {
         if (resolveCb) resolveCb(payload);
     }
 }
 
+namespace {
+    // The largest binary payload the core accepts. A peer that asks for more
+    // is broken or hostile, and a huge allocation is not worth the risk.
+    constexpr size_t kMaxBufferBytes = 64u * 1024u * 1024u;
+
+    // The index of a byte in the flattened buffer.
+    //
+    // The key of the property is the index of the byte and the value of the
+    // property is the byte itself. The index has to be read from the key:
+    // reading it from the value would make the size of the buffer depend on
+    // the content of the file instead of on its length.
+    bool parseBufferIndex(const std::string& key, size_t& out) {
+        if (key.empty() || key.size() > 10) return false;
+        size_t value = 0;
+        for (char c : key) {
+            if (c < '0' || c > '9') return false;
+            value = value * 10 + static_cast<size_t>(c - '0');
+        }
+        if (value >= kMaxBufferBytes) return false;
+        out = value;
+        return true;
+    }
+} // namespace
+
 bool IPCClient::decodeVSBuffer(const std::shared_ptr<JsonNode>& node, std::vector<uint8_t>& out) {
     out.clear();
     if (!node || node->type != JsonNode::Type::Object) return false;
 
-    // JSON.stringify flattens a VSBuffer into { "buffer": { "0": 12, ... } }.
+    // The marker form: { "$vsbuffer": "<base64>" }. This is what the bridge
+    // uses for a payload that the renderer sends.
+    auto markerNode = node->get("$vsbuffer");
+    if (markerNode && markerNode->type == JsonNode::Type::String) {
+        std::string encoded(markerNode->stringValue.data(), markerNode->stringValue.length());
+        std::string decoded = base64_decode(encoded);
+        if (decoded.size() > kMaxBufferBytes) return false;
+        out.assign(decoded.begin(), decoded.end());
+        return true;
+    }
+
+    // The marshalled form: { "buffer": { "0": 12, ... } }. A VSBuffer that
+    // travels through the upstream argument serializer arrives this way.
     auto bufferNode = node->get("buffer");
     if (!bufferNode || bufferNode->type != JsonNode::Type::Object) return false;
 
     size_t maxIndex = 0;
+    bool any = false;
     for (const auto& prop : bufferNode->objectProperties) {
-        if (prop.second && prop.second->type == JsonNode::Type::Number) {
-            maxIndex = std::max(maxIndex, static_cast<size_t>(prop.second->numberValue));
-        }
+        if (!prop.second || prop.second->type != JsonNode::Type::Number) continue;
+        size_t index = 0;
+        if (!parseBufferIndex(prop.first, index)) continue;
+        maxIndex = std::max(maxIndex, index);
+        any = true;
     }
+    if (!any) {
+        // An empty buffer is a buffer of no bytes.
+        return true;
+    }
+
     out.assign(maxIndex + 1, 0);
     for (const auto& prop : bufferNode->objectProperties) {
-        if (prop.second && prop.second->type == JsonNode::Type::Number) {
-            size_t idx = static_cast<size_t>(prop.second->numberValue);
-            if (idx < out.size()) out[idx] = static_cast<uint8_t>(prop.second->numberValue);
-        }
+        if (!prop.second || prop.second->type != JsonNode::Type::Number) continue;
+        size_t index = 0;
+        if (!parseBufferIndex(prop.first, index)) continue;
+        if (index < out.size()) out[index] = static_cast<uint8_t>(prop.second->numberValue);
     }
     return true;
+}
+
+std::shared_ptr<JsonNode> IPCClient::encodeVSBuffer(const std::vector<uint8_t>& data) {
+    auto node = std::make_shared<JsonNode>(JsonNode::Type::Object);
+    std::string raw(data.begin(), data.end());
+    node->objectProperties.emplace_back("$vsbuffer",
+        vrutti::core::utils::makeJsonString(base64_encode(raw)));
+    return node;
 }
 
 void IPCClient::handleIncomingMessage(const std::string& jsonMessage) {

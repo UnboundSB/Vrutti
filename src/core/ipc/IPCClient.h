@@ -5,6 +5,10 @@
 #include <mutex>
 #include <memory>
 #include <cstdint>
+#include <atomic>
+#include <chrono>
+#include <condition_variable>
+#include <thread>
 #include "core/editor/PieceTable.h"
 #include "core/utils/Json.h"
 
@@ -49,6 +53,10 @@ namespace vrutti::core::ipc {
 // -----------------------------------------------------------------------------
 class IPCClient {
 public:
+    // How long a request to the extension host may take before it is given
+    // up on. The answer of a well behaved host arrives in milliseconds.
+    static constexpr int kDefaultRequestTimeoutMs = 30000;
+
     // An inbound RPC request from the Extension Host.
     struct RpcRequest {
         int reqId = 0;
@@ -74,12 +82,18 @@ public:
 
     // Sends an RPC request to the Extension Host. `args` must be a JSON array
     // node (the positional arguments of the RPC method).
+    //
+    // `timeoutMs` is how long the core waits for the answer. When the time
+    // is up the pending call is rejected and the entry is dropped, so a peer
+    // that never answers cannot wedge the caller forever.
+    //
     // Returns the assigned request id.
     int sendRequest(int proxyId,
                     const std::string& method,
                     const std::shared_ptr<vrutti::core::utils::JsonNode>& args,
                     std::function<void(const std::shared_ptr<vrutti::core::utils::JsonNode>&)> onResolve,
-                    std::function<void(const std::string&)> onReject = nullptr);
+                    std::function<void(const std::string&, const std::string&)> onReject = nullptr,
+                    int timeoutMs = kDefaultRequestTimeoutMs);
 
     // Sends the result of an inbound request.
     void sendReply(int reqId, const std::shared_ptr<vrutti::core::utils::JsonNode>& result);
@@ -149,13 +163,23 @@ public:
     static bool decodeVSBuffer(const std::shared_ptr<vrutti::core::utils::JsonNode>& node,
                                std::vector<uint8_t>& out);
 
+    // Encodes binary content for the bridge.
+    //
+    // The bridge carries binary payloads as { "$vsbuffer": "<base64>" }. The
+    // extension host turns that marker back into a real VSBuffer, so a
+    // payload that is not marked would arrive as a plain object.
+    static std::shared_ptr<vrutti::core::utils::JsonNode>
+        encodeVSBuffer(const std::vector<uint8_t>& data);
+
 private:
     void sendRaw(const std::string& payload);
     void listenLoop();
+    void watchPendingCalls();
     std::string serializeJson(const std::shared_ptr<vrutti::core::utils::JsonNode>& node);
 
     std::string m_pipeName;
-    bool m_running;
+    // Read by the listen thread and by the watchdog, so it is atomic.
+    std::atomic<bool> m_running;
     vrutti::core::editor::PieceTable* m_activeBuffer;
     bool m_isConnected = false;
 
@@ -183,9 +207,18 @@ private:
     int m_nextId{0};
     struct PendingCall {
         std::function<void(const std::shared_ptr<vrutti::core::utils::JsonNode>&)> resolve;
-        std::function<void(const std::string&)> reject;
+        std::function<void(const std::string&, const std::string&)> reject;
+        // When the answer has to be there. A call that passes it is given up
+        // on, so a peer that never answers cannot wedge the caller.
+        std::chrono::steady_clock::time_point deadline;
     };
     std::unordered_map<int, PendingCall> m_pendingCalls;
+
+    // The watchdog that gives up on the calls the extension host never
+    // answers.
+    std::thread m_watchdog;
+    std::mutex m_watchdogMutex;
+    std::condition_variable m_watchdogSignal;
 };
 
 } // namespace vrutti::core::ipc

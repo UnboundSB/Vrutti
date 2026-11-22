@@ -1,8 +1,97 @@
 #include "URI.h"
 #include <algorithm>
+#include <cctype>
 #include <stdexcept>
 
 namespace vrutti::core::fs {
+
+namespace {
+
+    // The text of a string field of a URI object.
+    std::string stringField(const UriComponents& node, const char* name) {
+        if (!node || node->type != vrutti::core::utils::JsonNode::Type::Object) return "";
+        auto value = node->get(name);
+        if (!value || value->type != vrutti::core::utils::JsonNode::Type::String) return "";
+        return std::string(value->stringValue.data(), value->stringValue.length());
+    }
+
+    // The path of a URI that was sent as a string, for example
+    // "file:///c:/dir/file.txt".
+    bool stringUriToPath(const std::string& uri, std::string& path) {
+        size_t colon = uri.find(':');
+        if (colon == std::string::npos) return false;
+
+        std::string scheme = uri.substr(0, colon);
+        if (!scheme.empty() && scheme != "file") return false;
+
+        std::string rest = uri.substr(colon + 1);
+        // The authority of a file URI is empty.
+        if (rest.rfind("//", 0) == 0) {
+            size_t slash = rest.find('/', 2);
+            rest = (slash == std::string::npos) ? "" : rest.substr(slash);
+        }
+        // The query and the fragment are not part of the path.
+        size_t cut = rest.find_first_of("?#");
+        if (cut != std::string::npos) rest = rest.substr(0, cut);
+
+        path = rest;
+        return true;
+    }
+
+} // namespace
+
+std::string uriToNativePath(const UriComponents& uri) {
+    if (!uri) return "";
+
+    std::string path;
+    if (uri->type == vrutti::core::utils::JsonNode::Type::String) {
+        // The URI was sent as a string.
+        std::string text(uri->stringValue.data(), uri->stringValue.length());
+        if (!stringUriToPath(text, path)) return "";
+    } else if (uri->type == vrutti::core::utils::JsonNode::Type::Object) {
+        // Only the `file:` scheme has a native path. Any other scheme belongs
+        // to a provider of an extension.
+        std::string scheme = stringField(uri, "scheme");
+        if (!scheme.empty() && scheme != "file") return "";
+        path = stringField(uri, "path");
+    } else {
+        return "";
+    }
+
+    if (path.empty()) return "";
+
+    // "/c:/dir/file" -> "c:/dir/file"
+    if (path.size() >= 3 && path[0] == '/' &&
+        std::isalpha(static_cast<unsigned char>(path[1])) && path[2] == ':') {
+        path = path.substr(1);
+    }
+
+#ifdef _WIN32
+    std::replace(path.begin(), path.end(), '/', '\\');
+#endif
+    return path;
+}
+
+UriComponents nativePathToUri(const std::string& path) {
+    using vrutti::core::utils::JsonNode;
+
+    auto uri = std::make_shared<JsonNode>(JsonNode::Type::Object);
+
+    std::string p = path;
+    std::replace(p.begin(), p.end(), '\\', '/');
+
+    // The drive letter is lower case, the way `URI.file()` writes it.
+    if (p.size() >= 2 && std::isalpha(static_cast<unsigned char>(p[0])) && p[1] == ':') {
+        p[0] = static_cast<char>(std::tolower(static_cast<unsigned char>(p[0])));
+    }
+    if (p.empty() || p[0] != '/') p = "/" + p;
+
+    uri->objectProperties.emplace_back("scheme",
+        vrutti::core::utils::makeJsonString("file"));
+    uri->objectProperties.emplace_back("path",
+        vrutti::core::utils::makeJsonString(p));
+    return uri;
+}
 
     URI::URI(std::string rawUri) : m_rawUri(std::move(rawUri)) {
         if (m_rawUri.length() > 65535) {
