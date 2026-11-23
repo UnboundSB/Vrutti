@@ -89,6 +89,7 @@ host talk to the core over a **private named pipe**, one per window
 | Auditing | `scripts/audit_exthost_handlers.py` prints the live backlog. |
 | Themes | A native theme service, `theme/set`, `icon_theme/set`, and the available theme lists. |
 | File system | The `workspace.fs` surface: stat, read directory, read file, write file, create directory, delete, rename, copy — with the upstream error names. |
+| Documents | The `workspace.openTextDocument()` surface: open, create and save a text document. The text lives in the core and is mirrored to the extension host with the delta of the documents. |
 | Timeouts | Every outbound request has a deadline, so a silent peer cannot hang an extension. |
 | Documentation | A `structure.md` and a `TODO.md` in every first-party folder. A central error code registry. |
 | Releases | `0.0.4` is built and published through Inno Setup 6. |
@@ -115,23 +116,22 @@ Work down this list. Each one is a shape of the upstream protocol.
 
 | # | Shape | Why it matters |
 |---|---|---|
-| 1 | `MainThreadDocuments` | Without it no extension can do anything with a file. |
-| 2 | `MainThreadEditor` | The visible state of an editor: selections, visible ranges. |
-| 3 | `MainThreadLanguages` | Diagnostics, tokenization, the language of a document. |
-| 4 | `MainThreadLanguageFeatures` | The completion, hover and signature providers an extension registers. |
-| 5 | `MainThreadTerminal` | Terminal creation and shell integration. |
-| 6 | `MainThreadTask` | Task providers and execution. |
-| 7 | `MainThreadQuickInput` | Input boxes and pickers. |
-| 8 | `MainThreadNotification`, `MainThreadMessageService` | Progress and messages. |
-| 9 | `MainThreadDebugService` | Debug adapters. |
-| 10 | `MainThreadSearch` | File and text search providers. |
-| 11 | `MainThreadWebview` | Webview panels and views. |
-| 12 | `MainThreadConsole` | The output channel of an extension. |
+| 1 | `MainThreadEditor` | The visible state of an editor: selections, visible ranges. |
+| 2 | `MainThreadLanguages` | Diagnostics, tokenization, the language of a document. |
+| 3 | `MainThreadLanguageFeatures` | The completion, hover and signature providers an extension registers. |
+| 4 | `MainThreadTerminal` | Terminal creation and shell integration. |
+| 5 | `MainThreadTask` | Task providers and execution. |
+| 6 | `MainThreadQuickInput` | Input boxes and pickers. |
+| 7 | `MainThreadNotification`, `MainThreadMessageService` | Progress and messages. |
+| 8 | `MainThreadDebugService` | Debug adapters. |
+| 9 | `MainThreadSearch` | File and text search providers. |
+| 10 | `MainThreadWebview` | Webview panels and views. |
+| 11 | `MainThreadConsole` | The output channel of an extension. |
 
-`MainThreadFileSystem` is done. The shapes that belong to features Vrutti
-does not have — chat, agents, embeddings, browsers, authentication, notebooks
-— stay on the fallback answer. That is a documented decision, not an
-oversight.
+`MainThreadFileSystem` and `MainThreadDocuments` are done. The shapes that
+belong to features Vrutti does not have — chat, agents, embeddings, browsers,
+authentication, notebooks — stay on the fallback answer. That is a documented
+decision, not an oversight.
 
 **How to implement one, every time:**
 
@@ -145,6 +145,13 @@ oversight.
    shared `ExtHostPipeClient.h`.
 5. Update the audit numbers, the `TODO.md` files and `docs/BACKEND_HARDENING.md`.
 6. Commit and push.
+
+**The trap of the next shapes:** a shape that has a *mirror* on the host side
+cannot be answered on the spot. `MainThreadDocuments` is the example: the host
+resolves `workspace.openTextDocument()` only when the document is in its
+mirror, so the delta has to reach the host *before* the call is answered. The
+same holds for the editors and the languages: the host keeps a mirror of
+every editor and every language, and the renderer has to feed it.
 
 ### Then the rest of the plan
 

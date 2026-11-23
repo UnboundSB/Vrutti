@@ -7,6 +7,7 @@ Integration tests: they exercise the services through their public interfaces.
 - **ExthostFileSystemTest.cpp**: ExthostFileSystemTest -- proves that an extension can use `vscode.workspace.fs`.
 - **ExtHostIntegrationTest.cpp**: Implementation of the ExtHostIntegrationTest component.
 - **ExtHostPipeClient.h**: The pipe client of the integration tests.
+- **MainThreadDocumentsTest.cpp**: MainThreadDocumentsTest -- proves that an extension can open, create and save a text document.
 - **ProtocolFallbackTest.cpp**: ProtocolFallbackTest -- proves the contract of the extension host router.
 - **ThemeServiceTest.cpp**: Integration test for the theme service.
 - **TODO.md**: Open questions and planned work for this folder.

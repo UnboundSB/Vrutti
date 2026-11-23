@@ -31,6 +31,7 @@ add_library(vrutti_core STATIC
     src/core/memory/ArenaAllocator.cpp
     src/core/concurrency/ThreadPool.cpp
     src/core/editor/PieceTable.cpp
+    src/core/editor/DocumentStore.cpp
     src/core/fs/URI.cpp
     src/core/fs/Path.cpp
     src/core/fs/Glob.cpp
@@ -125,6 +126,12 @@ add_test(NAME ProtocolFallbackTest COMMAND vrutti_protocol_fallback_test)
 add_executable(vrutti_exthost_fs_test src/tests/integration/ExthostFileSystemTest.cpp)
 target_link_libraries(vrutti_exthost_fs_test PRIVATE vrutti_core)
 add_test(NAME ExthostFileSystemTest COMMAND vrutti_exthost_fs_test)
+
+# `vscode.workspace.openTextDocument()`: the way an extension opens, creates
+# and saves a text document.
+add_executable(vrutti_documents_test src/tests/integration/MainThreadDocumentsTest.cpp)
+target_link_libraries(vrutti_documents_test PRIVATE vrutti_core)
+add_test(NAME MainThreadDocumentsTest COMMAND vrutti_documents_test)
 
 
 

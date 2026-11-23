@@ -194,6 +194,26 @@ namespace {
         return std::string(node->stringValue.data(), node->stringValue.length());
     }
 
+    // The path of a URI object, without touching it: "/c:/dir/file.txt".
+    std::string uriPathOf(const std::shared_ptr<JsonNode>& uri) {
+        if (!uri || uri->type != JsonNode::Type::Object) return "";
+        auto node = uri->get("path");
+        if (!node || node->type != JsonNode::Type::String) return "";
+        return std::string(node->stringValue.data(), node->stringValue.length());
+    }
+
+    // A string field of an options object, for example the `language` of the
+    // options of a document. The value is the fallback when the field is
+    // missing.
+    std::string optionString(const std::shared_ptr<JsonNode>& options,
+                             const char* name,
+                             const std::string& fallback) {
+        if (!options || options->type != JsonNode::Type::Object) return fallback;
+        auto node = options->get(name);
+        if (!node || node->type != JsonNode::Type::String) return fallback;
+        return std::string(node->stringValue.data(), node->stringValue.length());
+    }
+
     // The options of a file system call: an object with the flag `overwrite`
     // or `recursive` and the other flags that travel with it.
     std::shared_ptr<JsonNode> boolOption(const std::shared_ptr<JsonNode>& options,
@@ -1128,25 +1148,147 @@ void VSCodeProtocol::registerHandlers() {
     };
 
     // --- MainThreadDocuments ----------------------------------------------------
-    m_handlers["MainThreadDocuments.$tryCreateDocument"] = [this](const std::shared_ptr<JsonNode>&) -> HR {
-        return okResult(); // undefined -- untitled documents are not modelled yet
-    };
+    //
+    // The document surface: the way an extension opens, creates and saves a
+    // text document.
+    //
+    // The text of a document lives in the core. The extension host keeps its
+    // own mirror of it, and that mirror is fed by the delta of
+    // `ExtHostDocumentsAndEditors.$acceptDocumentsAndEditorsDelta`.
+    //
+    // The delta is sent *before* the call is answered, because the host
+    // resolves `workspace.openTextDocument()` only when the document is in
+    // its mirror. The calls are therefore answered later.
 
-    m_handlers["MainThreadDocuments.$tryOpenDocument"] = [this](const std::shared_ptr<JsonNode>& args) -> HR {
-        auto uri = argAt(args, 0);
-        return okResult(uri ? uri : makeNull());
-    };
+    setAsyncHandler("MainThreadDocuments", "$tryOpenDocument",
+        [this](const std::shared_ptr<JsonNode>& args,
+               std::function<void(const std::shared_ptr<JsonNode>&)> reply,
+               std::function<void(const std::string&, const std::string&)> fail) {
+            auto uriNode = argAt(args, 0);
+            if (!uriNode || uriNode->type != JsonNode::Type::Object) {
+                fail("Invalid uri. Scheme and authority or path must be set.", "Error");
+                return;
+            }
 
-    m_handlers["MainThreadDocuments.$trySaveDocument"] = [this](const std::shared_ptr<JsonNode>& args) -> HR {
-        auto uri = argAt(args, 0);
-        std::string path = uriToPath(uri);
-        if (path.empty()) return okResult(makeBool(false));
-        auto ev = makeObject();
-        setProp(ev, "uri", uri ? uri : makeNull());
-        setProp(ev, "path", makeString(path));
-        emitToUi("documents/save", ev);
-        return okResult(makeBool(true));
-    };
+            const std::string scheme = uriScheme(uriNode);
+            const std::string uriPath = uriPathOf(uriNode);
+            if (scheme.empty() || uriPath.empty()) {
+                fail("Invalid uri. Scheme and authority or path must be set.", "Error");
+                return;
+            }
+
+            const std::string encoding = optionString(argAt(args, 1), "encoding", "");
+            const std::string key = scheme + ":" + uriPath;
+
+            if (scheme == "untitled") {
+                // An untitled document only exists in memory. It has to be
+                // known already, there is no file to read.
+                vrutti::core::editor::Document document;
+                if (!m_documents.get(key, document)) {
+                    fail("cannot open " + key + ". Detail: the document does not exist", "Error");
+                    return;
+                }
+            } else {
+                vrutti::core::editor::Document document;
+                std::string error;
+                std::string errorCode;
+                if (!m_documents.openFile(uriPath, uriToPath(uriNode), encoding,
+                                          document, error, errorCode)) {
+                    fail("cannot open " + key + ". Detail: " + error, "Error");
+                    return;
+                }
+            }
+
+            publishDocument(key, uriNode,
+                [reply, fail, uriNode](bool ok, const std::string& message) {
+                    if (!ok) {
+                        // The host already knows the document. That is not a
+                        // failure: the document is open and the host has it.
+                        if (message.find("already exists") != std::string::npos) {
+                            reply(uriNode);
+                            return;
+                        }
+                        fail(message, "Error");
+                        return;
+                    }
+                    reply(uriNode);
+                });
+        });
+
+    setAsyncHandler("MainThreadDocuments", "$tryCreateDocument",
+        [this](const std::shared_ptr<JsonNode>& args,
+               std::function<void(const std::shared_ptr<JsonNode>&)> reply,
+               std::function<void(const std::string&, const std::string&)> fail) {
+            auto options = argAt(args, 0);
+            const std::string language = optionString(options, "language", "plaintext");
+            const std::string content = optionString(options, "content", "");
+            const std::string encoding = optionString(options, "encoding", "utf8");
+
+            const auto document = m_documents.createUntitled(language, content, encoding);
+            const std::string key = document.key();
+
+            auto uri = makeObject();
+            setProp(uri, "scheme", makeString(document.scheme));
+            setProp(uri, "path", makeString(document.uriPath));
+
+            publishDocument(key, uri,
+                [reply, fail, uri](bool ok, const std::string& message) {
+                    if (!ok) {
+                        fail(message, "Error");
+                        return;
+                    }
+                    reply(uri);
+                });
+        });
+
+    setAsyncHandler("MainThreadDocuments", "$trySaveDocument",
+        [this](const std::shared_ptr<JsonNode>& args,
+               std::function<void(const std::shared_ptr<JsonNode>&)> reply,
+               std::function<void(const std::string&, const std::string&)> fail) {
+            auto uriNode = argAt(args, 0);
+            if (!uriNode || uriNode->type != JsonNode::Type::Object) {
+                fail("Invalid uri.", "Error");
+                return;
+            }
+
+            const std::string key = uriScheme(uriNode) + ":" + uriPathOf(uriNode);
+
+            vrutti::core::editor::Document document;
+            if (!m_documents.get(key, document)) {
+                // There is nothing to save. The answer is false, not an
+                // error: the document is simply not open.
+                reply(makeBool(false));
+                return;
+            }
+
+            if (document.fsPath.empty()) {
+                // An untitled document has no file yet. The interface is told
+                // about it, and the answer is false: nothing was written.
+                auto event = makeObject();
+                setProp(event, "uri", uriNode);
+                emitToUi("documents/saveAs", event);
+                reply(makeBool(false));
+                return;
+            }
+
+            std::string error;
+            std::string errorCode;
+            if (!m_documents.save(key, error, errorCode)) {
+                fail("cannot save " + key + ". Detail: " + error, "Error");
+                return;
+            }
+
+            // The host has to learn that the document is no longer dirty.
+            auto hostArgs = makeArray();
+            hostArgs->arrayElements.push_back(uriNode);
+            sendRequest("ExtHostDocuments", "$acceptModelSaved", hostArgs, nullptr,
+                [](const std::string& message, const std::string&) {
+                    std::cerr << "[VSCodeProtocol] the host did not accept the save: "
+                              << message << std::endl;
+                });
+
+            reply(makeBool(true));
+        });
 
     // --- MainThreadFileSystem ---------------------------------------------------
     //
@@ -1485,6 +1627,88 @@ void VSCodeProtocol::forwardToProvider(
         },
         [fail](const std::string& message, const std::string& name) {
             fail(message, name.empty() ? std::string("Unavailable") : name);
+        });
+}
+
+// -----------------------------------------------------------------------------
+// The documents
+// -----------------------------------------------------------------------------
+
+void VSCodeProtocol::publishDocument(const std::string& key,
+                                     const std::shared_ptr<JsonNode>& uri,
+                                     std::function<void(bool, const std::string&)> done) {
+    vrutti::core::editor::Document document;
+    if (!m_documents.get(key, document)) {
+        done(false, "the document is not open");
+        return;
+    }
+
+    // The delta of the document, in the shape of the upstream
+    // `IModelAddedData`.
+    auto data = makeObject();
+    setProp(data, "uri", uri ? uri : makeNull());
+    setProp(data, "versionId", makeNumber(static_cast<double>(document.versionId)));
+
+    auto lines = makeArray();
+    std::vector<std::string> lineTexts;
+    vrutti::core::editor::DocumentStore::splitLines(document.content, document.eol, lineTexts);
+    for (const auto& line : lineTexts) {
+        lines->arrayElements.push_back(makeString(line));
+    }
+    setProp(data, "lines", lines);
+    setProp(data, "EOL", makeString(document.eol));
+    setProp(data, "languageId", makeString(document.languageId));
+    setProp(data, "isDirty", makeBool(document.isDirty));
+    setProp(data, "encoding", makeString(document.encoding));
+
+    auto added = makeArray();
+    added->arrayElements.push_back(data);
+
+    auto delta = makeObject();
+    setProp(delta, "addedDocuments", added);
+
+    auto args = makeArray();
+    args->arrayElements.push_back(delta);
+
+    sendRequest(proxy::Ext::ExtHostDocumentsAndEditors, "$acceptDocumentsAndEditorsDelta", args,
+        [this, done](const std::shared_ptr<JsonNode>&) {
+            publishRemovedDocuments();
+            done(true, "");
+        },
+        [done](const std::string& message, const std::string&) {
+            done(false, message);
+        });
+}
+
+void VSCodeProtocol::publishRemovedDocuments() {
+    const auto evicted = m_documents.takeEvicted();
+    if (evicted.empty()) return;
+
+    auto removed = makeArray();
+    for (const auto& key : evicted) {
+        // The key is the scheme and the path of the URI, separated by a colon.
+        const size_t colon = key.find(':');
+        if (colon == std::string::npos) continue;
+        auto uri = makeObject();
+        setProp(uri, "scheme", makeString(key.substr(0, colon)));
+        setProp(uri, "path", makeString(key.substr(colon + 1)));
+        removed->arrayElements.push_back(uri);
+    }
+    if (removed->arrayElements.empty()) return;
+
+    auto delta = makeObject();
+    setProp(delta, "removedDocuments", removed);
+
+    auto args = makeArray();
+    args->arrayElements.push_back(delta);
+
+    // The host is told, and the answer does not matter: a document that the
+    // host has already dropped is not an error.
+    sendRequest(proxy::Ext::ExtHostDocumentsAndEditors, "$acceptDocumentsAndEditorsDelta", args,
+        nullptr,
+        [](const std::string& message, const std::string&) {
+            std::cerr << "[VSCodeProtocol] the host did not accept the removal: "
+                      << message << std::endl;
         });
 }
 

@@ -33,6 +33,14 @@ core cannot answer must therefore never become an error reply -- see
 * An error reply means "the call you made is broken", not "I do not have that
   feature".
 
+## How the audit counts
+The audit counts a method as handled when a handler is registered for it. A
+handler that only answers with the default of the return type is a
+**placeholder**: the call is answered, but the feature is not there. The
+number the audit prints is therefore the number of *answered* calls, not the
+number of *implemented* features. The placeholders are the real backlog, and
+they are the ones that are worked through shape by shape.
+
 ## Tasks (Priority Order — the backend hardening plan)
 - [x] **P0.1.** Answer a call without an implementation with the default of
       its return type. The table is generated from the upstream signatures by
@@ -42,8 +50,14 @@ core cannot answer must therefore never become an error reply -- see
       Current state: 87 shapes, 516 methods, 87 handled, 429 missing.
 - [ ] **P0.3.** Implement the shapes an ordinary extension touches, in this
       order:
-  - [ ] `MainThreadDocuments` — opening, editing and saving the documents an
-        extension works on.
+  - [x] `MainThreadDocuments` — opening, editing and saving the documents an
+        extension works on. The text of a document lives in the core, in
+        `src/core/editor/DocumentStore.cpp`. The extension host keeps its own
+        mirror of a document, and the mirror is fed by the delta of
+        `ExtHostDocumentsAndEditors.$acceptDocumentsAndEditorsDelta`. The
+        delta is sent *before* the call is answered, because the host
+        resolves `workspace.openTextDocument()` only when the document is in
+        its mirror. Proven by `MainThreadDocumentsTest`.
   - [x] `MainThreadFileSystem` — reading and writing files. The file service
         lives in `src/core/fs/FileService.cpp`; the twelve file operations are
         answered by the router, and the provider calls are forwarded to the

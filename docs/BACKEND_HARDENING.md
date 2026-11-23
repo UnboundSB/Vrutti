@@ -56,29 +56,52 @@ the gap is the backlog.
 The audit counts the handlers that answer later as well, so the number it
 prints is the number that is really answered.
 
+A handler that only answers with the default of the return type is a
+**placeholder**: the call is answered, but the feature is not there. The
+number above is the number of *answered* calls, not the number of
+*implemented* features. The placeholders are the real backlog.
+
 ### P0.3 Implement the shapes an ordinary extension touches
 
 Priority order, by how likely an extension is to use them:
 
-| # | Shape | Why |
-| - | ----- | --- |
-| 1 | `MainThreadDocuments` | Opening, editing and saving the documents an extension works on. Without it no extension can do anything with a file. |
-| 2 | `MainThreadFileSystem` | Reading and writing files. |
-| 3 | `MainThreadEditor` | The visible state of an editor: selections, visible ranges. |
-| 4 | `MainThreadLanguages` | Diagnostics, tokenization, the language of a document. |
-| 5 | `MainThreadLanguageFeatures` | The completion, hover and signature providers an extension registers. |
-| 6 | `MainThreadTerminal` | Terminal creation and shell integration. |
-| 7 | `MainThreadTask` | Task providers and execution. |
-| 8 | `MainThreadQuickInput` | Input boxes and pickers. |
-| 9 | `MainThreadNotification`, `MainThreadMessageService` | Progress and messages. |
-| 10 | `MainThreadDebugService` | Debug adapters. |
-| 11 | `MainThreadSearch` | File and text search providers. |
-| 12 | `MainThreadWebview` | Webview panels and views. |
-| 13 | `MainThreadConsole` | The output channel of an extension. |
+| # | Shape | Why | State |
+| - | ----- | --- | ----- |
+| 1 | `MainThreadDocuments` | Opening, editing and saving the documents an extension works on. Without it no extension can do anything with a file. | done |
+| 2 | `MainThreadFileSystem` | Reading and writing files. | done |
+| 3 | `MainThreadEditor` | The visible state of an editor: selections, visible ranges. | |
+| 4 | `MainThreadLanguages` | Diagnostics, tokenization, the language of a document. | |
+| 5 | `MainThreadLanguageFeatures` | The completion, hover and signature providers an extension registers. | |
+| 6 | `MainThreadTerminal` | Terminal creation and shell integration. | |
+| 7 | `MainThreadTask` | Task providers and execution. | |
+| 8 | `MainThreadQuickInput` | Input boxes and pickers. | |
+| 9 | `MainThreadNotification`, `MainThreadMessageService` | Progress and messages. | |
+| 10 | `MainThreadDebugService` | Debug adapters. | |
+| 11 | `MainThreadSearch` | File and text search providers. | |
+| 12 | `MainThreadWebview` | Webview panels and views. | |
+| 13 | `MainThreadConsole` | The output channel of an extension. | |
 
 The shapes that belong to features Vrutti does not have -- chat, agents,
 embeddings, browsers, authentication, notebooks -- stay on the fallback
 answer. That is a deliberate, documented decision, not an oversight.
+
+### The document contract
+
+`MainThreadDocuments` is the first shape that has a *mirror* on the other
+side of the pipe. The text of a document lives in the core, in
+`src/core/editor/DocumentStore.cpp`. The extension host keeps its own mirror
+of every document, and that mirror is what an extension reads. The mirror is
+fed by the delta of `ExtHostDocumentsAndEditors.$acceptDocumentsAndEditorsDelta`.
+
+Two rules make it work:
+
+* **The delta goes first.** The host resolves `workspace.openTextDocument()`
+  only when the document is in its mirror, so the call is answered *after*
+  the delta was taken. That is why the document calls are answered later
+  rather than on the spot.
+* **The store and the mirror stay in sync.** A document that the store drops
+  is reported to the host as a removed document, so the mirror never keeps a
+  document that no longer exists.
 
 ---
 
@@ -136,3 +159,4 @@ answer. That is a deliberate, documented decision, not an oversight.
 | The JSON layer is correct | `build/test_json.exe` |
 | The theme service is correct | `build/vrutti_theme_test.exe` |
 | The file system surface is correct | `build/vrutti_exthost_fs_test.exe` |
+| The document surface is correct | `build/vrutti_documents_test.exe` |

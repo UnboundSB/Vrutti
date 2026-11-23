@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <vector>
 #include "IPCClient.h"
+#include "core/editor/DocumentStore.h"
 #include "core/fs/FileService.h"
 #include "core/utils/Json.h"
 
@@ -126,8 +127,30 @@ private:
                            const std::function<void(const std::shared_ptr<JsonNode>&)>& reply,
                            const std::function<void(const std::string&, const std::string&)>& fail);
 
+    // --- the documents ---------------------------------------------------------
+
+    // Publishes a document to the extension host.
+    //
+    // The host keeps a mirror of every document, and the text of the mirror
+    // is what an extension reads. The mirror is fed by the delta of
+    // `ExtHostDocumentsAndEditors.$acceptDocumentsAndEditorsDelta`.
+    //
+    // The call is answered when the host has taken the delta, because the
+    // host resolves `workspace.openTextDocument()` only when the document is
+    // in its mirror.
+    void publishDocument(const std::string& key,
+                         const std::shared_ptr<JsonNode>& uri,
+                         std::function<void(bool, const std::string&)> done);
+
+    // Tells the host about the documents that the store had to drop, so that
+    // its mirror does not keep documents that no longer exist.
+    void publishRemovedDocuments();
+
     // The file system of the core, used for the `file:` scheme.
     vrutti::core::fs::FileService m_fileService;
+
+    // The documents of the core: the text that the extension host mirrors.
+    vrutti::core::editor::DocumentStore m_documents;
 
     // The providers that extensions registered, by scheme and by handle.
     std::unordered_map<std::string, int> m_fsProviders;
