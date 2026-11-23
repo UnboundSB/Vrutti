@@ -90,7 +90,7 @@ host talk to the core over a **private named pipe**, one per window
 | Themes | A native theme service, `theme/set`, `icon_theme/set`, and the available theme lists. |
 | File system | The `workspace.fs` surface: stat, read directory, read file, write file, create directory, delete, rename, copy — with the upstream error names. |
 | Documents | The `workspace.openTextDocument()` surface: open, create and save a text document. The text lives in the core and is mirrored to the extension host with the delta of the documents. |
-| Extensions | A `.vsix` is installed by the core: the archive is read by a reader that trusts nothing, the manifest is checked, and the host learns about the new extension through `$deltaExtensions`. No shell is involved. |
+| Extensions | A `.vsix` is installed by the core: the archive is read by a reader that trusts nothing, the manifest is checked, and the host learns about the new extension through `$deltaExtensions` and wakes it up through `$activate`. No shell is involved. |
 | Timeouts | Every outbound request has a deadline, so a silent peer cannot hang an extension. |
 | Documentation | A `structure.md` and a `TODO.md` in every first-party folder. A central error code registry. |
 | Releases | `0.0.4` is built and published through Inno Setup 6. |
@@ -170,8 +170,9 @@ extensions/install | extensions/uninstall | extensions/enable | extensions/disab
 The rules the installer follows (no file may leave the folder of the
 extension, no archive may expand without end, the manifest is checked before
 anything is written, no shell is involved) are in
-`docs/BACKEND_HARDENING.md`. The tests are `ExtensionInstallerTest` and
-`ExtensionInstallProtocolTest`.
+`docs/BACKEND_HARDENING.md`. The tests are `ExtensionInstallerTest`,
+`ExtensionInstallProtocolTest` and `ExtensionInstallE2ETest` — the last one
+installs a real extension and watches it run in the real extension host.
 
 ### Then the rest of the plan
 

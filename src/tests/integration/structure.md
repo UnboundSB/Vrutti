@@ -4,6 +4,7 @@
 Integration tests: they exercise the services through their public interfaces.
 
 ## Files
+- **ExtensionInstallE2ETest.cpp**: ExtensionInstallE2ETest -- the whole chain, from the archive to the running extension.
 - **ExtensionInstallerTest.cpp**: ExtensionInstallerTest -- the installation of an extension, from the archive to the folder of the extension.
 - **ExtensionInstallProtocolTest.cpp**: ExtensionInstallProtocolTest -- proves that an extension that is installed while the editor is open reaches...
 - **ExthostFileSystemTest.cpp**: ExthostFileSystemTest -- proves that an extension can use `vscode.workspace.fs`.

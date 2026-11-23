@@ -4,6 +4,8 @@
 Inter-process communication: the pipe transport and the protocol that connects the core to the extension host.
 
 ## Files
+- **ExtensionHostSpawner.cpp**: Implementation of the ExtensionHostSpawner component.
+- **ExtensionHostSpawner.h**: Header for the ExtensionHostSpawner component.
 - **IPCClient.cpp**: Implementation of the IPCClient component.
 - **IPCClient.h**: Header for the IPCClient component.
 - **TODO.md**: Open questions and planned work for this folder.
@@ -13,6 +15,10 @@ Inter-process communication: the pipe transport and the protocol that connects t
 - **VsCodeProxyIds.generated.h**: Header for the VsCodeProxyIds generated component.
 
 ## Public Methods
+- **bool ExtensionHostSpawner::spawn(const std::string&, std::string&)**
+- **std::string ExtensionHostSpawner::pipePath(const std::string&)**
+- **std::filesystem::path ExtensionHostSpawner::nodePath()**
+- **std::filesystem::path ExtensionHostSpawner::bootstrapperPath()**
 - **IPCClient::IPCClient(const std::string&)**
 - **IPCClient::~IPCClient()**
 - **IPCClient::start()**
@@ -47,6 +53,7 @@ Inter-process communication: the pipe transport and the protocol that connects t
 - **VSCodeProtocol::setWorkspaceFolder(const std::string&)**
 - **const std::string& VSCodeProtocol::workspaceFolder()**
 - **VSCodeProtocol::emitToUi(const std::string&, const std::shared_ptr<JsonNode>&)**
+- **VSCodeProtocol::setOnHandshakeComplete(std::function<void()>)**
 - **VSCodeProtocol::setAsyncHandler(const std::string&, const std::string&, AsyncHandler)**
 - **const char* shapeName(int)**
 - **int shapeId(const char*)**

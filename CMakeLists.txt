@@ -48,6 +48,7 @@ add_library(vrutti_core STATIC
     src/core/extensions/ExtensionService.cpp
     src/core/ipc/IPCClient.cpp
     src/core/ipc/VSCodeProtocol.cpp
+    src/core/ipc/ExtensionHostSpawner.cpp
     src/core/config/SettingsManager.cpp
     src/core/plugins/PluginLoader.cpp
     src/core/plugins/ExtensionScanner.cpp
@@ -148,6 +149,13 @@ add_test(NAME ExtensionInstallerTest COMMAND vrutti_installer_test)
 add_executable(vrutti_install_protocol_test src/tests/integration/ExtensionInstallProtocolTest.cpp)
 target_link_libraries(vrutti_install_protocol_test PRIVATE vrutti_core)
 add_test(NAME ExtensionInstallProtocolTest COMMAND vrutti_install_protocol_test)
+
+# The whole chain: a real extension is installed by the core and runs in the
+# real extension host.
+add_executable(vrutti_install_e2e_test src/tests/integration/ExtensionInstallE2ETest.cpp)
+target_link_libraries(vrutti_install_e2e_test PRIVATE vrutti_core)
+add_test(NAME ExtensionInstallE2ETest COMMAND vrutti_install_e2e_test)
+set_tests_properties(ExtensionInstallE2ETest PROPERTIES TIMEOUT 180)
 
 
 

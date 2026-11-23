@@ -345,6 +345,8 @@ void VSCodeProtocol::onExtensionHostReady() {
     sendConfigurationHandshake();
     sendWorkspaceHandshake();
     sendStartupActivation();
+
+    if (m_onHandshakeComplete) m_onHandshakeComplete();
 }
 
 void VSCodeProtocol::sendInitData() {
@@ -453,6 +455,10 @@ void VSCodeProtocol::sendStartupActivation() {
     auto args = makeArray();
     args->arrayElements.push_back(makeString("onStartupFinished"));
     args->arrayElements.push_back(makeNumber(0));
+
+    // The event happened. An extension that is installed later and that
+    // waits for it has to be woken up right away.
+    m_requestedActivationEvents.insert("onStartupFinished");
 
     sendRequest(proxy::Ext::ExtHostExtensionService, "$activateByEvent", args,
         [](const std::shared_ptr<JsonNode>&) {
@@ -1845,13 +1851,72 @@ void VSCodeProtocol::sendExtensionDelta(
     args->arrayElements.push_back(delta);
 
     sendRequest(proxy::Ext::ExtHostExtensionService, "$deltaExtensions", args,
-        [](const std::shared_ptr<JsonNode>&) {
+        [this, added](const std::shared_ptr<JsonNode>&) {
             std::cout << "[VSCodeProtocol] the host knows about the new extensions\n";
+            // The host only knows about the extension once the delta has
+            // been taken. The extension is woken up after that, never
+            // before.
+            this->activateAddedExtensions(added);
         },
         [](const std::string& message, const std::string&) {
             std::cerr << "[VSCodeProtocol] the host did not take the extensions: "
                       << message << std::endl;
         });
+}
+
+void VSCodeProtocol::activateAddedExtensions(
+        const std::vector<vrutti::core::extensions::ExtensionDescription>& added) {
+    for (const auto& description : added) {
+        if (description.isBuiltin) continue;
+
+        // The reason of the activation, the way the upstream workbench
+        // decides it: an event that already happened, the star, or the end
+        // of the start-up.
+        std::string reason;
+        for (const auto& event : description.activationEvents) {
+            if (m_requestedActivationEvents.count(event) > 0) {
+                reason = event;
+                break;
+            }
+            if (event == "*") {
+                reason = event;
+                break;
+            }
+            if (event == "onStartupFinished") {
+                reason = event;
+                break;
+            }
+        }
+
+        // An extension without an event is never woken up by itself: it
+        // waits for something that happens in the editor.
+        if (reason.empty()) continue;
+
+        auto identifier = makeObject();
+        setProp(identifier, "value", makeString(description.identifier));
+        setProp(identifier, "_lower", makeString(description.lowerIdentifier));
+
+        // The shape of the upstream `ExtensionActivationReason`.
+        auto activationReason = makeObject();
+        setProp(activationReason, "startup", makeBool(false));
+        setProp(activationReason, "extensionId", identifier);
+        setProp(activationReason, "activationEvent", makeString(reason));
+
+        auto args = makeArray();
+        args->arrayElements.push_back(identifier);
+        args->arrayElements.push_back(activationReason);
+
+        const std::string name = description.identifier;
+        sendRequest(proxy::Ext::ExtHostExtensionService, "$activate", args,
+            [name](const std::shared_ptr<JsonNode>&) {
+                std::cout << "[VSCodeProtocol] the extension " << name
+                          << " was woken up\n";
+            },
+            [name](const std::string& message, const std::string&) {
+                std::cerr << "[VSCodeProtocol] the extension " << name
+                          << " was not woken up: " << message << std::endl;
+            });
+    }
 }
 
 void VSCodeProtocol::installExtension(const std::string& location, bool isAddress) {

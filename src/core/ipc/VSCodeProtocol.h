@@ -72,6 +72,15 @@ public:
     // Forwards an event to the UI layer (webview).
     void emitToUi(const std::string& method, const std::shared_ptr<JsonNode>& params);
 
+    // Fired when the start-up handshake is done.
+    //
+    // The handshake is the four calls that the host needs before it can run
+    // an extension: the init data, the configuration, the workspace and the
+    // first activation. When the callback runs, all four have been sent.
+    void setOnHandshakeComplete(std::function<void()> cb) {
+        m_onHandshakeComplete = std::move(cb);
+    }
+
     // Result of a handled RPC call.
     struct HandlerResult {
         bool ok = true;
@@ -164,6 +173,15 @@ private:
     void sendExtensionDelta(const std::vector<vrutti::core::extensions::ExtensionDescription>& added,
                             const std::vector<vrutti::core::extensions::ExtensionDescription>& removed);
 
+    // Wakes up the extensions that were added.
+    //
+    // The host does not wake an extension up by itself when it hears about
+    // it: the caller says which event woke it up. The rule is the one of the
+    // upstream workbench: an event that already happened, the star, or the
+    // end of the start-up.
+    void activateAddedExtensions(
+        const std::vector<vrutti::core::extensions::ExtensionDescription>& added);
+
     // Installs an extension and tells the host about it.
     //
     // `location` is either the path of a `.vsix` file on the disk or the
@@ -210,6 +228,14 @@ private:
     // The version of the list of the extensions. It grows every time the
     // host is told about a change, so the host knows that the list moved.
     int m_extensionVersionId = 1;
+
+    // The events that the host was already told about. An extension that is
+    // added later and that waits for one of these events has to be woken up
+    // right away: the event already happened.
+    std::set<std::string> m_requestedActivationEvents;
+
+    // Fired when the start-up handshake is done.
+    std::function<void()> m_onHandshakeComplete;
 };
 
 } // namespace vrutti::core::ipc

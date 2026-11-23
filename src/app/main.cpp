@@ -4,6 +4,7 @@
 #include <filesystem>
 
 #include "ui/compositor/Window.h"
+#include "core/ipc/ExtensionHostSpawner.h"
 #include "core/ipc/IPCClient.h"
 #include "core/ipc/VSCodeProtocol.h"
 
@@ -53,32 +54,15 @@ int main(int argc, char* argv[]) {
     ipc.start();
 
 #ifdef _WIN32
-    // Auto-spawn the Node.js Extension Host
-    STARTUPINFOA si;
-    PROCESS_INFORMATION pi;
-    ZeroMemory(&si, sizeof(si));
-    si.cb = sizeof(si);
-    // Hide the console window for the node process
-    si.dwFlags = STARTF_USESHOWWINDOW;
-    si.wShowWindow = SW_HIDE;
-    ZeroMemory(&pi, sizeof(pi));
-
-    // Resolve node.exe and bootstrapper.js dynamically from the executable directory
-    // (exePath and basePath already computed above for CWD fix)
-    std::string nodePath = (basePath / "src" / "ext" / "bin" / "node.exe").string();
-    std::string bootstrapperPath = (basePath / "src" / "ext" / "bootstrapper.js").string();
-
-    std::string cmd = "\"" + nodePath + "\" --expose-gc \"" + bootstrapperPath +
-                      "\" --pipe=\\\\.\\pipe\\" + pipeName;
-    std::vector<char> cmdBuffer(cmd.begin(), cmd.end());
-    cmdBuffer.push_back('\0');
-    
-    std::cout << "[Core] Spawning Node.js Extension Host..." << std::endl;
-    if (!CreateProcessA(NULL, cmdBuffer.data(), NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
-        std::cerr << "[Core] Failed to spawn Node.js Extension Host! Error: " << GetLastError() << std::endl;
-    } else {
-        CloseHandle(pi.hProcess);
-        CloseHandle(pi.hThread);
+    // Auto-spawn the Node.js Extension Host.
+    //
+    // The starter is a component of its own, so that the application and the
+    // tests start the host in exactly the same way. There is no shell
+    // anywhere: the address of the pipe is an argument of the program.
+    std::string spawnError;
+    if (!vrutti::core::ipc::ExtensionHostSpawner::spawn(pipeName, spawnError)) {
+        std::cerr << "[Core] Failed to spawn Node.js Extension Host: "
+                  << spawnError << std::endl;
     }
 #endif
 

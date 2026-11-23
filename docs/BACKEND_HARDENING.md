@@ -151,6 +151,19 @@ that carries the extensions that were added and the ones that were removed.
 The shape is the upstream `IExtensionDescriptionDelta`: `versionId`,
 `toRemove`, `toAdd`, `addActivationEvents`, `myToRemove` and `myToAdd`.
 
+Knowing about an extension is not the same as running it. The host does not
+wake an extension up by itself: the caller says which event woke it up. The
+core therefore follows the delta with
+`ExtHostExtensionService.$activate` and the upstream
+`ExtensionActivationReason`. The rule for the reason is the one of the
+upstream workbench: an event that already happened, the star (`*`), or the
+end of the start-up (`onStartupFinished`).
+
+The order matters. The delta has to be taken by the host before the
+extension is woken up, otherwise the host does not know the extension yet and
+the wake-up is answered with "unknown extension". The core therefore sends
+the wake-up from the answer of the delta, never before it.
+
 ---
 
 ## P1 -- Nothing may hang
@@ -210,3 +223,4 @@ The shape is the upstream `IExtensionDescriptionDelta`: `versionId`,
 | The document surface is correct | `build/vrutti_documents_test.exe` |
 | The installation of an extension is safe | `build/vrutti_installer_test.exe` |
 | An installed extension reaches the host | `build/vrutti_install_protocol_test.exe` |
+| An installed extension really runs | `build/vrutti_install_e2e_test.exe` |

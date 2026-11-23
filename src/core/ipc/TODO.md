@@ -19,6 +19,7 @@ core cannot answer must therefore never become an error reply -- see
 |------|---------|--------|
 | `IPCClient.cpp/.h` | Pipe transport, frame decoding, pending-call tracking | Working |
 | `VSCodeProtocol.cpp/.h` | The router for the `MainThread*` / `ExtHost*` shapes | 87 handlers |
+| `ExtensionHostSpawner.cpp/.h` | Starts the Node.js extension host | Working |
 | `VsCodeProxyIds.generated.h` | The numeric proxy id of every shape | Generated |
 | `VsCodeProxyFallbacks.generated.h` | The benign answer of every call | Generated |
 
@@ -35,6 +36,13 @@ every change through `ExtHostExtensionService.$deltaExtensions`, the call of
 the upstream protocol that carries the extensions that were added and the ones
 that were removed.
 
+The host does not wake an extension up by itself when it hears about it: the
+caller says which event woke it up. The core therefore follows the delta with
+`ExtHostExtensionService.$activate`, with the reason of the upstream
+`ExtensionActivationReason`. The rule for the reason is the one of the
+upstream workbench: an event that already happened, the star (`*`), or the end
+of the start-up (`onStartupFinished`).
+
 | Command | What it does |
 |---------|--------------|
 | `extensions/install` | Installs a `.vsix` from a file or from an address. |
@@ -45,8 +53,13 @@ that were removed.
 The archive of an extension is read by the reader of the core, in
 `src/core/utils/ZipArchive.cpp`. The reader refuses a file that wants to
 leave the folder of the extension, a file that expands too much, and a file
-whose checksum does not match. Proven by `ExtensionInstallerTest` and
-`ExtensionInstallProtocolTest`.
+whose checksum does not match.
+
+| Test | What it proves |
+|------|----------------|
+| `ExtensionInstallerTest` | The archive is read safely and the manifest is checked. |
+| `ExtensionInstallProtocolTest` | The host is told about the extension that was installed. |
+| `ExtensionInstallE2ETest` | A real extension, installed by the core, runs in the real extension host. |
 
 ## The contract
 * Every inbound request is answered. An unanswered request wedges the calling
