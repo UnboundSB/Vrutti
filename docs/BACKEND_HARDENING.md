@@ -105,6 +105,54 @@ Two rules make it work:
 
 ---
 
+## The installation of an extension
+
+An extension is code of a stranger. The installation is therefore the place
+where the editor is most careful.
+
+The work is done by `src/core/extensions/ExtensionService.cpp`. The service
+is the only place that knows what is installed, so the list the user
+interface shows and the list the extension host gets come from the same
+source and can never drift apart.
+
+### The rules
+
+* **The archive is read by a reader that trusts nothing.** The reader of the
+  core (`src/core/utils/ZipArchive.cpp`) never trusts a size that is written
+  in the archive. The content is bounded while it is produced, and the
+  checksum of every file is checked when it is written.
+* **A file may not leave the folder of the extension.** A name with a parent
+  part (`..`), an absolute path, a drive letter or a backslash is refused,
+  and the path of every file is checked again after it has been resolved.
+* **A file may not expand without end.** The number of files, the size of a
+  file, the size of the whole archive and the ratio between the archive and
+  its content all have a limit.
+* **The manifest is checked before anything is written.** The name, the
+  publisher and the version have to be usable as a part of a folder name, the
+  version of the host that the extension asks for has to exist, and the entry
+  point of the extension has to be in the archive.
+* **A refused installation leaves nothing behind.** The extension is unpacked
+  into a folder of its own first. When anything goes wrong, that folder is
+  removed and the old version of the extension stays as it was.
+* **Nothing goes through a shell.** The address of an archive is an argument
+  of a program, never a part of a command. The old installer built a command
+  with the address and the name of the extension inside it, which made a
+  quote in either of them a way to run a command.
+
+### The host has to know
+
+The extension host keeps a registry of the extensions it knows. When the list
+is only sent at the start-up, an extension that is installed afterwards is
+not there until the editor is started again.
+
+Every change is therefore sent to the host through
+`ExtHostExtensionService.$deltaExtensions`, the call of the upstream protocol
+that carries the extensions that were added and the ones that were removed.
+The shape is the upstream `IExtensionDescriptionDelta`: `versionId`,
+`toRemove`, `toAdd`, `addActivationEvents`, `myToRemove` and `myToAdd`.
+
+---
+
 ## P1 -- Nothing may hang
 
 * Every request that the core sends to the extension host gets a timeout.
@@ -160,3 +208,5 @@ Two rules make it work:
 | The theme service is correct | `build/vrutti_theme_test.exe` |
 | The file system surface is correct | `build/vrutti_exthost_fs_test.exe` |
 | The document surface is correct | `build/vrutti_documents_test.exe` |
+| The installation of an extension is safe | `build/vrutti_installer_test.exe` |
+| An installed extension reaches the host | `build/vrutti_install_protocol_test.exe` |

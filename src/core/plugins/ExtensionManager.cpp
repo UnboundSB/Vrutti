@@ -1,17 +1,44 @@
+// -----------------------------------------------------------------------------
+// ExtensionManager -- the plugin that answers what is installed and what can
+// be installed.
+//
+// The work is done by the service of the core
+// (`src/core/extensions/ExtensionService.cpp`). The plugin is the *interface*
+// of that service: the parts of the app that do not live in the core (the
+// window, the tools) talk to it through the plugin ABI:
+//
+//     executeCommand("list", "")                  -> the extensions that are installed
+//     executeCommand("listForUserInterface", "")  -> the same list, in the shape of the interface
+//     executeCommand("install",  "{\"path\":\"...\"}")   -> installs a `.vsix`
+//     executeCommand("install",  "{\"url\":\"...\"}")    -> fetches a `.vsix` and installs it
+//     executeCommand("uninstall", "{\"id\":\"...\"}")    -> removes an extension
+//     executeCommand("enable",   "{\"id\":\"...\"}")    -> turns an extension on
+//     executeCommand("disable",  "{\"id\":\"...\"}")    -> turns an extension off
+//
+// Every answer is a JSON object that says whether the work was done:
+//
+//     {"ok": true,  "identifier": "publisher.name", "version": "1.0.0"}
+//     {"ok": false, "error": "what is wrong", "code": "InvalidExtension"}
+//
+// The service is the only place that knows what is installed, so the list the
+// user interface shows and the list the extension host gets can never drift
+// apart.
+// -----------------------------------------------------------------------------
+
 #include "ExtensionManager.h"
+#include "../extensions/ExtensionService.h"
+#include "../utils/HttpDownload.h"
 #include "../utils/Json.h"
+
 #include <filesystem>
-#include <fstream>
-#include <sstream>
-#include <cstdlib>
-#include <algorithm>
-#include <cctype>
-#include <iomanip>
-#include <sstream>
+#include <iostream>
+
+namespace fs = std::filesystem;
 
 using namespace vrutti::core::plugins;
 using namespace vrutti::core::utils;
-namespace fs = std::filesystem;
+using vrutti::core::extensions::ExtensionDescription;
+using vrutti::core::extensions::ExtensionService;
 
 namespace {
 
@@ -25,208 +52,126 @@ namespace {
         return node;
     }
 
-    std::shared_ptr<JsonNode> numNode(double value) {
-        auto node = std::make_shared<JsonNode>(JsonNode::Type::Number);
-        node->numberValue = value;
-        return node;
+    std::shared_ptr<JsonNode> makeObject() {
+        return std::make_shared<JsonNode>(JsonNode::Type::Object);
     }
 
     void setProp(const std::shared_ptr<JsonNode>& obj, const std::string& key,
                  const std::shared_ptr<JsonNode>& value) {
         if (!obj || obj->type != JsonNode::Type::Object) return;
-        // Object keys are owned by the tree, so they stay valid for as long as
-        // the node itself does.
         obj->objectProperties.emplace_back(key, value);
     }
 
-    std::string toPosixPath(const std::string& p) {
-        std::string out = p;
-        std::replace(out.begin(), out.end(), '\\', '/');
-        return out;
+    std::string stringOf(const std::shared_ptr<JsonNode>& node) {
+        if (!node || node->type != JsonNode::Type::String) return "";
+        return std::string(node->stringValue.data(), node->stringValue.length());
     }
 
-    // Builds a `file:` UriComponents object (VS Code's URI DTO shape).
-    std::shared_ptr<JsonNode> makeFileUri(const std::string& nativePath) {
-        std::string p = toPosixPath(nativePath);
-        if (p.size() >= 2 && std::isalpha(static_cast<unsigned char>(p[0])) && p[1] == ':') {
-            p[0] = static_cast<char>(std::tolower(static_cast<unsigned char>(p[0])));
-        }
-        if (p.empty() || p[0] != '/') p = "/" + p;
-
-        auto uri = std::make_shared<JsonNode>(JsonNode::Type::Object);
-        setProp(uri, "$mid", numNode(1)); // MarshalledId.Uri
-        setProp(uri, "scheme", strNode("file"));
-        setProp(uri, "path", strNode(p));
-        return uri;
+    // The answer of a command that worked.
+    std::string okAnswer() {
+        auto answer = makeObject();
+        setProp(answer, "ok", boolNode(true));
+        return JsonSerializer::stringify(answer, 0, false);
     }
 
-    // Deterministic UUID (v3-style, MD5 of the extension id) so that extension
-    // identity is stable across restarts, like upstream VS Code.
-    std::string stableUuid(const std::string& seed) {
-        // FNV-1a 128-bit-ish expansion -- good enough for a stable identifier.
-        uint64_t h1 = 1469598103934665603ULL;
-        uint64_t h2 = 1099511628211ULL;
-        for (unsigned char c : seed) {
-            h1 ^= c; h1 *= 1099511628211ULL;
-            h2 ^= c; h2 *= 1469598103934665603ULL;
-        }
-        std::ostringstream out;
-        out << std::hex << std::setfill('0');
-        out << std::setw(8) << (h1 & 0xFFFFFFFFULL);
-        out << std::setw(4) << ((h1 >> 32) & 0xFFFFULL);
-        out << std::setw(4) << ((h2 >> 16) & 0xFFFFULL);
-        out << std::setw(4) << (h2 & 0xFFFFULL);
-        out << std::setw(12) << ((h1 ^ h2) & 0xFFFFFFFFFFFFULL);
-        std::string hex = out.str();
-        return hex.substr(0, 8) + "-" + hex.substr(8, 4) + "-" + hex.substr(12, 4) + "-" +
-               hex.substr(16, 4) + "-" + hex.substr(20, 12);
+    // The answer of a command that did not work.
+    std::string errorAnswer(const std::string& error, const std::string& code) {
+        auto answer = makeObject();
+        setProp(answer, "ok", boolNode(false));
+        setProp(answer, "error", strNode(error));
+        setProp(answer, "code", strNode(code));
+        return JsonSerializer::stringify(answer, 0, false);
     }
 
 } // namespace
 
 bool ExtensionManager::initialize() { return true; }
 void ExtensionManager::shutdown() {}
+
 const char* ExtensionManager::getName() const { return "ExtensionManager"; }
 
-std::string ExtensionManager::executeCommand(const std::string& command, const std::string& payload) {
+std::string ExtensionManager::executeCommand(const std::string& command,
+                                             const std::string& payload) {
     if (command == "list") {
-        auto extensionsArr = std::make_shared<JsonNode>(JsonNode::Type::Array);
-
-        std::vector<std::string> extDirs;
-
-        // Built-in extensions, resolved relative to the running executable.
-        fs::path builtinPath = fs::current_path() / "extensions";
-        if (fs::exists(builtinPath)) {
-            extDirs.push_back(builtinPath.string());
-        }
-
-        // User extensions in ~/.vrutti/extensions
-#ifdef _WIN32
-        const char* home = std::getenv("USERPROFILE");
-#else
-        const char* home = std::getenv("HOME");
-#endif
-        if (home) {
-            fs::path userExtPath = fs::path(home) / ".vrutti" / "extensions";
-            if (fs::exists(userExtPath)) {
-                extDirs.push_back(userExtPath.string());
-            }
-        }
-
-        for (const auto& baseDir : extDirs) {
-            if (!fs::exists(baseDir) || !fs::is_directory(baseDir)) continue;
-            for (const auto& entry : fs::directory_iterator(baseDir)) {
-                if (!entry.is_directory()) continue;
-                fs::path extPath = entry.path();
-
-                // An extension folder may hold the manifest at its root or in
-                // an `extension/` sub-folder (VS Code marketplace layout).
-                fs::path pkgPath = extPath / "extension" / "package.json";
-                fs::path extRoot = extPath / "extension";
-                if (!fs::exists(pkgPath)) {
-                    pkgPath = extPath / "package.json";
-                    extRoot = extPath;
-                }
-                if (!fs::exists(pkgPath)) continue;
-
-                std::ifstream pkgFile(pkgPath);
-                if (!pkgFile.is_open()) continue;
-
-                std::stringstream buffer;
-                buffer << pkgFile.rdbuf();
-                auto pkgNode = JsonParser::parse(buffer.str());
-                if (!pkgNode || pkgNode->type != JsonNode::Type::Object) continue;
-
-                auto nameNode = pkgNode->get("name");
-                auto publisherNode = pkgNode->get("publisher");
-                std::string name = (nameNode && nameNode->type == JsonNode::Type::String)
-                    ? std::string(nameNode->stringValue.data(), nameNode->stringValue.length())
-                    : extPath.filename().string();
-                std::string publisher = (publisherNode && publisherNode->type == JsonNode::Type::String)
-                    ? std::string(publisherNode->stringValue.data(), publisherNode->stringValue.length())
-                    : "unknown";
-                std::string id = publisher + "." + name;
-
-                // --- IExtensionDescription ---
-                auto desc = std::make_shared<JsonNode>(JsonNode::Type::Object);
-
-                // identifier: ExtensionIdentifier { value, _lower }
-                std::string lower = id;
-                std::transform(lower.begin(), lower.end(), lower.begin(),
-                    [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-                auto identifier = std::make_shared<JsonNode>(JsonNode::Type::Object);
-                setProp(identifier, "value", strNode(id));
-                setProp(identifier, "_lower", strNode(lower));
-                setProp(identifier, "id", strNode(id));
-                setProp(desc, "identifier", identifier);
-                setProp(desc, "uuid", strNode(stableUuid(id)));
-
-                setProp(desc, "name", strNode(name));
-                setProp(desc, "publisher", strNode(publisher));
-                setProp(desc, "publisherDisplayName", strNode(publisher));
-
-                auto displayNameNode = pkgNode->get("displayName");
-                if (displayNameNode && displayNameNode->type == JsonNode::Type::String) {
-                    setProp(desc, "displayName", displayNameNode);
-                }
-
-                auto versionNode = pkgNode->get("version");
-                setProp(desc, "version", (versionNode && versionNode->type == JsonNode::Type::String)
-                    ? versionNode : strNode("0.0.0"));
-
-                // engines: { vscode: "^x.y.z" }
-                auto engines = std::make_shared<JsonNode>(JsonNode::Type::Object);
-                auto enginesNode = pkgNode->get("engines");
-                if (enginesNode && enginesNode->type == JsonNode::Type::Object) {
-                    auto vscodeNode = enginesNode->get("vscode");
-                    if (vscodeNode) setProp(engines, "vscode", vscodeNode);
-                }
-                if (!engines->objectProperties.empty()) {
-                    setProp(desc, "engines", engines);
-                } else {
-                    setProp(desc, "engines", strNode("^1.90.0"));
-                }
-
-                // Entry points are relative to extensionLocation.
-                auto mainNode = pkgNode->get("main");
-                if (mainNode && mainNode->type == JsonNode::Type::String) {
-                    setProp(desc, "main", mainNode);
-                }
-                auto browserNode = pkgNode->get("browser");
-                if (browserNode && browserNode->type == JsonNode::Type::String) {
-                    setProp(desc, "browser", browserNode);
-                }
-
-                auto activationNode = pkgNode->get("activationEvents");
-                if (activationNode && activationNode->type == JsonNode::Type::Array) {
-                    setProp(desc, "activationEvents", activationNode);
-                }
-
-                auto contributesNode = pkgNode->get("contributes");
-                if (contributesNode && contributesNode->type == JsonNode::Type::Object) {
-                    setProp(desc, "contributes", contributesNode);
-                }
-
-                auto extensionKindNode = pkgNode->get("extensionKind");
-                if (extensionKindNode) setProp(desc, "extensionKind", extensionKindNode);
-
-                auto capabilitiesNode = pkgNode->get("capabilities");
-                if (capabilitiesNode) setProp(desc, "capabilities", capabilitiesNode);
-
-                setProp(desc, "extensionLocation", makeFileUri(extRoot.string()));
-                setProp(desc, "targetPlatform", strNode("undefined"));
-                setProp(desc, "isBuiltin", boolNode(false));
-                setProp(desc, "isUserBuiltin", boolNode(false));
-                setProp(desc, "isUnderDevelopment", boolNode(false));
-                setProp(desc, "preRelease", boolNode(false));
-
-                extensionsArr->arrayElements.push_back(desc);
-            }
-        }
-
-        return JsonSerializer::stringify(extensionsArr, 0, false);
+        // The list in the shape of the extension host: the descriptions of
+        // the extensions that are installed and turned on.
+        return JsonSerializer::stringify(
+            ExtensionService::descriptionsJson(ExtensionService::listEnabled()), 0, false);
     }
-    return "[]";
+
+    if (command == "listForUserInterface") {
+        // The list in the shape of the user interface. It holds the
+        // extensions that are turned off as well, so that the interface can
+        // show them.
+        return JsonSerializer::stringify(
+            ExtensionService::userInterfaceJson(ExtensionService::listAll()), 0, false);
+    }
+
+    if (command == "install") {
+        auto request = JsonParser::parse(payload);
+        std::string path;
+        std::string address;
+        if (request && request->type == JsonNode::Type::Object) {
+            path = stringOf(request->get("path"));
+            address = stringOf(request->get("url"));
+        }
+        if (path.empty() && address.empty()) {
+            return errorAnswer("the extension has no file", "InvalidExtension");
+        }
+
+        std::string file = path;
+        std::string downloaded;
+        if (file.empty()) {
+            std::string error;
+            if (!HttpDownload::download(address, "", downloaded,
+                                        256ull * 1024 * 1024, error)) {
+                return errorAnswer("the extension could not be fetched: " + error, "Unavailable");
+            }
+            file = downloaded;
+        }
+
+        ExtensionDescription installed;
+        std::string error;
+        std::string errorCode;
+        const bool ok = ExtensionService::installVsix(file, installed, error, errorCode);
+
+        if (!downloaded.empty()) {
+            std::error_code ec;
+            fs::remove(downloaded, ec);
+        }
+
+        if (!ok) return errorAnswer(error, errorCode);
+
+        auto answer = makeObject();
+        setProp(answer, "ok", boolNode(true));
+        setProp(answer, "identifier", strNode(installed.identifier));
+        setProp(answer, "version", strNode(installed.version));
+        return JsonSerializer::stringify(answer, 0, false);
+    }
+
+    if (command == "uninstall" || command == "enable" || command == "disable") {
+        auto request = JsonParser::parse(payload);
+        std::string identifier = stringOf(request ? request->get("id") : nullptr);
+        if (identifier.empty()) {
+            identifier = stringOf(request ? request->get("identifier") : nullptr);
+        }
+        if (identifier.empty()) {
+            return errorAnswer("the extension has no name", "InvalidExtension");
+        }
+
+        std::string error;
+        std::string errorCode;
+        bool ok = false;
+        if (command == "uninstall") {
+            ok = ExtensionService::uninstall(identifier, error, errorCode);
+        } else {
+            ok = ExtensionService::setEnabled(identifier, command == "enable", error, errorCode);
+        }
+        if (!ok) return errorAnswer(error, errorCode);
+        return okAnswer();
+    }
+
+    return errorAnswer("unknown command: " + command, "UnknownCommand");
 }
 
 extern "C" {

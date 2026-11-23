@@ -5,6 +5,7 @@
 #include "VsCodeProxyFallbacks.generated.h"
 #include "core/fs/FileService.h"
 #include "core/fs/URI.h"
+#include "core/utils/HttpDownload.h"
 #include <iostream>
 #include <algorithm>
 #include <filesystem>
@@ -27,6 +28,15 @@ namespace {
         if (!args || args->type != JsonNode::Type::Array) return nullptr;
         if (index >= args->arrayElements.size()) return nullptr;
         return args->arrayElements[index];
+    }
+
+    // The name of an extension in lower case: the host compares the names of
+    // the extensions in lower case as well.
+    std::string toLowerIdentifier(std::string value) {
+        std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) {
+            return static_cast<char>(std::tolower(c));
+        });
+        return value;
     }
 
     std::string argString(const std::shared_ptr<JsonNode>& args, size_t index) {
@@ -588,21 +598,80 @@ void VSCodeProtocol::handleLocalRequest(const std::string& method,
     }
 
     if (method == "extensions/request_installed") {
-        vrutti::core::plugins::PluginLoader pluginManager;
-        auto plugin = pluginManager.loadPlugin(
-            vrutti::core::utils::pluginPath("ExtensionManager.dll").string());
-        if (!plugin) return;
-        std::string list = plugin->executeCommand("list", "");
-        auto parsed = JsonParser::parse(list);
-        if (!parsed) return;
-        auto ev = makeObject();
-        setProp(ev, "extensions", parsed);
-        emitToUi("extensions/installed", ev);
+        publishExtensionList();
 
         // The settings UI lists the available themes next to the installed
         // extensions, so they are published together.
         emitThemeList("themes/available", false);
         emitThemeList("icon_themes/available", true);
+        return;
+    }
+
+    if (method == "extensions/install") {
+        // The extension is either a file on the disk or an address. The
+        // address is fetched first, and the file is installed from there.
+        std::string location;
+        bool isAddress = false;
+        if (params && params->type == JsonNode::Type::Object) {
+            auto pathNode = params->get("path");
+            if (pathNode && pathNode->type == JsonNode::Type::String) {
+                location = std::string(pathNode->stringValue.data(), pathNode->stringValue.length());
+            }
+            auto urlNode = params->get("url");
+            if (urlNode && urlNode->type == JsonNode::Type::String && location.empty()) {
+                location = std::string(urlNode->stringValue.data(), urlNode->stringValue.length());
+                isAddress = true;
+            }
+        }
+        if (location.empty()) {
+            auto error = makeObject();
+            setProp(error, "message", makeString("the extension has no file"));
+            emitToUi("extensions/error", error);
+            return;
+        }
+        installExtension(location, isAddress);
+        return;
+    }
+
+    if (method == "extensions/uninstall") {
+        std::string identifier;
+        if (params && params->type == JsonNode::Type::Object) {
+            auto idNode = params->get("id");
+            if (!idNode || idNode->type != JsonNode::Type::String) {
+                idNode = params->get("identifier");
+            }
+            if (idNode && idNode->type == JsonNode::Type::String) {
+                identifier = std::string(idNode->stringValue.data(), idNode->stringValue.length());
+            }
+        }
+        if (identifier.empty()) {
+            auto error = makeObject();
+            setProp(error, "message", makeString("the extension has no name"));
+            emitToUi("extensions/error", error);
+            return;
+        }
+        removeExtension(identifier);
+        return;
+    }
+
+    if (method == "extensions/enable" || method == "extensions/disable") {
+        std::string identifier;
+        if (params && params->type == JsonNode::Type::Object) {
+            auto idNode = params->get("id");
+            if (!idNode || idNode->type != JsonNode::Type::String) {
+                idNode = params->get("identifier");
+            }
+            if (idNode && idNode->type == JsonNode::Type::String) {
+                identifier = std::string(idNode->stringValue.data(), idNode->stringValue.length());
+            }
+        }
+        if (identifier.empty()) {
+            auto error = makeObject();
+            setProp(error, "message", makeString("the extension has no name"));
+            emitToUi("extensions/error", error);
+            return;
+        }
+        toggleExtension(identifier, method == "extensions/enable");
         return;
     }
 
@@ -1710,6 +1779,209 @@ void VSCodeProtocol::publishRemovedDocuments() {
             std::cerr << "[VSCodeProtocol] the host did not accept the removal: "
                       << message << std::endl;
         });
+}
+
+// -----------------------------------------------------------------------------
+// The extensions
+// -----------------------------------------------------------------------------
+
+void VSCodeProtocol::publishExtensionList() {
+    const auto list = vrutti::core::extensions::ExtensionService::listAll();
+    emitToUi("extensions/installed", vrutti::core::extensions::ExtensionService::userInterfaceJson(list));
+}
+
+void VSCodeProtocol::sendExtensionDelta(
+        const std::vector<vrutti::core::extensions::ExtensionDescription>& added,
+        const std::vector<vrutti::core::extensions::ExtensionDescription>& removed) {
+    if (added.empty() && removed.empty()) return;
+
+    // The shape of the upstream `IExtensionDescriptionDelta`.
+    auto delta = makeObject();
+    setProp(delta, "versionId", makeNumber(static_cast<double>(++m_extensionVersionId)));
+
+    auto toRemove = makeArray();
+    auto myToRemove = makeArray();
+    for (const auto& description : removed) {
+        auto identifier = makeObject();
+        setProp(identifier, "value", makeString(description.identifier));
+        setProp(identifier, "_lower", makeString(description.lowerIdentifier));
+        toRemove->arrayElements.push_back(identifier);
+        if (!description.isBuiltin) {
+            myToRemove->arrayElements.push_back(identifier);
+        }
+    }
+    setProp(delta, "toRemove", toRemove);
+
+    auto toAdd = makeArray();
+    auto myToAdd = makeArray();
+    auto activationEvents = makeObject();
+    const auto descriptions =
+        vrutti::core::extensions::ExtensionService::descriptionsJson(added);
+    if (descriptions) {
+        for (const auto& description : descriptions->arrayElements) {
+            toAdd->arrayElements.push_back(description);
+        }
+    }
+    for (const auto& description : added) {
+        if (!description.isBuiltin) {
+            auto identifier = makeObject();
+            setProp(identifier, "value", makeString(description.identifier));
+            setProp(identifier, "_lower", makeString(description.lowerIdentifier));
+            myToAdd->arrayElements.push_back(identifier);
+        }
+
+        auto events = makeArray();
+        for (const auto& event : description.activationEvents) {
+            events->arrayElements.push_back(makeString(event));
+        }
+        setProp(activationEvents, description.identifier, events);
+    }
+    setProp(delta, "toAdd", toAdd);
+    setProp(delta, "addActivationEvents", activationEvents);
+    setProp(delta, "myToRemove", myToRemove);
+    setProp(delta, "myToAdd", myToAdd);
+
+    auto args = makeArray();
+    args->arrayElements.push_back(delta);
+
+    sendRequest(proxy::Ext::ExtHostExtensionService, "$deltaExtensions", args,
+        [](const std::shared_ptr<JsonNode>&) {
+            std::cout << "[VSCodeProtocol] the host knows about the new extensions\n";
+        },
+        [](const std::string& message, const std::string&) {
+            std::cerr << "[VSCodeProtocol] the host did not take the extensions: "
+                      << message << std::endl;
+        });
+}
+
+void VSCodeProtocol::installExtension(const std::string& location, bool isAddress) {
+    std::string path = location;
+    std::string downloaded;
+
+    if (isAddress) {
+        // The file is fetched first, and it is removed when the installation
+        // is done -- whatever the outcome.
+        std::string error;
+        if (!vrutti::core::utils::HttpDownload::download(
+                location, "", downloaded, 256ull * 1024 * 1024, error)) {
+            auto failure = makeObject();
+            setProp(failure, "message", makeString("the extension could not be fetched: " + error));
+            emitToUi("extensions/error", failure);
+            return;
+        }
+        path = downloaded;
+    }
+
+    vrutti::core::extensions::ExtensionDescription installed;
+    std::string error;
+    std::string errorCode;
+    const bool ok = vrutti::core::extensions::ExtensionService::installVsix(
+        path, installed, error, errorCode);
+
+    if (!downloaded.empty()) {
+        std::error_code ec;
+        std::filesystem::remove(downloaded, ec);
+    }
+
+    if (!ok) {
+        auto failure = makeObject();
+        setProp(failure, "message", makeString(error));
+        setProp(failure, "code", makeString(errorCode));
+        emitToUi("extensions/error", failure);
+        return;
+    }
+
+    // The host has to learn about the new extension, otherwise it would only
+    // be there after a restart.
+    std::vector<vrutti::core::extensions::ExtensionDescription> added;
+    added.push_back(installed);
+    std::vector<vrutti::core::extensions::ExtensionDescription> removed;
+    sendExtensionDelta(added, removed);
+
+    publishExtensionList();
+
+    auto event = makeObject();
+    setProp(event, "id", makeString(installed.identifier));
+    setProp(event, "version", makeString(installed.version));
+    emitToUi("extensions/installed_one", event);
+
+    std::cout << "[VSCodeProtocol] the extension " << installed.identifier
+              << " was installed\n";
+}
+
+void VSCodeProtocol::removeExtension(const std::string& identifier) {
+    // The extension has to be known before it goes, so that the host can be
+    // told what it has to forget.
+    vrutti::core::extensions::ExtensionDescription removed;
+    bool found = false;
+    for (const auto& description : vrutti::core::extensions::ExtensionService::listAll()) {
+        if (description.identifier == identifier ||
+            description.lowerIdentifier == toLowerIdentifier(identifier) ||
+            description.name == identifier) {
+            removed = description;
+            found = true;
+            break;
+        }
+    }
+
+    std::string error;
+    std::string errorCode;
+    if (!vrutti::core::extensions::ExtensionService::uninstall(identifier, error, errorCode)) {
+        auto failure = makeObject();
+        setProp(failure, "message", makeString(error));
+        setProp(failure, "code", makeString(errorCode));
+        emitToUi("extensions/error", failure);
+        return;
+    }
+
+    if (found) {
+        std::vector<vrutti::core::extensions::ExtensionDescription> added;
+        std::vector<vrutti::core::extensions::ExtensionDescription> gone;
+        gone.push_back(removed);
+        sendExtensionDelta(added, gone);
+    }
+
+    publishExtensionList();
+    std::cout << "[VSCodeProtocol] the extension " << identifier << " was removed\n";
+}
+
+void VSCodeProtocol::toggleExtension(const std::string& identifier, bool enabled) {
+    std::string error;
+    std::string errorCode;
+    if (!vrutti::core::extensions::ExtensionService::setEnabled(
+            identifier, enabled, error, errorCode)) {
+        auto failure = makeObject();
+        setProp(failure, "message", makeString(error));
+        setProp(failure, "code", makeString(errorCode));
+        emitToUi("extensions/error", failure);
+        return;
+    }
+
+    // A turned off extension leaves the host, a turned on one comes back.
+    vrutti::core::extensions::ExtensionDescription description;
+    bool found = false;
+    for (const auto& candidate : vrutti::core::extensions::ExtensionService::listAll()) {
+        if (candidate.identifier == identifier ||
+            candidate.lowerIdentifier == toLowerIdentifier(identifier) ||
+            candidate.name == identifier) {
+            description = candidate;
+            found = true;
+            break;
+        }
+    }
+
+    if (found) {
+        std::vector<vrutti::core::extensions::ExtensionDescription> added;
+        std::vector<vrutti::core::extensions::ExtensionDescription> removed;
+        if (enabled) {
+            added.push_back(description);
+        } else {
+            removed.push_back(description);
+        }
+        sendExtensionDelta(added, removed);
+    }
+
+    publishExtensionList();
 }
 
 } // namespace vrutti::core::ipc

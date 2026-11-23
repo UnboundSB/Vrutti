@@ -15,6 +15,7 @@ The native core: configuration, plugins, IPC, storage and the other services.
 - **di/**: Dependency injection: the container that builds services and wires them together.
 - **editor/**: Editor core: the text buffer, the piece table and the document model.
 - **events/**: Event bus: the in-process publish and subscribe mechanism.
+- **extensions/**: The extensions module.
 - **fs/**: File system services: watching, reading and writing files.
 - **ipc/**: Inter-process communication: the pipe transport and the protocol that connects the core to the extension host.
 - **memory/**: Memory helpers: allocators and the shared buffer utilities.

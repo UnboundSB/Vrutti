@@ -90,6 +90,7 @@ host talk to the core over a **private named pipe**, one per window
 | Themes | A native theme service, `theme/set`, `icon_theme/set`, and the available theme lists. |
 | File system | The `workspace.fs` surface: stat, read directory, read file, write file, create directory, delete, rename, copy — with the upstream error names. |
 | Documents | The `workspace.openTextDocument()` surface: open, create and save a text document. The text lives in the core and is mirrored to the extension host with the delta of the documents. |
+| Extensions | A `.vsix` is installed by the core: the archive is read by a reader that trusts nothing, the manifest is checked, and the host learns about the new extension through `$deltaExtensions`. No shell is involved. |
 | Timeouts | Every outbound request has a deadline, so a silent peer cannot hang an extension. |
 | Documentation | A `structure.md` and a `TODO.md` in every first-party folder. A central error code registry. |
 | Releases | `0.0.4` is built and published through Inno Setup 6. |
@@ -152,6 +153,25 @@ resolves `workspace.openTextDocument()` only when the document is in its
 mirror, so the delta has to reach the host *before* the call is answered. The
 same holds for the editors and the languages: the host keeps a mirror of
 every editor and every language, and the renderer has to feed it.
+
+### The extensions
+
+The installation of an extension is done by the core, in
+`src/core/extensions/ExtensionService.cpp`:
+
+```powershell
+# the plugin ABI (src/core/plugins/ExtensionManager.cpp)
+ExtensionManager.dll  ->  "list" | "listForUserInterface" | "install" | "uninstall" | "enable" | "disable"
+
+# the protocol (the user interface -> the core)
+extensions/install | extensions/uninstall | extensions/enable | extensions/disable
+```
+
+The rules the installer follows (no file may leave the folder of the
+extension, no archive may expand without end, the manifest is checked before
+anything is written, no shell is involved) are in
+`docs/BACKEND_HARDENING.md`. The tests are `ExtensionInstallerTest` and
+`ExtensionInstallProtocolTest`.
 
 ### Then the rest of the plan
 

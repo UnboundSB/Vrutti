@@ -7,6 +7,7 @@
 #include <vector>
 #include "IPCClient.h"
 #include "core/editor/DocumentStore.h"
+#include "core/extensions/ExtensionService.h"
 #include "core/fs/FileService.h"
 #include "core/utils/Json.h"
 
@@ -146,6 +147,35 @@ private:
     // its mirror does not keep documents that no longer exist.
     void publishRemovedDocuments();
 
+    // --- the extensions --------------------------------------------------------
+
+    // Publishes the list of the extensions to the user interface.
+    //
+    // The list is the one of the service, so the interface and the extension
+    // host always show the same extensions.
+    void publishExtensionList();
+
+    // Tells the extension host about the extensions that were added and
+    // about the ones that were removed.
+    //
+    // The host keeps a registry of the extensions it knows. Without this
+    // call an extension that was installed while the editor was open would
+    // only be there after a restart.
+    void sendExtensionDelta(const std::vector<vrutti::core::extensions::ExtensionDescription>& added,
+                            const std::vector<vrutti::core::extensions::ExtensionDescription>& removed);
+
+    // Installs an extension and tells the host about it.
+    //
+    // `location` is either the path of a `.vsix` file on the disk or the
+    // address of one. The result is published to the user interface.
+    void installExtension(const std::string& location, bool isAddress);
+
+    // Removes an extension and tells the host about it.
+    void removeExtension(const std::string& identifier);
+
+    // Turns an extension on or off and tells the host about it.
+    void toggleExtension(const std::string& identifier, bool enabled);
+
     // The file system of the core, used for the `file:` scheme.
     vrutti::core::fs::FileService m_fileService;
 
@@ -176,6 +206,10 @@ private:
     std::string m_workspaceFolder;
     bool m_initialized = false;
     bool m_handshakeDone = false;
+
+    // The version of the list of the extensions. It grows every time the
+    // host is told about a change, so the host knows that the list moved.
+    int m_extensionVersionId = 1;
 };
 
 } // namespace vrutti::core::ipc

@@ -14,7 +14,7 @@ The plugin system: the native plugin interface and the loader that loads plugin 
 - **DocumentSyncService.h**: Header for the DocumentSyncService component.
 - **ExtensionLifecycleManager.cpp**: Implementation of the ExtensionLifecycleManager component.
 - **ExtensionLifecycleManager.h**: Header for the ExtensionLifecycleManager component.
-- **ExtensionManager.cpp**: Implementation of the ExtensionManager component.
+- **ExtensionManager.cpp**: ExtensionManager -- the plugin that answers what is installed and what can be installed.
 - **ExtensionManager.h**: Header for the ExtensionManager component.
 - **ExtensionScanner.cpp**: Implementation of the ExtensionScanner component.
 - **ExtensionScanner.h**: Header for the ExtensionScanner component.

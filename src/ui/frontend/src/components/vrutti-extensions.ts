@@ -189,6 +189,8 @@ export class VruttiExtensions extends LitElement {
     @state() private installed: ExtensionResult[] = [];
     @state() private isLoading = false;
     @state() private progressMap: Map<string, number> = new Map();
+    @state() private errorMessage = '';
+    @state() private installError = false;
     private searchTimeout: ReturnType<typeof setTimeout> | null = null;
     private currentSearchId = 0;
 
@@ -217,6 +219,13 @@ export class VruttiExtensions extends LitElement {
                 namespace: ext.namespace || ext.publisher || 'unknown',
                 iconUrl: ext.iconUrl || (ext.icon ? `file:///${(ext.localPath || '').replace(/\\/g, '/')}/${ext.icon}` : undefined)
             }));
+        } else if (msg.method === 'extensions/error') {
+            // The installation did not work. The reason is shown, so that the
+            // user knows that nothing happened.
+            const message = (msg.params && msg.params.message) || 'the extension could not be installed';
+            this.errorMessage = message;
+            this.installError = true;
+            console.error('[extensions]', message);
         } else if (msg.method === 'extensions/progress') {
             const { name, percentage } = msg.params;
             const newMap = new Map(this.progressMap);
@@ -328,10 +337,14 @@ export class VruttiExtensions extends LitElement {
 
     private uninstall(ext: ExtensionResult, e: Event) {
         e.stopPropagation();
-        console.log(`Requesting uninstall for ${ext.name}`);
+        // The extension is removed by its whole name: the name of the
+        // extension alone is not enough, two publishers may use the same
+        // name.
+        const identifier = ext.id || `${ext.namespace}.${ext.name}`;
+        console.log(`Requesting uninstall for ${identifier}`);
         if ((window as any).vruttiUninstallExtension) {
             try {
-                const res = (window as any).vruttiUninstallExtension(ext.name);
+                const res = (window as any).vruttiUninstallExtension(identifier);
                 if (res && typeof res.catch === 'function') {
                     res.catch(console.error);
                 }
@@ -410,6 +423,11 @@ export class VruttiExtensions extends LitElement {
                 ` : ''}
             </div>
             <div class="results">
+                ${this.installError ? html`
+                    <div class="loading" style="color: #f48771;">
+                        ${this.errorMessage}
+                    </div>
+                ` : ''}
                 ${this.query ? html`
                     <details open>
                         <summary>MARKETPLACE (${this.results.length})</summary>

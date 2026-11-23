@@ -42,6 +42,10 @@ add_library(vrutti_core STATIC
     src/core/utils/ErrorCodes.cpp
     src/core/utils/StringPool.cpp
     src/core/utils/LineScanner.cpp
+    src/core/utils/Inflate.cpp
+    src/core/utils/ZipArchive.cpp
+    src/core/utils/HttpDownload.cpp
+    src/core/extensions/ExtensionService.cpp
     src/core/ipc/IPCClient.cpp
     src/core/ipc/VSCodeProtocol.cpp
     src/core/config/SettingsManager.cpp
@@ -56,7 +60,7 @@ target_include_directories(vrutti_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 # On Windows, link the libraries required by webview.h
 if(WIN32)
     target_link_libraries(vrutti_core PUBLIC
-        ole32 comctl32 oleaut32 uuid mpr version shlwapi user32 advapi32
+        ole32 comctl32 oleaut32 uuid mpr version shlwapi user32 advapi32 wininet
     )
     target_include_directories(vrutti_core PUBLIC ${webview2_SOURCE_DIR}/build/native/include)
 else()
@@ -132,6 +136,18 @@ add_test(NAME ExthostFileSystemTest COMMAND vrutti_exthost_fs_test)
 add_executable(vrutti_documents_test src/tests/integration/MainThreadDocumentsTest.cpp)
 target_link_libraries(vrutti_documents_test PRIVATE vrutti_core)
 add_test(NAME MainThreadDocumentsTest COMMAND vrutti_documents_test)
+
+# The installation of an extension: the archive is read safely, the manifest
+# is checked, and a hostile archive does not get in.
+add_executable(vrutti_installer_test src/tests/integration/ExtensionInstallerTest.cpp)
+target_link_libraries(vrutti_installer_test PRIVATE vrutti_core)
+add_test(NAME ExtensionInstallerTest COMMAND vrutti_installer_test)
+
+# The installation of an extension, seen from the protocol: the extension
+# host has to learn about the extension that was installed.
+add_executable(vrutti_install_protocol_test src/tests/integration/ExtensionInstallProtocolTest.cpp)
+target_link_libraries(vrutti_install_protocol_test PRIVATE vrutti_core)
+add_test(NAME ExtensionInstallProtocolTest COMMAND vrutti_install_protocol_test)
 
 
 

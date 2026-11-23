@@ -215,7 +215,9 @@ namespace {
 #include "../../core/utils/Json.h"
 #include "../../core/utils/Base64.h"
 #include "../../core/utils/Paths.h"
+#include "../../core/utils/HttpDownload.h"
 #include "../../core/config/SettingsManager.h"
+#include "../../core/extensions/ExtensionService.h"
 #include "../../core/plugins/PluginLoader.h"
 #include "../../core/plugins/ExtensionScanner.h"
 
@@ -758,107 +760,176 @@ namespace vrutti::ui {
         });
 
         w->bind("vruttiInstallExtension", [this, w](const std::string& req) -> std::string {
+            // The extension is installed by the service of the core: the
+            // archive is checked, the manifest is read, and the file is
+            // written in a folder of its own. Nothing is done through a
+            // shell, so an address or a name cannot become a command.
             auto parsedReq = vrutti::core::utils::JsonParser::parse(req);
-            if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 2) {
+            std::string url;
+            std::string name;
+            if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array &&
+                parsedReq->arrayElements.size() >= 2) {
                 auto urlNode = parsedReq->arrayElements[0];
                 auto nameNode = parsedReq->arrayElements[1];
-                if (urlNode && urlNode->type == vrutti::core::utils::JsonNode::Type::String &&
-                    nameNode && nameNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    
-                    std::string url(urlNode->stringValue);
-                    std::string name(nameNode->stringValue);
-                    
-                    std::cout << "[Core] Request to install extension '" << name << "' from " << url << std::endl;
-                    
-                    std::thread([this, w, url, name]() {
-#ifdef _WIN32
-                        std::vector<std::string> args = {
-                            "-NoProfile", "-ExecutionPolicy", "Bypass",
-                            "-Command",
-                            "$ErrorActionPreference = 'Stop'; "
-                            "Write-Output 'PROGRESS_10'; "
-                            "$name = '" + name + "'; "
-                            "$url = '" + url + "'; "
-                            "$extDir = Join-Path $env:USERPROFILE '.vrutti\\extensions\\'; "
-                            "if (!(Test-Path $extDir)) { New-Item -ItemType Directory -Force -Path $extDir | Out-Null }; "
-                            "$destDir = Join-Path $extDir $name; "
-                            "if (Test-Path $destDir) { Remove-Item -Recurse -Force $destDir }; "
-                            "$tmpZip = Join-Path $env:TEMP '" + name + ".zip'; "
-                            "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; "
-                            "Invoke-WebRequest -Uri $url -OutFile $tmpZip -UseBasicParsing; "
-                            "Write-Output 'PROGRESS_50'; "
-                            "Expand-Archive -Path $tmpZip -DestinationPath $destDir -Force; "
-                            "Remove-Item $tmpZip; "
-                            "Write-Output 'PROGRESS_100'; "
-                            "Write-Output 'SUCCESS'"
-                        };
-                        safeExec("powershell.exe", args);
-#else
-                        // Download extension with curl (no shell, no injection)
-                        std::string homeDir = std::getenv("HOME") ? std::getenv("HOME") : "";
-                        std::string extDir = homeDir + "/.vrutti/extensions/" + name;
-                        std::string tmpZip = "/tmp/" + name + ".zip";
-                        
-                        safeExec("mkdir", {"-p", extDir});
-                        safeExec("curl", {"-L", url, "-o", tmpZip});
-                        safeExec("unzip", {"-o", tmpZip, "-d", extDir});
-                        safeExec("rm", {tmpZip});
-#endif
-                        
-                        // Send progress back to webview (safe: no shell, user data JS-escaped)
-                        std::string safeName = jsEscape(name);
-                        w->dispatch([w, safeName]() {
-                            w->eval("if (window.dispatchEvent) { "
-                                    "const msg = { method: 'extensions/installed', params: {} };"
-                                    "window.dispatchEvent(new CustomEvent('vrutti-ipc', { detail: msg }));"
-                                    "if (window.vruttiRequestInstalledExtensions) { window.vruttiRequestInstalledExtensions('{}'); }"
-                                    "}");
-                        });
-                    }).detach();
+                if (urlNode && urlNode->type == vrutti::core::utils::JsonNode::Type::String) {
+                    url = std::string(urlNode->stringValue.data(), urlNode->stringValue.length());
+                }
+                if (nameNode && nameNode->type == vrutti::core::utils::JsonNode::Type::String) {
+                    name = std::string(nameNode->stringValue.data(), nameNode->stringValue.length());
                 }
             }
+            if (url.empty()) {
+                return "{\"ok\":false,\"error\":\"the extension has no file\"}";
+            }
+
+            std::cout << "[Core] Request to install extension '" << name << "' from " << url << std::endl;
+
+            std::thread([this, w, url, name]() {
+                // The progress of the installation, the way the interface
+                // expects it.
+                auto progress = [&](int percentage) {
+                    const std::string safeName = jsEscape(name);
+                    w->dispatch([w, safeName, percentage]() {
+                        w->eval("if (window.dispatchEvent) { "
+                                "const msg = { method: 'extensions/progress', params: { name: '" +
+                                safeName + "', percentage: " + std::to_string(percentage) + " } };"
+                                "window.dispatchEvent(new CustomEvent('vrutti-ipc', { detail: msg }));"
+                                "}");
+                    });
+                };
+
+                progress(10);
+
+                std::string file;
+                std::string downloaded;
+                std::string error;
+                if (url.rfind("http://", 0) == 0 || url.rfind("https://", 0) == 0) {
+                    if (!vrutti::core::utils::HttpDownload::download(
+                            url, "", downloaded, 256ull * 1024 * 1024, error)) {
+                        progress(0);
+                        const std::string safeError = jsEscape(error);
+                        w->dispatch([w, safeError]() {
+                            w->eval("if (window.dispatchEvent) { "
+                                    "const msg = { method: 'extensions/error', params: { message: '" +
+                                    safeError + "' } };"
+                                    "window.dispatchEvent(new CustomEvent('vrutti-ipc', { detail: msg }));"
+                                    "}");
+                        });
+                        return;
+                    }
+                    file = downloaded;
+                    progress(50);
+                } else {
+                    // A file that is already on the disk.
+                    file = url;
+                }
+
+                vrutti::core::extensions::ExtensionDescription installed;
+                std::string errorCode;
+                const bool ok = vrutti::core::extensions::ExtensionService::installVsix(
+                    file, installed, error, errorCode);
+
+                if (!downloaded.empty()) {
+                    std::error_code ec;
+                    std::filesystem::remove(downloaded, ec);
+                }
+
+                if (!ok) {
+                    progress(0);
+                    const std::string safeError = jsEscape(error);
+                    w->dispatch([w, safeError]() {
+                        w->eval("if (window.dispatchEvent) { "
+                                "const msg = { method: 'extensions/error', params: { message: '" +
+                                safeError + "' } };"
+                                "window.dispatchEvent(new CustomEvent('vrutti-ipc', { detail: msg }));"
+                                "}");
+                    });
+                    return;
+                }
+
+                progress(100);
+
+                // The list of the extensions is sent again, so that the
+                // interface shows what was installed.
+                const auto list =
+                    vrutti::core::extensions::ExtensionService::userInterfaceJson(
+                        vrutti::core::extensions::ExtensionService::listAll());
+                const std::string encoded = base64_encode(
+                    vrutti::core::utils::JsonSerializer::stringify(list, 0, false));
+                w->dispatch([w, encoded]() {
+                    w->eval("if (window.dispatchEvent) { "
+                            "try { "
+                            "const installed = JSON.parse(atob('" + encoded + "'));"
+                            "const msg = { method: 'extensions/installed', params: installed };"
+                            "window.dispatchEvent(new CustomEvent('vrutti-ipc', { detail: msg }));"
+                            "} catch(e) { console.warn('Failed to parse the list of the extensions:', e); }"
+                            "}");
+                });
+            }).detach();
             return "{}";
         });
 
         w->bind("vruttiUninstallExtension", [this, w](const std::string& req) -> std::string {
+            // The extension is removed by the service of the core. The name
+            // may be the name of the extension alone or the name with its
+            // publisher.
             auto parsedReq = vrutti::core::utils::JsonParser::parse(req);
-            if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
-                auto nameNode = parsedReq->arrayElements[0];
-                if (nameNode && nameNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    std::string name(nameNode->stringValue);
-                    
-                    std::thread([this, w, name]() {
-#ifdef _WIN32
-                        std::vector<std::string> args = {
-                            "-NoProfile", "-ExecutionPolicy", "Bypass",
-                            "-Command",
-                            "$dir = Join-Path $env:USERPROFILE '.vrutti\\extensions\\" + name + "'; "
-                            "if (Test-Path $dir) { Remove-Item -Recurse -Force $dir }; "
-                        };
-                        safeExec("powershell.exe", args);
-#else
-                        std::vector<std::string> args = { "-c", "rm -rf ~/.vrutti/extensions/" + name };
-                        safeExec("/bin/sh", args);
-#endif
-                        
-                        // Notify webview to refresh (safe: no user data in eval)
-                        w->dispatch([w]() {
-                            w->eval("if (window.dispatchEvent) { "
-                                    "const msg = { method: 'extensions/uninstalled', params: {} };"
-                                    "window.dispatchEvent(new CustomEvent('vrutti-ipc', { detail: msg }));"
-                                    "if (window.vruttiRequestInstalledExtensions) { window.vruttiRequestInstalledExtensions('{}'); }"
-                                    "}");
-                        });
-                    }).detach();
+            std::string identifier;
+            if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array &&
+                !parsedReq->arrayElements.empty()) {
+                auto idNode = parsedReq->arrayElements[0];
+                if (idNode && idNode->type == vrutti::core::utils::JsonNode::Type::String) {
+                    identifier = std::string(idNode->stringValue.data(), idNode->stringValue.length());
                 }
             }
+            if (identifier.empty()) {
+                return "{\"ok\":false,\"error\":\"the extension has no name\"}";
+            }
+
+            std::thread([this, w, identifier]() {
+                std::string error;
+                std::string errorCode;
+                const bool ok = vrutti::core::extensions::ExtensionService::uninstall(
+                    identifier, error, errorCode);
+                if (!ok) {
+                    const std::string safeError = jsEscape(error);
+                    w->dispatch([w, safeError]() {
+                        w->eval("if (window.dispatchEvent) { "
+                                "const msg = { method: 'extensions/error', params: { message: '" +
+                                safeError + "' } };"
+                                "window.dispatchEvent(new CustomEvent('vrutti-ipc', { detail: msg }));"
+                                "}");
+                    });
+                    return;
+                }
+
+                const auto list =
+                    vrutti::core::extensions::ExtensionService::userInterfaceJson(
+                        vrutti::core::extensions::ExtensionService::listAll());
+                const std::string encoded = base64_encode(
+                    vrutti::core::utils::JsonSerializer::stringify(list, 0, false));
+                w->dispatch([w, encoded]() {
+                    w->eval("if (window.dispatchEvent) { "
+                            "try { "
+                            "const installed = JSON.parse(atob('" + encoded + "'));"
+                            "const msg = { method: 'extensions/installed', params: installed };"
+                            "window.dispatchEvent(new CustomEvent('vrutti-ipc', { detail: msg }));"
+                            "} catch(e) { console.warn('Failed to parse the list of the extensions:', e); }"
+                            "}");
+                });
+            }).detach();
             return "{}";
         });
 
         w->bind("vruttiRequestInstalledExtensions", [this, w](const std::string& req) -> std::string {
             std::thread([this, w]() {
-                std::string jsonStr = vrutti::core::plugins::ExtensionScanner::getInstalledExtensions();
-                
+                // The list comes from the service of the core, so it is the
+                // same list that the extension host gets.
+                const auto list =
+                    vrutti::core::extensions::ExtensionService::userInterfaceJson(
+                        vrutti::core::extensions::ExtensionService::listAll());
+                std::string jsonStr = vrutti::core::utils::JsonSerializer::stringify(list, 0, false);
+
                 std::string b64 = base64_encode(jsonStr);
                 
                 w->dispatch([w, b64]() {

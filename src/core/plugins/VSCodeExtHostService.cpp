@@ -1,5 +1,6 @@
 #include "VSCodeExtHostService.h"
 #include "../utils/Json.h"
+#include "../extensions/ExtensionService.h"
 #include "../config/SettingsManager.h"
 #include <filesystem>
 #include <cstdlib>
@@ -98,43 +99,6 @@ namespace {
 #endif
     }
 
-    // Loads the ExtensionManager plugin and returns the raw extension list.
-    std::string listInstalledExtensions() {
-#ifdef _WIN32
-        HMODULE handle = LoadLibraryA("ExtensionManager.dll");
-        if (!handle) return "[]";
-        using CreateFunc = vrutti::core::plugins::IPlugin*(*)();
-        using DestroyFunc = void(*)(vrutti::core::plugins::IPlugin*);
-        CreateFunc create = (CreateFunc)GetProcAddress(handle, "createPlugin");
-        DestroyFunc destroy = (DestroyFunc)GetProcAddress(handle, "destroyPlugin");
-        std::string result = "[]";
-        if (create && destroy) {
-            if (auto plugin = create()) {
-                result = plugin->executeCommand("list", "");
-                destroy(plugin);
-            }
-        }
-        FreeLibrary(handle);
-        return result;
-#else
-        void* handle = dlopen("libExtensionManager.so", RTLD_LAZY);
-        if (!handle) return "[]";
-        using CreateFunc = vrutti::core::plugins::IPlugin*(*)();
-        using DestroyFunc = void(*)(vrutti::core::plugins::IPlugin*);
-        CreateFunc create = (CreateFunc)dlsym(handle, "createPlugin");
-        DestroyFunc destroy = (DestroyFunc)dlsym(handle, "destroyPlugin");
-        std::string result = "[]";
-        if (create && destroy) {
-            if (auto plugin = create()) {
-                result = plugin->executeCommand("list", "");
-                destroy(plugin);
-            }
-        }
-        dlclose(handle);
-        return result;
-#endif
-    }
-
 } // namespace
 
 bool VSCodeExtHostService::initialize() { return true; }
@@ -152,56 +116,34 @@ std::string VSCodeExtHostService::executeCommand(const std::string& command, con
 
     // ---------------------------------------------------------------------
     // extensions: IExtensionDescriptionSnapshot
+    //
+    // The list comes from the service of the core, so the host and the user
+    // interface always know the same extensions.
     // ---------------------------------------------------------------------
     auto extensionsObj = makeObject();
     setProp(extensionsObj, "versionId", numNode(1));
 
-    auto allExtensions = makeArray();
     auto activationEvents = makeObject();
     auto myExtensions = makeArray();
 
-    std::string extJsonOutput = listInstalledExtensions();
-    try {
-        auto extsNode = JsonParser::parse(extJsonOutput);
-        if (extsNode && extsNode->type == JsonNode::Type::Array) {
-            allExtensions = extsNode;
+    const auto installed =
+        vrutti::core::extensions::ExtensionService::listEnabled();
+    auto allExtensions =
+        vrutti::core::extensions::ExtensionService::descriptionsJson(installed);
 
-            for (const auto& desc : extsNode->arrayElements) {
-                if (!desc || desc->type != JsonNode::Type::Object) continue;
-
-                std::string id;
-                auto identifierNode = desc->get("identifier");
-                if (identifierNode && identifierNode->type == JsonNode::Type::Object) {
-                    auto valueNode = identifierNode->get("value");
-                    if (valueNode && valueNode->type == JsonNode::Type::String) {
-                        id = std::string(valueNode->stringValue.data(), valueNode->stringValue.length());
-                    }
-                }
-                if (id.empty()) continue;
-
-                // activationEvents: { [extensionId]: string[] }
-                auto events = makeArray();
-                auto eventsNode = desc->get("activationEvents");
-                if (eventsNode && eventsNode->type == JsonNode::Type::Array) {
-                    for (const auto& ev : eventsNode->arrayElements) {
-                        if (ev && ev->type == JsonNode::Type::String) {
-                            events->arrayElements.push_back(ev);
-                        }
-                    }
-                }
-                setProp(activationEvents, id, events);
-
-                // myExtensions: ExtensionIdentifier[]
-                auto myIdent = makeObject();
-                auto valueNode = identifierNode->get("value");
-                auto lowerNode = identifierNode->get("_lower");
-                setProp(myIdent, "value", valueNode ? valueNode : strNode(id));
-                setProp(myIdent, "_lower", lowerNode ? lowerNode : strNode(id));
-                myExtensions->arrayElements.push_back(myIdent);
-            }
+    for (const auto& description : installed) {
+        // activationEvents: { [extensionId]: string[] }
+        auto events = makeArray();
+        for (const auto& event : description.activationEvents) {
+            events->arrayElements.push_back(strNode(event));
         }
-    } catch (const std::exception& e) {
-        std::cerr << "[VSCodeExtHostService] Failed to parse extension list: " << e.what() << "\n";
+        setProp(activationEvents, description.identifier, events);
+
+        // myExtensions: ExtensionIdentifier[]
+        auto myIdent = makeObject();
+        setProp(myIdent, "value", strNode(description.identifier));
+        setProp(myIdent, "_lower", strNode(description.lowerIdentifier));
+        myExtensions->arrayElements.push_back(myIdent);
     }
 
     setProp(extensionsObj, "allExtensions", allExtensions);

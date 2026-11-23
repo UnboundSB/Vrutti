@@ -22,6 +22,32 @@ core cannot answer must therefore never become an error reply -- see
 | `VsCodeProxyIds.generated.h` | The numeric proxy id of every shape | Generated |
 | `VsCodeProxyFallbacks.generated.h` | The benign answer of every call | Generated |
 
+## The extensions
+The extensions are installed by the service of the core, in
+`src/core/extensions/ExtensionService.cpp`. The service is the only place
+that knows what is installed, so the list the user interface shows and the
+list the extension host gets can never drift apart.
+
+The host keeps a registry of the extensions it knows. When the list is only
+sent at the start-up, an extension that is installed afterwards is not there
+until the editor is started again. The service therefore tells the host about
+every change through `ExtHostExtensionService.$deltaExtensions`, the call of
+the upstream protocol that carries the extensions that were added and the ones
+that were removed.
+
+| Command | What it does |
+|---------|--------------|
+| `extensions/install` | Installs a `.vsix` from a file or from an address. |
+| `extensions/uninstall` | Removes an extension. |
+| `extensions/enable`, `extensions/disable` | Turns an extension on or off. |
+| `extensions/request_installed` | Publishes the list of the extensions. |
+
+The archive of an extension is read by the reader of the core, in
+`src/core/utils/ZipArchive.cpp`. The reader refuses a file that wants to
+leave the folder of the extension, a file that expands too much, and a file
+whose checksum does not match. Proven by `ExtensionInstallerTest` and
+`ExtensionInstallProtocolTest`.
+
 ## The contract
 * Every inbound request is answered. An unanswered request wedges the calling
   extension inside `await` forever.
