@@ -157,6 +157,20 @@ target_link_libraries(vrutti_install_e2e_test PRIVATE vrutti_core)
 add_test(NAME ExtensionInstallE2ETest COMMAND vrutti_install_e2e_test)
 set_tests_properties(ExtensionInstallE2ETest PROPERTIES TIMEOUT 180)
 
+# The JSON layer under hostile input: random text, text that is cut in half
+# and text that is nested very deeply.
+add_executable(vrutti_json_fuzz_test src/tests/integration/JsonFuzzTest.cpp)
+target_link_libraries(vrutti_json_fuzz_test PRIVATE vrutti_core)
+add_test(NAME JsonFuzzTest COMMAND vrutti_json_fuzz_test)
+set_tests_properties(JsonFuzzTest PROPERTIES TIMEOUT 300)
+
+# The pipe under hostile input: frames that are not JSON, frames that never
+# end and calls that are never answered.
+add_executable(vrutti_ipc_fuzz_test src/tests/integration/IpcFuzzTest.cpp)
+target_link_libraries(vrutti_ipc_fuzz_test PRIVATE vrutti_core)
+add_test(NAME IpcFuzzTest COMMAND vrutti_ipc_fuzz_test)
+set_tests_properties(IpcFuzzTest PROPERTIES TIMEOUT 300)
+
 
 
 

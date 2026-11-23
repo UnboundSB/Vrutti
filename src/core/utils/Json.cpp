@@ -1,6 +1,9 @@
 #include "Json.h"
 #include <cctype>
+#include <charconv>
+#include <cmath>
 #include <cstdint>
+#include <system_error>
 
 namespace vrutti::core::utils {
 
@@ -54,9 +57,26 @@ namespace vrutti::core::utils {
     }
 
     std::shared_ptr<JsonNode> JsonParser::parseValue(const std::string& source, size_t& pos,
-                                                      const std::shared_ptr<const std::string>& sourceOwner) {
+                                                      const std::shared_ptr<const std::string>& sourceOwner,
+                                                      int depth, bool& aborted) {
         skipWhitespace(source, pos);
         if (pos >= source.length()) return nullptr;
+
+        // A document that is nested deeper than the limit is refused. The
+        // parser walks the document with recursion, so a deeper one would
+        // use more stack than the thread has.
+        //
+        // The whole document is refused, not just the part that is too
+        // deep: a tree that is cut in half would tell the caller that a
+        // document has fewer things in it than it really has.
+        //
+        // The rest of the document is skipped in one go: reading it one
+        // character at a time would turn a big document into a long wait.
+        if (depth > kMaxDepth) {
+            aborted = true;
+            pos = source.length();
+            return nullptr;
+        }
 
         char c = source[pos];
 
@@ -66,12 +86,20 @@ namespace vrutti::core::utils {
             pos++; // consume '{'
             skipWhitespace(source, pos);
             while (pos < source.length() && source[pos] != '}') {
+                const size_t before = pos;
+                if (source[pos] != '"') {
+                    // The key is not a string. The character is stepped
+                    // over: a document like `{x}` used to make the reader
+                    // walk over the same place for ever.
+                    pos++;
+                    continue;
+                }
                 std::shared_ptr<const std::string> keyOwner;
                 std::string_view key = parseString(source, pos, keyOwner);
                 skipWhitespace(source, pos);
                 if (pos < source.length() && source[pos] == ':') {
                     pos++; // consume ':'
-                    auto val = parseValue(source, pos, sourceOwner);
+                    auto val = parseValue(source, pos, sourceOwner, depth + 1, aborted);
                     if (val) {
                         // The key is copied by value: it must stay valid even
                         // when the value node is replaced at runtime.
@@ -83,6 +111,11 @@ namespace vrutti::core::utils {
                     pos++; // consume ','
                     skipWhitespace(source, pos);
                 }
+                if (pos == before) {
+                    // Nothing was read and nothing was consumed. The loop
+                    // has to move on, or it never ends.
+                    pos++;
+                }
             }
             if (pos < source.length()) pos++; // consume '}'
             return node;
@@ -93,9 +126,17 @@ namespace vrutti::core::utils {
             pos++;
             skipWhitespace(source, pos);
             while (pos < source.length() && source[pos] != ']') {
-                auto val = parseValue(source, pos, sourceOwner);
+                const size_t before = pos;
+                auto val = parseValue(source, pos, sourceOwner, depth + 1, aborted);
                 if (val) {
                     node->arrayElements.push_back(val);
+                }
+                if (pos == before) {
+                    // The value could not be read and nothing was consumed.
+                    // The loop has to move on, or it never ends: a document
+                    // like `[x]` would hang the thread that reads it.
+                    pos++;
+                    continue;
                 }
                 skipWhitespace(source, pos);
                 if (pos < source.length() && source[pos] == ',') {
@@ -156,7 +197,15 @@ namespace vrutti::core::utils {
         // as the tree was read.
         auto owner = std::make_shared<const std::string>(source);
         size_t pos = 0;
-        return parseValue(*owner, pos, owner);
+        bool aborted = false;
+        auto node = parseValue(*owner, pos, owner, 0, aborted);
+        if (aborted) {
+            // The document was refused. A tree that is cut in half would tell
+            // the caller that the document has fewer things in it than it
+            // really has.
+            return nullptr;
+        }
+        return node;
     }
 
     std::string JsonParser::unescapeString(std::string_view sv) {
@@ -258,8 +307,29 @@ namespace vrutti::core::utils {
 
     std::string JsonSerializer::stringify(const std::shared_ptr<JsonNode>& node, int indentLevel, bool pretty) {
         std::string out;
-        serializeNode(node, out, indentLevel, pretty);
+        serializeNode(node, out, indentLevel, pretty, 0);
         return out;
+    }
+
+    std::string JsonSerializer::formatNumber(double value) {
+        // JSON has no way to write a number that is not a number. Such a
+        // value is written as null, so the text that goes over the wire is
+        // still JSON that a reader can read.
+        //
+        // The old code cut the zeros away from the text of the number. A
+        // number that is not a number has no zeros at the end, and the text
+        // that was left was empty: reading its last character was then a
+        // read past the end of an empty text.
+        if (!std::isfinite(value)) return "null";
+
+        // The shortest text that gives the same number back. A whole number
+        // is written as a whole number ("12" and not "12.000000"), and a
+        // number that is too big for a whole number keeps its shape
+        // ("1e+300").
+        char buffer[64];
+        const auto result = std::to_chars(buffer, buffer + sizeof(buffer), value);
+        if (result.ec != std::errc()) return "0";
+        return std::string(buffer, result.ptr);
     }
 
     std::string JsonSerializer::escapeString(std::string_view str) {
@@ -283,13 +353,30 @@ namespace vrutti::core::utils {
         return out;
     }
 
-    void JsonSerializer::serializeNode(const std::shared_ptr<JsonNode>& node, std::string& out, int indentLevel, bool pretty) {
+    void JsonSerializer::serializeNode(const std::shared_ptr<JsonNode>& node, std::string& out,
+                                       int indentLevel, bool pretty, int depth) {
         if (!node) {
             out += "null";
             return;
         }
 
-        auto getIndent = [](int level) { return std::string(level * 2, ' '); };
+        // The writer walks the tree with recursion, so a tree that is deeper
+        // than the limit would use more stack than the thread has. The
+        // parser does not build such a tree, but a tree that was put
+        // together by hand can be deeper than that.
+        if (depth > JsonParser::kMaxDepth) {
+            out += "null";
+            return;
+        }
+
+        // The number of spaces of a level of indent. A level below zero
+        // would ask for a text of a length that cannot be: the number of
+        // spaces is turned into an unsigned number that is very large.
+        auto getIndent = [](int level) {
+            if (level < 0) level = 0;
+            if (level > 256) level = 256;
+            return std::string(static_cast<size_t>(level) * 2, ' ');
+        };
 
         switch (node->type) {
             case JsonNode::Type::Null:
@@ -298,13 +385,9 @@ namespace vrutti::core::utils {
             case JsonNode::Type::String:
                 out += escapeString(node->stringValue);
                 break;
-            case JsonNode::Type::Number: {
-                auto str = std::to_string(node->numberValue);
-                str.erase(str.find_last_not_of('0') + 1, std::string::npos);
-                if (str.back() == '.') str.pop_back();
-                out += str;
+            case JsonNode::Type::Number:
+                out += formatNumber(node->numberValue);
                 break;
-            }
             case JsonNode::Type::Boolean:
                 out += node->boolValue ? "true" : "false";
                 break;
@@ -313,7 +396,7 @@ namespace vrutti::core::utils {
                 if (pretty && !node->arrayElements.empty()) out += "\n";
                 for (size_t i = 0; i < node->arrayElements.size(); ++i) {
                     if (pretty) out += getIndent(indentLevel + 1);
-                    serializeNode(node->arrayElements[i], out, indentLevel + 1, pretty);
+                    serializeNode(node->arrayElements[i], out, indentLevel + 1, pretty, depth + 1);
                     if (i < node->arrayElements.size() - 1) out += ",";
                     if (pretty) out += "\n";
                 }
@@ -327,7 +410,7 @@ namespace vrutti::core::utils {
                 for (size_t i = 0; i < node->objectProperties.size(); ++i) {
                     if (pretty) out += getIndent(indentLevel + 1);
                     out += escapeString(node->objectProperties[i].first) + (pretty ? ": " : ":");
-                    serializeNode(node->objectProperties[i].second, out, indentLevel + 1, pretty);
+                    serializeNode(node->objectProperties[i].second, out, indentLevel + 1, pretty, depth + 1);
                     if (i < node->objectProperties.size() - 1) out += ",";
                     if (pretty) out += "\n";
                 }

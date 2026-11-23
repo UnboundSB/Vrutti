@@ -64,6 +64,14 @@ namespace vrutti::core::utils {
     // unescape it a second time.
     class JsonParser {
     public:
+        // How deep a document may be nested.
+        //
+        // The parser walks the document with recursion, so a document that is
+        // nested deeper than this would use more stack than the thread has.
+        // A document like that is either broken or hostile, and neither is a
+        // reason to take the core down with it.
+        static constexpr int kMaxDepth = 128;
+
         static std::shared_ptr<JsonNode> parse(const std::string& source);
 
         // Resolves JSON escape sequences in raw (escaped) text.
@@ -76,7 +84,8 @@ namespace vrutti::core::utils {
 
     private:
         static std::shared_ptr<JsonNode> parseValue(const std::string& source, size_t& pos,
-                                                    const std::shared_ptr<const std::string>& sourceOwner);
+                                                    const std::shared_ptr<const std::string>& sourceOwner,
+                                                    int depth, bool& aborted);
         static std::string_view parseString(const std::string& source, size_t& pos,
                                             std::shared_ptr<const std::string>& owner);
         static void skipWhitespace(const std::string& source, size_t& pos);
@@ -88,8 +97,16 @@ namespace vrutti::core::utils {
         static std::string stringify(const std::shared_ptr<JsonNode>& node, int indentLevel = 0, bool pretty = true);
         static std::string escapeString(std::string_view str);
 
+        // Writes a number the way JSON wants it.
+        //
+        // A number that is not a number has no JSON form: it is written as
+        // null. A whole number keeps its shape, and a number that is too
+        // big for a whole number is written in the short form ("1e+300").
+        static std::string formatNumber(double value);
+
     private:
-        static void serializeNode(const std::shared_ptr<JsonNode>& node, std::string& out, int indentLevel, bool pretty);
+        static void serializeNode(const std::shared_ptr<JsonNode>& node, std::string& out,
+                                  int indentLevel, bool pretty, int depth);
     };
 
 } // namespace vrutti::core::utils

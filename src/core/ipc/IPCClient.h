@@ -57,6 +57,27 @@ public:
     // up on. The answer of a well behaved host arrives in milliseconds.
     static constexpr int kDefaultRequestTimeoutMs = 30000;
 
+    // The largest frame the core accepts from the extension host.
+    //
+    // A frame is one line of JSON. A peer that sends a longer one is either
+    // broken or hostile, and a frame that big would be copied around a few
+    // times before it is even looked at.
+    static constexpr size_t kMaxFrameBytes = 32u * 1024u * 1024u;
+
+    // The most calls that may wait for an answer at the same time.
+    //
+    // Every open call holds a promise and a deadline. A peer that never
+    // answers would let the table grow until the calls time out, so the
+    // table has a limit of its own.
+    static constexpr size_t kMaxPendingCalls = 4096;
+
+    // How long a frame may take to reach the peer.
+    //
+    // The write waits for the peer to take the bytes. A peer that never
+    // reads would block the thread that writes, and with it the whole
+    // editor: the thread that reads the frames is the same one.
+    static constexpr int kWriteTimeoutMs = 10000;
+
     // An inbound RPC request from the Extension Host.
     struct RpcRequest {
         int reqId = 0;
@@ -172,16 +193,32 @@ public:
         encodeVSBuffer(const std::vector<uint8_t>& data);
 
 private:
-    void sendRaw(const std::string& payload);
+    // What happened to a frame that was sent.
+    enum class WriteResult {
+        Sent,          // the frame reached the pipe
+        NotConnected,  // there is no peer at the moment
+        Failed         // the frame could not be written
+    };
+
+    WriteResult sendRaw(const std::string& payload);
     void listenLoop();
     void watchPendingCalls();
     std::string serializeJson(const std::shared_ptr<vrutti::core::utils::JsonNode>& node);
+
+    // Takes the frames that are complete out of the incoming buffer.
+    //
+    // Returns false when the peer sent something that is bigger than the
+    // limit: a frame that never ends, or a frame that is too long. The
+    // connection has to be dropped in that case.
+    bool takeFrames(std::vector<std::string>& frames);
 
     std::string m_pipeName;
     // Read by the listen thread and by the watchdog, so it is atomic.
     std::atomic<bool> m_running;
     vrutti::core::editor::PieceTable* m_activeBuffer;
-    bool m_isConnected = false;
+    // The state of the connection is read by the thread that writes and by
+    // the thread that listens, so it is atomic.
+    std::atomic<bool> m_isConnected{false};
 
     // Platform-specific connection handle (e.g. HANDLE for Windows Named Pipes)
     void* m_connectionHandle;
@@ -189,6 +226,11 @@ private:
 
 #ifdef _WIN32
     void* m_stopEvent;
+#else
+    // The socket that waits for the extension host. It is kept apart from
+    // the connection, so that stopping the client does not close a handle
+    // that the listen thread still owns.
+    int m_serverSocket = -1;
 #endif
 
     std::function<void()> m_onReady;
@@ -201,6 +243,13 @@ private:
 
     std::mutex m_bufferMutex;
     std::string m_incomingBuffer;
+
+    // How far the buffer has been looked at for a line break.
+    //
+    // A peer that sends a frame in many pieces would otherwise make the
+    // core read the whole buffer again for every piece, which turns a big
+    // frame into a long wait.
+    size_t m_scanPosition = 0;
 
     // Pending request tracking for promise resolution
     std::mutex m_pendingMutex;
@@ -219,6 +268,13 @@ private:
     std::thread m_watchdog;
     std::mutex m_watchdogMutex;
     std::condition_variable m_watchdogSignal;
+
+    // The thread that listens for the extension host.
+    //
+    // The thread is joined when the client is stopped, so the object cannot
+    // be used after it is gone: a thread that is still running would read
+    // the members of an object that no longer exists.
+    std::thread m_listenThread;
 };
 
 } // namespace vrutti::core::ipc

@@ -75,6 +75,65 @@ public:
 #endif
     }
 
+    // Writes bytes as they are, without a line break at the end.
+    //
+    // The tests use this to send a frame that never ends: the core has to
+    // notice that the buffer grows without a limit.
+    bool sendBytes(const std::string& bytes) {
+#ifdef _WIN32
+        if (m_handle == INVALID_HANDLE_VALUE) return false;
+        DWORD written = 0;
+        return WriteFile(m_handle, bytes.data(),
+                         static_cast<DWORD>(bytes.size()), &written, nullptr) != FALSE;
+#else
+        return false;
+#endif
+    }
+
+    // Reads whatever is there and throws it away.
+    //
+    // The tests use this to keep the pipe from filling up: a pipe whose
+    // reader does not read makes the writer wait, and the writer of the
+    // core is the thread that reads the answers.
+    bool drainBytes(int timeoutMs) {
+#ifdef _WIN32
+        if (m_handle == INVALID_HANDLE_VALUE) return false;
+        const DWORD deadline = GetTickCount() + static_cast<DWORD>(timeoutMs);
+        bool gotAnything = false;
+        while (GetTickCount() < deadline) {
+            DWORD available = 0;
+            if (PeekNamedPipe(m_handle, nullptr, 0, nullptr, &available, nullptr)
+                && available > 0) {
+                char buffer[8192];
+                const DWORD toRead = available < sizeof(buffer) ? available : sizeof(buffer);
+                DWORD got = 0;
+                if (ReadFile(m_handle, buffer, toRead, &got, nullptr) && got > 0) {
+                    gotAnything = true;
+                    continue;
+                }
+            }
+            if (gotAnything) return true;
+            Sleep(1);
+        }
+        return gotAnything;
+#endif
+        return false;
+    }
+
+    // True while the pipe is still open.
+    bool connected() const {
+#ifdef _WIN32
+        if (m_handle == INVALID_HANDLE_VALUE) return false;
+        DWORD available = 0;
+        if (!PeekNamedPipe(m_handle, nullptr, 0, nullptr, &available, nullptr)) {
+            return false;
+        }
+        return true;
+#else
+        return false;
+#endif
+    }
+
     // Reads the next complete frame (one JSON object on one line).
     bool readLine(std::string& out, int timeoutMs) {
 #ifdef _WIN32

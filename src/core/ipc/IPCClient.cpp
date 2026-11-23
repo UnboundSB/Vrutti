@@ -4,6 +4,7 @@
 #include <iostream>
 #include <thread>
 #include <algorithm>
+#include <cmath>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -42,6 +43,22 @@ namespace {
     std::shared_ptr<JsonNode> nullNode() {
         return std::make_shared<JsonNode>(JsonNode::Type::Null);
     }
+
+    // Reads a number that has to be a small whole number.
+    //
+    // The number comes from the peer, so it may be anything: a fraction, a
+    // value that is far outside the range of an integer, or a number that is
+    // not a number at all. Turning such a value into an `int` is undefined
+    // behaviour, so the value is checked first.
+    bool readInt(const std::shared_ptr<JsonNode>& node, int& out) {
+        if (!node || node->type != JsonNode::Type::Number) return false;
+        const double value = node->numberValue;
+        if (!std::isfinite(value)) return false;
+        if (value < -2147483648.0 || value > 2147483647.0) return false;
+        if (value != std::floor(value)) return false;
+        out = static_cast<int>(value);
+        return true;
+    }
 } // namespace
 
 IPCClient::IPCClient(const std::string& pipeName)
@@ -71,7 +88,9 @@ void IPCClient::start() {
     ResetEvent(static_cast<HANDLE>(m_stopEvent));
 #endif
 
-    std::thread([this]() {
+    // The thread is kept, not thrown away: it is joined when the client is
+    // stopped, so it cannot touch the object after the object is gone.
+    m_listenThread = std::thread([this]() {
         try { this->listenLoop(); }
         catch (const std::exception& e) {
             reportError("IPC", ErrorCode::IpcConnectionFailed,
@@ -80,7 +99,7 @@ void IPCClient::start() {
         catch (...) {
             reportError("IPC", ErrorCode::IpcConnectionFailed, "the listen loop stopped unexpectedly");
         }
-    }).detach();
+    });
 
     // The watchdog gives up on the calls the extension host never answers.
     // Without it, a promise on the other side would wait forever.
@@ -91,8 +110,29 @@ void IPCClient::start() {
 }
 
 void IPCClient::stop() {
-    if (!m_running) return;
+    const bool wasRunning = m_running;
     m_running = false;
+
+    // The listen thread is woken up first: it is waiting for the pipe or for
+    // a frame, and it has to know that the client is going away.
+#ifdef _WIN32
+    if (m_stopEvent) SetEvent(static_cast<HANDLE>(m_stopEvent));
+#else
+    {
+        // The socket is shut down, not closed: the listen thread owns it and
+        // closes it itself. Closing it here would close a handle twice, and
+        // the second close could land on a file that belongs to somebody
+        // else.
+        std::lock_guard<std::mutex> lock(m_pipeMutex);
+        if (m_connectionHandle) {
+            const int fd = static_cast<int>(reinterpret_cast<intptr_t>(m_connectionHandle));
+            ::shutdown(fd, SHUT_RDWR);
+        }
+        if (m_serverSocket >= 0) {
+            ::shutdown(m_serverSocket, SHUT_RDWR);
+        }
+    }
+#endif
 
     // The watchdog is woken up and joined, so it cannot touch the table
     // after this object is gone.
@@ -101,21 +141,13 @@ void IPCClient::stop() {
         m_watchdog.join();
     }
 
-#ifndef _WIN32
-    if (m_connectionHandle) {
-        int fd = static_cast<int>(reinterpret_cast<intptr_t>(m_connectionHandle));
-        close(fd);
-        m_connectionHandle = nullptr;
+    // The listen thread is joined as well: it reads the members of this
+    // object, so it may not run after the object is gone.
+    if (m_listenThread.joinable()) {
+        m_listenThread.join();
     }
-#else
-    SetEvent(static_cast<HANDLE>(m_stopEvent));
-    std::lock_guard<std::mutex> lock(m_pipeMutex);
-    if (m_connectionHandle && m_connectionHandle != INVALID_HANDLE_VALUE) {
-        DisconnectNamedPipe(static_cast<HANDLE>(m_connectionHandle));
-        CloseHandle(static_cast<HANDLE>(m_connectionHandle));
-        m_connectionHandle = nullptr;
-    }
-#endif
+
+    if (!wasRunning) return;
 
     // The calls that are still open are given up on, so nothing waits for an
     // answer that can no longer arrive.
@@ -129,32 +161,143 @@ std::string IPCClient::serializeJson(const std::shared_ptr<JsonNode>& node) {
     return JsonSerializer::stringify(node, 0, false);
 }
 
-void IPCClient::sendRaw(const std::string& payload) {
-    if (!m_running) return;
+// -----------------------------------------------------------------------------
+// The incoming buffer
+// -----------------------------------------------------------------------------
+
+bool IPCClient::takeFrames(std::vector<std::string>& frames) {
+    std::lock_guard<std::mutex> lock(m_bufferMutex);
+
+    // The search starts where the last one stopped. A peer that sends a
+    // frame in many pieces would otherwise make the core read the whole
+    // buffer again for every piece, which turns a big frame into a long
+    // wait.
+    size_t consumed = 0;
+    size_t search = m_scanPosition;
+    if (search > m_incomingBuffer.size()) search = 0;
+
+    size_t pos = search;
+    while ((pos = m_incomingBuffer.find('\n', pos)) != std::string::npos) {
+        const size_t length = pos - consumed;
+        if (length > kMaxFrameBytes) {
+            // A frame that is too long is not read at all: the peer is
+            // either broken or hostile, and a frame that big would be
+            // copied around a few times before it is even looked at.
+            reportError("IPC", ErrorCode::IpcFrameDecodeFailed,
+                        "the extension host sent a frame that is bigger than the limit");
+            m_incomingBuffer.clear();
+            m_scanPosition = 0;
+            return false;
+        }
+        frames.push_back(m_incomingBuffer.substr(consumed, length));
+        consumed = pos + 1;
+        ++pos;
+    }
+
+    if (consumed > 0) {
+        // The frames are taken out in one go: taking them out one by one
+        // would move the rest of the buffer again and again.
+        m_incomingBuffer.erase(0, consumed);
+        m_scanPosition = 0;
+    } else {
+        m_scanPosition = m_incomingBuffer.size();
+    }
+
+    // A peer that never sends a line break would make the buffer grow
+    // without end. The buffer has a limit: past it the connection is
+    // broken on purpose.
+    if (m_incomingBuffer.size() > kMaxFrameBytes) {
+        reportError("IPC", ErrorCode::IpcFrameDecodeFailed,
+                    "the extension host sent a frame that is bigger than the limit");
+        m_incomingBuffer.clear();
+        m_scanPosition = 0;
+        return false;
+    }
+
+    return true;
+}
+
+IPCClient::WriteResult IPCClient::sendRaw(const std::string& payload) {
+    if (!m_running) return WriteResult::NotConnected;
 
 #ifdef _WIN32
     {
         std::lock_guard<std::mutex> lock(m_pipeMutex);
-        if (m_connectionHandle && m_connectionHandle != INVALID_HANDLE_VALUE && m_isConnected) {
-            OVERLAPPED ol = { 0 };
-            ol.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-            DWORD bytesWritten = 0;
-            if (!WriteFile(static_cast<HANDLE>(m_connectionHandle), payload.c_str(),
-                           static_cast<DWORD>(payload.length()), NULL, &ol)) {
-                if (GetLastError() == ERROR_IO_PENDING) {
-                    GetOverlappedResult(static_cast<HANDLE>(m_connectionHandle), &ol, &bytesWritten, TRUE);
-                } else {
-                    reportError("IPC", ErrorCode::IpcWriteFailed,
-                                "WriteFile failed, error " + std::to_string(GetLastError()));
-                }
-            }
-            CloseHandle(ol.hEvent);
+        if (!m_connectionHandle || m_connectionHandle == INVALID_HANDLE_VALUE ||
+            !m_isConnected) {
+            return WriteResult::NotConnected;
         }
+
+        OVERLAPPED ol = { 0 };
+        ol.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+        DWORD bytesWritten = 0;
+        const BOOL wrote = WriteFile(static_cast<HANDLE>(m_connectionHandle), payload.c_str(),
+                                     static_cast<DWORD>(payload.length()), NULL, &ol);
+        if (!wrote) {
+            if (GetLastError() == ERROR_IO_PENDING) {
+                // The write waits for the peer to take the bytes, but not
+                // forever: a peer that never reads would block the thread
+                // that reads the frames, and with it the whole editor.
+                const DWORD waited = WaitForSingleObject(ol.hEvent, kWriteTimeoutMs);
+                if (waited == WAIT_OBJECT_0) {
+                    if (!GetOverlappedResult(static_cast<HANDLE>(m_connectionHandle),
+                                             &ol, &bytesWritten, FALSE)) {
+                        reportError("IPC", ErrorCode::IpcWriteFailed,
+                                    "the frame could not be written");
+                        CloseHandle(ol.hEvent);
+                        return WriteResult::Failed;
+                    }
+                } else {
+                    CancelIo(static_cast<HANDLE>(m_connectionHandle));
+                    reportError("IPC", ErrorCode::IpcWriteFailed,
+                                "the peer did not take the frame in time");
+                    CloseHandle(ol.hEvent);
+                    return WriteResult::Failed;
+                }
+            } else {
+                reportError("IPC", ErrorCode::IpcWriteFailed,
+                            "WriteFile failed, error " + std::to_string(GetLastError()));
+                CloseHandle(ol.hEvent);
+                return WriteResult::Failed;
+            }
+        } else {
+            // The write was done right away. The number of bytes that went
+            // out is in the result of the overlapped call: asking for it is
+            // the only way to know it. Without it the frame looked as if
+            // nothing had been written at all.
+            GetOverlappedResult(static_cast<HANDLE>(m_connectionHandle),
+                                &ol, &bytesWritten, FALSE);
+        }
+        CloseHandle(ol.hEvent);
+        if (bytesWritten < payload.length()) {
+            // Only a part of the frame went out. The peer would read the
+            // rest as the beginning of the next frame, so the write counts
+            // as a failure.
+            reportError("IPC", ErrorCode::IpcWriteFailed,
+                        "only a part of the frame was written (" +
+                        std::to_string(bytesWritten) + " of " +
+                        std::to_string(payload.length()) + " bytes)");
+            return WriteResult::Failed;
+        }
+        return WriteResult::Sent;
     }
 #else
-    if (m_connectionHandle) {
+    if (!m_connectionHandle) return WriteResult::NotConnected;
+    {
         int fd = static_cast<int>(reinterpret_cast<intptr_t>(m_connectionHandle));
-        write(fd, payload.c_str(), payload.length());
+        // The write may be cut short: the peer may be gone. A frame that was
+        // only partly written would confuse the peer, so the failure is
+        // reported.
+        size_t written = 0;
+        while (written < payload.length()) {
+            const ssize_t count = write(fd, payload.data() + written, payload.length() - written);
+            if (count <= 0) {
+                reportError("IPC", ErrorCode::IpcWriteFailed, "the frame could not be written");
+                return WriteResult::Failed;
+            }
+            written += static_cast<size_t>(count);
+        }
+        return WriteResult::Sent;
     }
 #endif
 }
@@ -188,12 +331,37 @@ int IPCClient::sendRequest(int proxyId,
                            std::function<void(const std::shared_ptr<JsonNode>&)> onResolve,
                            std::function<void(const std::string&, const std::string&)> onReject,
                            int timeoutMs) {
-    int id = ++m_nextId;
+    // The callbacks are kept in copies of their own. They are handed to the
+    // table of the open calls below, and a call that never reaches the peer
+    // is given up on at once -- the copy is the one that is used then.
+    auto resolveCallback = onResolve;
+    auto rejectCallback = onReject;
+
+    int id = 0;
     {
         std::lock_guard<std::mutex> lock(m_pendingMutex);
+
+        // The table of the open calls has a limit. A peer that never answers
+        // would let it grow until the calls time out; a flood of calls would
+        // do the same. When the table is full the call is given up on at
+        // once, so the caller is told instead of waiting for nothing.
+        if (m_pendingCalls.size() >= kMaxPendingCalls) {
+            reportError("IPC", ErrorCode::IpcTimeout,
+                        "too many calls are waiting for an answer (" +
+                        std::to_string(m_pendingCalls.size()) + ")");
+            if (onReject) {
+                onReject("too many calls are waiting for an answer", "TimeoutError");
+            }
+            return -1;
+        }
+
+        // The number of the call is given out under the lock: two threads
+        // that ask at the same time may not get the same number.
+        id = ++m_nextId;
+
         PendingCall call;
-        call.resolve = std::move(onResolve);
-        call.reject = std::move(onReject);
+        call.resolve = std::move(resolveCallback);
+        call.reject = std::move(rejectCallback);
         call.deadline = std::chrono::steady_clock::now() +
                         std::chrono::milliseconds(timeoutMs > 0 ? timeoutMs
                                                                 : kDefaultRequestTimeoutMs);
@@ -209,7 +377,31 @@ int IPCClient::sendRequest(int proxyId,
         (args && args->type == JsonNode::Type::Array)
             ? args
             : std::make_shared<JsonNode>(JsonNode::Type::Array));
-    sendRaw(serializeJson(frame) + "\n");
+
+    const auto written = sendRaw(serializeJson(frame) + "\n");
+    if (written != WriteResult::Sent) {
+        // The frame did not reach the peer. The call is given up on at
+        // once: waiting for an answer that can no longer arrive would only
+        // waste the time of the caller.
+        {
+            std::lock_guard<std::mutex> lock(m_pendingMutex);
+            m_pendingCalls.erase(id);
+        }
+        if (written == WriteResult::NotConnected) {
+            reportError("IPC", ErrorCode::IpcWriteFailed,
+                        "the extension host is not connected");
+            if (onReject) {
+                onReject("the extension host is not connected", "Unavailable");
+            }
+        } else {
+            reportError("IPC", ErrorCode::IpcWriteFailed,
+                        "the request could not be sent to the extension host");
+            if (onReject) {
+                onReject("the request could not be sent to the extension host", "Unavailable");
+            }
+        }
+        return -1;
+    }
     return id;
 }
 
@@ -435,13 +627,13 @@ void IPCClient::handleIncomingMessage(const std::string& jsonMessage) {
 
         if (type == "request") {
             RpcRequest req;
-            auto reqIdNode = msg->get("reqId");
-            if (reqIdNode && reqIdNode->type == JsonNode::Type::Number) {
-                req.reqId = static_cast<int>(reqIdNode->numberValue);
+            int reqId = 0;
+            if (readInt(msg->get("reqId"), reqId)) {
+                req.reqId = reqId;
             }
-            auto proxyIdNode = msg->get("proxyId");
-            if (proxyIdNode && proxyIdNode->type == JsonNode::Type::Number) {
-                req.proxyId = static_cast<int>(proxyIdNode->numberValue);
+            int proxyId = 0;
+            if (readInt(msg->get("proxyId"), proxyId)) {
+                req.proxyId = proxyId;
             }
             auto methodNode = msg->get("method");
             if (methodNode && methodNode->type == JsonNode::Type::String) {
@@ -462,9 +654,8 @@ void IPCClient::handleIncomingMessage(const std::string& jsonMessage) {
         }
 
         if (type == "reply") {
-            auto reqIdNode = msg->get("reqId");
-            if (reqIdNode && reqIdNode->type == JsonNode::Type::Number) {
-                int id = static_cast<int>(reqIdNode->numberValue);
+            int id = 0;
+            if (readInt(msg->get("reqId"), id)) {
                 auto resNode = msg->get("res");
                 resolvePending(id, resNode ? resNode : nullNode(), false);
             }
@@ -472,9 +663,8 @@ void IPCClient::handleIncomingMessage(const std::string& jsonMessage) {
         }
 
         if (type == "replyErr") {
-            auto reqIdNode = msg->get("reqId");
-            if (reqIdNode && reqIdNode->type == JsonNode::Type::Number) {
-                int id = static_cast<int>(reqIdNode->numberValue);
+            int id = 0;
+            if (readInt(msg->get("reqId"), id)) {
                 std::string message = "Unknown extension host error";
                 auto errNode = msg->get("err");
                 if (errNode && errNode->type == JsonNode::Type::Object) {
@@ -518,6 +708,7 @@ void IPCClient::handleIncomingMessage(const std::string& jsonMessage) {
 
 void IPCClient::listenLoop() {
 #ifdef _WIN32
+    bool pipeFailureReported = false;
     while (m_running) {
         std::string pipePath = "\\\\.\\pipe\\" + m_pipeName;
         HANDLE hPipe = CreateNamedPipeA(
@@ -527,11 +718,23 @@ void IPCClient::listenLoop() {
             1, 4096, 4096, 0, NULL);
 
         if (hPipe == INVALID_HANDLE_VALUE) {
-            reportError("IPC", ErrorCode::IpcPipeCreateFailed,
-                        "CreateNamedPipe failed for " + pipePath +
-                        ", error " + std::to_string(GetLastError()));
-            return;
+            // The failure is reported once: a pipe that cannot be made (a
+            // second instance of the editor, for example) would otherwise
+            // fill the log with the same line every second.
+            if (!pipeFailureReported) {
+                pipeFailureReported = true;
+                reportError("IPC", ErrorCode::IpcPipeCreateFailed,
+                            "CreateNamedPipe failed for " + pipePath +
+                            ", error " + std::to_string(GetLastError()));
+            }
+            // A short wait keeps a failure that repeats from turning into a
+            // busy loop that eats a whole core.
+            for (int i = 0; i < 10 && m_running; ++i) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+            continue;
         }
+        pipeFailureReported = false;
 
         {
             std::lock_guard<std::mutex> lock(m_pipeMutex);
@@ -549,8 +752,6 @@ void IPCClient::listenLoop() {
                 connected = TRUE;
             } else {
                 CancelIo(hPipe);
-                CloseHandle(olConnect.hEvent);
-                continue;
             }
         }
 
@@ -585,16 +786,16 @@ void IPCClient::listenLoop() {
                     // std::string from `buffer` before NUL-terminating it used to
                     // leak uninitialized bytes into every frame.
                     std::string chunk(buffer, bytesRead);
-
-                    std::vector<std::string> frames;
                     {
                         std::lock_guard<std::mutex> lock(m_bufferMutex);
                         m_incomingBuffer += chunk;
-                        size_t pos = 0;
-                        while ((pos = m_incomingBuffer.find('\n')) != std::string::npos) {
-                            frames.push_back(m_incomingBuffer.substr(0, pos));
-                            m_incomingBuffer.erase(0, pos + 1);
-                        }
+                    }
+
+                    std::vector<std::string> frames;
+                    if (!takeFrames(frames)) {
+                        // The peer sent something that is too big: the
+                        // connection is dropped on purpose.
+                        break;
                     }
 
                     // Dispatch outside the buffer lock: a handler may reply on the
@@ -613,6 +814,10 @@ void IPCClient::listenLoop() {
 
         CloseHandle(olConnect.hEvent);
 
+        // The pipe is closed here, by the thread that made it. The handle is
+        // only closed when this thread still owns it: stopping the client
+        // takes the handle away, and closing it twice would close a handle
+        // that belongs to somebody else.
         {
             std::lock_guard<std::mutex> lock(m_pipeMutex);
             if (m_connectionHandle == hPipe) {
@@ -626,7 +831,10 @@ void IPCClient::listenLoop() {
     while (m_running) {
         int server_fd = socket(AF_UNIX, SOCK_STREAM, 0);
         if (server_fd < 0) return;
-        m_connectionHandle = reinterpret_cast<void*>(static_cast<intptr_t>(server_fd));
+        {
+            std::lock_guard<std::mutex> lock(m_pipeMutex);
+            m_serverSocket = server_fd;
+        }
 
         struct sockaddr_un addr;
         memset(&addr, 0, sizeof(addr));
@@ -636,19 +844,27 @@ void IPCClient::listenLoop() {
         unlink(m_pipeName.c_str());
         if (bind(server_fd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
             close(server_fd);
-            m_connectionHandle = nullptr;
+            std::lock_guard<std::mutex> lock(m_pipeMutex);
+            m_serverSocket = -1;
             return;
         }
         if (listen(server_fd, 5) < 0) {
             close(server_fd);
-            m_connectionHandle = nullptr;
+            std::lock_guard<std::mutex> lock(m_pipeMutex);
+            m_serverSocket = -1;
             return;
         }
 
         while (m_running) {
             int client_fd = accept(server_fd, NULL, NULL);
-            if (client_fd < 0) continue;
-            m_connectionHandle = reinterpret_cast<void*>(static_cast<intptr_t>(client_fd));
+            if (client_fd < 0) {
+                if (!m_running) break;
+                continue;
+            }
+            {
+                std::lock_guard<std::mutex> lock(m_pipeMutex);
+                m_connectionHandle = reinterpret_cast<void*>(static_cast<intptr_t>(client_fd));
+            }
             m_isConnected = true;
             std::cout << "[IPC] Extension Host connected\n";
             if (m_onConnected) m_onConnected();
@@ -659,15 +875,16 @@ void IPCClient::listenLoop() {
                 if (bytes_read <= 0) break;
 
                 std::string chunk(buffer, bytes_read);
-                std::vector<std::string> frames;
                 {
                     std::lock_guard<std::mutex> lock(m_bufferMutex);
                     m_incomingBuffer += chunk;
-                    size_t pos = 0;
-                    while ((pos = m_incomingBuffer.find('\n')) != std::string::npos) {
-                        frames.push_back(m_incomingBuffer.substr(0, pos));
-                        m_incomingBuffer.erase(0, pos + 1);
-                    }
+                }
+
+                std::vector<std::string> frames;
+                if (!takeFrames(frames)) {
+                    // The peer sent something that is too big: the connection
+                    // is dropped on purpose.
+                    break;
                 }
 
                 for (const auto& frame : frames) {
@@ -676,9 +893,19 @@ void IPCClient::listenLoop() {
             }
             m_isConnected = false;
             close(client_fd);
-            m_connectionHandle = nullptr;
+            {
+                std::lock_guard<std::mutex> lock(m_pipeMutex);
+                if (m_connectionHandle ==
+                    reinterpret_cast<void*>(static_cast<intptr_t>(client_fd))) {
+                    m_connectionHandle = nullptr;
+                }
+            }
         }
         close(server_fd);
+        {
+            std::lock_guard<std::mutex> lock(m_pipeMutex);
+            if (m_serverSocket == server_fd) m_serverSocket = -1;
+        }
         unlink(m_pipeName.c_str());
     }
 #endif
