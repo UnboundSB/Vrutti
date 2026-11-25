@@ -57,7 +57,8 @@ Shared helpers: the JSON parser and serializer, path resolution, string pools an
 - **std::filesystem::path pluginPath(const std::string&)**
 - **bool pathStaysInside(const std::filesystem::path&, const std::filesystem::path&)**
 - **std::filesystem::path pathInsideFolder(const std::filesystem::path&, const std::string&)**
-- **ProcessResult runProcess(const std::string&, const std::vector<std::string>&, size_t, unsigned int)**
+- **ProcessResult runProcess(const std::string&, const std::vector<std::string>&, size_t, unsigned int, const std::string&)**
+- **std::vector<std::string> splitCommandLine(const std::string&)**
 - **StringPool::StringPool()**
 - **StringPool::~StringPool()**
 - **std::string_view StringPool::intern(std::string_view)**

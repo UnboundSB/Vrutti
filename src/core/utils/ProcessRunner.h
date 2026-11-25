@@ -34,9 +34,30 @@ namespace vrutti::core::utils {
     //
     // `maxOutputBytes` is the most text that is kept. `timeoutMs` is how
     // long the program may run. A program that is stopped has the code -1.
+    //
+    // `workingDirectory` is the folder the program is run in. An empty
+    // folder means the folder the editor is in. The folder is given to the
+    // program by the system itself: the program is not told to change
+    // folder with a command of a shell, because a shell does not know what
+    // a quote means.
     ProcessResult runProcess(const std::string& executable,
                              const std::vector<std::string>& arguments,
                              size_t maxOutputBytes,
-                             unsigned int timeoutMs);
+                             unsigned int timeoutMs,
+                             const std::string& workingDirectory = "");
+
+    // Splits a command line into the name of the program and its arguments.
+    //
+    // The text is split at spaces and at tabs. A part that is between two
+    // double quotes stays together, and the quotes are taken away. A
+    // backslash in front of a quote keeps the quote inside the part.
+    //
+    // Nothing else is looked for: a `&`, a `|` or a `>` is a letter of an
+    // argument and never a command of a shell. The text that is split is
+    // never run through a shell.
+    //
+    // The list is empty when the text holds no program. The list has at
+    // most 64 parts, and a part has at most 4096 letters.
+    std::vector<std::string> splitCommandLine(const std::string& text);
 
 } // namespace vrutti::core::utils

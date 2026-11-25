@@ -256,6 +256,8 @@ Every hole that was found was closed, and every fix has a test.
 | The memory of a document was handed out with an alignment of zero, which divides by zero, and the block that was being filled could point at a block of somewhere else. | The alignment of zero is refused, the size is checked before the sum of it is made, and the block is found by its number. | `core/memory/ArenaAllocator.cpp` |
 | The page could send any method to the core, with any shape of parameters, and the core handed every unknown method over to the interface. | The page may only send a method that the core knows, and the parameters have to have the shape that the core expects. The rules live in one place and the router obeys them. | `core/ipc/BridgeProtocol.cpp` |
 | The arguments of the calls of the page were read with the reader of a message of the bridge, which asks for two things. A call that gives one thing was read as nothing at all: the explorer, the creation of a file, the renaming, the removal of a file and the source control stopped working without a word. | The two readers are apart. The bindings read their arguments with the tested helpers, and a harness reads the source of the window and says so when a binding uses the wrong reader. | `core/ipc/BridgeProtocol.cpp`, `ui/compositor/Window.cpp` |
+| The source control asked git through a shell: `cmd.exe /c "cd /d \"C:\work\" && git status 2>&1"`. A shell does not know what a backslash in front of a quote means, so the folder came out as `\"C:\work\"` and every question of the source control failed with "the filename, directory name, or volume label syntax is incorrect". | The question is split into the program and its arguments, git is run without a shell, and the folder of the workspace is given to the program by the system itself. Only git may be run that way. | `core/utils/ProcessRunner.cpp`, `ui/compositor/Window.cpp` |
+| A program that was stopped left its children behind. The children kept the pipe of the text open, and the editor waited for a reader that was never going to come: a program that hung held the editor for a minute. | The program is put in a job of its own (a group of its own on the other systems), so that stopping it stops everything it started, and the reader is asked to stop when it is done. | `core/utils/ProcessRunner.cpp` |
 
 The proof is in `src/tests/integration/CoreHardeningTest.cpp`.
 
@@ -284,4 +286,5 @@ The proof is in `src/tests/integration/CoreHardeningTest.cpp`.
 | The bridge of the page holds against hostile input | `build/vrutti_bridge_test.exe` |
 | The calls of the page and their arguments hold | `build/vrutti_window_bridge_test.exe` |
 | The search of the files of the user is safe | `build/vrutti_search_test.exe` |
+| The runner of the programs and the splitter of a command line hold | `build/vrutti_process_runner_test.exe` |
 | Everything at once | `ctest --test-dir build --output-on-failure` |

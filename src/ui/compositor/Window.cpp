@@ -1,6 +1,7 @@
 #include "Window.h"
 #include "../../core/ipc/BridgeProtocol.h"
 #include "../../core/utils/Base64.h"
+#include "../../core/utils/ProcessRunner.h"
 #include <iostream>
 #include <filesystem>
 #include <fstream>
@@ -1473,27 +1474,64 @@ namespace vrutti::ui {
             return "{}";
         });
 
+        // The source control asks git a question.
+        //
+        // The question is split into the name of the program and its
+        // arguments, and git is run without a shell: the folder of the
+        // workspace is given to the program by the system itself. A shell
+        // does not know what a backslash means, so a command that was built
+        // for a shell ("cd /d \"C:\\work\" && git status") does not work
+        // when it is handed to one: the folder came out as `\"C:\\work\"`
+        // and every question of the source control failed with "the
+        // filename, directory name, or volume label syntax is incorrect".
+        //
+        // Only git may be run. The page may ask the source control a
+        // question; it may not run a program of its own.
         w->bind("vruttiGitCommand", [this](const std::string& req) -> std::string {
             auto parsedReq = parseBridgeArguments(req);
-            std::string stdoutStr = "";
-            int exitCode = -1;
-
             const std::string cwd = vrutti::core::ipc::bridgeStringAt(parsedReq, 0);
-            const std::string cmd = vrutti::core::ipc::bridgeStringAt(parsedReq, 1);
-            if (!cwd.empty() && !cmd.empty()) {
-#ifdef _WIN32
-                std::string shellCmd = "cd /d \"" + cwd + "\" && " + cmd + " 2>&1";
-                safeExec("cmd.exe", { "/c", shellCmd }, &stdoutStr, &exitCode);
-#else
-                std::string shellCmd = "cd \"" + cwd + "\" && " + cmd + " 2>&1";
-                safeExec("/bin/sh", { "-c", shellCmd }, &stdoutStr, &exitCode);
-#endif
+            const std::string command = vrutti::core::ipc::bridgeStringAt(parsedReq, 1);
+
+            std::string answer = "{\"stdout\":\"\",\"exitCode\":-1}";
+            if (cwd.empty() || command.empty()) {
+                answer = "{\"stdout\":\"the source control has no folder to work in\","
+                         "\"exitCode\":-1}";
+                return answer;
             }
-            std::string result = "{";
-            result += "\"stdout\":" + vrutti::core::utils::JsonSerializer::escapeString(stdoutStr) + ",";
-            result += "\"exitCode\":" + std::to_string(exitCode);
-            result += "}";
-            return result;
+
+            const auto parts = vrutti::core::utils::splitCommandLine(command);
+            if (parts.empty()) {
+                answer = "{\"stdout\":\"the question of the source control is empty\","
+                         "\"exitCode\":-1}";
+                return answer;
+            }
+
+            // The name of the program has to be git. A page that asks for
+            // another program is refused: the bindings of the window are
+            // for the editor, not a way to run anything.
+            std::string program = parts.front();
+            const size_t slash = program.find_last_of("/\\");
+            if (slash != std::string::npos) program = program.substr(slash + 1);
+            std::string lower = program;
+            for (char& c : lower) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+            if (lower != "git" && lower != "git.exe") {
+                answer = "{\"stdout\":\"the source control may only ask git\","
+                         "\"exitCode\":-1}";
+                return answer;
+            }
+
+            const std::vector<std::string> arguments(parts.begin() + 1, parts.end());
+            const auto result = vrutti::core::utils::runProcess(
+                parts.front(), arguments, 4ull * 1024 * 1024, 120000, cwd);
+
+            std::string text = result.started ? result.output : result.error;
+            if (result.truncated) text += "\n[the answer was too long and was cut short]";
+
+            std::string answer2 = "{";
+            answer2 += "\"stdout\":" + vrutti::core::utils::JsonSerializer::escapeString(text) + ",";
+            answer2 += "\"exitCode\":" + std::to_string(result.started ? result.exitCode : -1);
+            answer2 += "}";
+            return answer2;
         });
 
         w->bind("vruttiToggleDevTools", [this](const std::string& req) -> std::string {

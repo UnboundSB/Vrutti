@@ -155,6 +155,15 @@ they are the ones that are worked through shape by shape.
       the bindings use the tested helpers, and the harness of
       `WindowBridgeTest.cpp` reads the source of the window and says so
       when a binding uses the wrong one.
+- [x] **P4.5.** Ask git without a shell. The source control built a command
+      for a shell (`cd /d "C:\work" && git status 2>&1`), and a shell does
+      not know what a backslash in front of a quote means: the folder came
+      out as `\"C:\work\"` and every question of the source control failed
+      with "the filename, directory name, or volume label syntax is
+      incorrect". The question is split into the program and its arguments,
+      git is run without a shell, and the folder of the workspace is given
+      to the program by the system itself. Only git may be run that way.
+      (`ProcessRunnerTest.cpp`.)
 - [ ] **P4.3.** Resolve the paths that come from an extension inside the
       workspace before they are used. The paths of the installation, of a
       theme and of an extension are resolved inside their own root; the paths

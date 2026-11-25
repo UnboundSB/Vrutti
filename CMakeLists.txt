@@ -208,6 +208,15 @@ add_dependencies(vrutti_search_test vrutti_search)
 add_test(NAME SearchPluginTest COMMAND vrutti_search_test)
 set_tests_properties(SearchPluginTest PROPERTIES TIMEOUT 300)
 
+# The runner of the programs and the splitter of a command line. The source
+# control of the editor used to ask git through a shell, and a shell does
+# not know what a backslash in front of a quote means: every question of the
+# source control failed.
+add_executable(vrutti_process_runner_test src/tests/integration/ProcessRunnerTest.cpp)
+target_link_libraries(vrutti_process_runner_test PRIVATE vrutti_core)
+add_test(NAME ProcessRunnerTest COMMAND vrutti_process_runner_test)
+set_tests_properties(ProcessRunnerTest PROPERTIES TIMEOUT 300)
+
 
 
 
