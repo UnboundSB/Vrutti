@@ -204,8 +204,10 @@ the wake-up from the answer of the delta, never before it.
   made with a security that only the user of the session and the system may
   open; the socket of the other systems belongs to the user alone.
 * The webview bridge validates every message before it reaches the core: a
-  message that is too big is not read, and the name of a method has to be a
-  name.
+  message that is too big is not read, the name of a method has to be a name,
+  the method has to be one that the core knows, and the parameters have to
+  have the shape that the core expects. The rules live in one place,
+  `core/ipc/BridgeProtocol.cpp`, and the router obeys them.
 * The paths that come from an extension are resolved inside the workspace
   before they are used. The paths of the installation, of a theme and of an
   extension are resolved inside their own root; the paths of the workspace
@@ -252,6 +254,7 @@ Every hole that was found was closed, and every fix has a test.
 | A search kept every match and every file without a limit, and a replace read a file of any size into the memory. | The matches, the files and the text of the program have a limit; a file that is too big is left alone. | `plugins/search/SearchPlugin.cpp` |
 | A pattern that the engine of the regular expressions refuses took the editor with it, and a file that was changed was written in place. | The failure is caught, the file is left as it was, and the new text is written into a file of its own that takes the place of the old one. | `plugins/search/SearchPlugin.cpp` |
 | The memory of a document was handed out with an alignment of zero, which divides by zero, and the block that was being filled could point at a block of somewhere else. | The alignment of zero is refused, the size is checked before the sum of it is made, and the block is found by its number. | `core/memory/ArenaAllocator.cpp` |
+| The page could send any method to the core, with any shape of parameters, and the core handed every unknown method over to the interface. | The page may only send a method that the core knows, and the parameters have to have the shape that the core expects. The rules live in one place and the router obeys them. | `core/ipc/BridgeProtocol.cpp` |
 
 The proof is in `src/tests/integration/CoreHardeningTest.cpp`.
 
@@ -277,5 +280,6 @@ The proof is in `src/tests/integration/CoreHardeningTest.cpp`.
 | The JSON layer holds against hostile input | `build/vrutti_json_fuzz_test.exe` |
 | The pipe holds against hostile input | `build/vrutti_ipc_fuzz_test.exe` |
 | The parts that hold data hold against hostile input | `build/vrutti_core_hardening_test.exe` |
+| The bridge of the page holds against hostile input | `build/vrutti_bridge_test.exe` |
 | The search of the files of the user is safe | `build/vrutti_search_test.exe` |
 | Everything at once | `ctest --test-dir build --output-on-failure` |

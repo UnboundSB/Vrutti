@@ -299,11 +299,11 @@ harness truncates a long log.
 ctest --test-dir build --output-on-failure
 ```
 
-There are twelve suites: the integration test, the theme service, the protocol
+There are thirteen suites: the integration test, the theme service, the protocol
 fallback contract, the file system surface, the document surface, the three
 extension-installation suites, the two hostile-input suites (the JSON layer
-and the pipe), the hardening suite for the parts that hold data and the suite
-of the search plugin.
+and the pipe), the hardening suite for the parts that hold data, the suite of
+the bridge of the page and the suite of the search plugin.
 
 ### Check the generators
 

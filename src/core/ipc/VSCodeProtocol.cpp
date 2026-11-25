@@ -1,4 +1,5 @@
 #include "VSCodeProtocol.h"
+#include "BridgeProtocol.h"
 #include "../utils/ErrorCodes.h"
 #include "../utils/Paths.h"
 #include "VsCodeProxyIds.generated.h"
@@ -584,6 +585,26 @@ namespace {
 
 void VSCodeProtocol::handleLocalRequest(const std::string& method,
                                         const std::shared_ptr<JsonNode>& params) {
+    // The page may only call the methods that the core knows, and only
+    // with the parameters that the core expects. The page is not a trusted
+    // caller: it may be the page of the editor, or the page of a panel that
+    // an extension filled with text of its own.
+    //
+    // A message that breaks the rules is dropped and written into the log.
+    // It is not answered with an error: the rule of the editor is that a
+    // missing feature is answered with the benign default of its return
+    // type, and the page does not wait for an answer at all.
+    if (!isAllowedBridgeMethod(method)) {
+        std::cerr << "[VSCodeProtocol] The page asked for a method that does not exist: '"
+                  << method.substr(0, kMaxBridgeMethodLength) << "'\n";
+        return;
+    }
+    if (!checkBridgeParams(method, params)) {
+        std::cerr << "[VSCodeProtocol] The page sent a message with the wrong shape for '"
+                  << method << "'\n";
+        return;
+    }
+
     if (method == "extensions/activateEvent") {
         std::string event = "onStartupFinished";
         if (params && params->type == JsonNode::Type::Object) {

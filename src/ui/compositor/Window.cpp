@@ -1,4 +1,5 @@
 #include "Window.h"
+#include "../../core/ipc/BridgeProtocol.h"
 #include "../../core/utils/Base64.h"
 #include <iostream>
 #include <filesystem>
@@ -16,42 +17,12 @@
 using vrutti::core::utils::base64_encode;
 
 namespace {
-    // The biggest message that the page may send.
-    //
-    // The message is read into the memory of the core before it is looked
-    // at, so the limit cannot save the memory of the read. It does stop
-    // the page from making the core copy the message again and again, and
-    // it keeps the size of the work of the core in the hands of the core.
-    constexpr size_t kMaxBridgeMessageBytes = 32u * 1024u * 1024u;
-
-    // The longest name of a method of the page.
-    constexpr size_t kMaxBridgeMethodLength = 256;
-
-    // Reads a message of the page.
-    //
-    // A message that is too big is not read at all: the page cannot make
-    // the core do an amount of work that it chooses itself.
-    std::shared_ptr<vrutti::core::utils::JsonNode> parseBridgeMessage(const std::string& req) {
-        if (req.size() > kMaxBridgeMessageBytes) {
-            std::cerr << "[UI] The message of the page was too big and was refused"
-                      << std::endl;
-            return nullptr;
-        }
-        return vrutti::core::utils::JsonParser::parse(req);
-    }
-
-    // Tells whether the name of a method of the page is a name.
-    //
-    // The name is used as the key of a message and ends up in the log, so
-    // it may not be empty, may not be endless and may not hold a control
-    // character.
-    bool isSaneMethodName(const std::string& method) {
-        if (method.empty() || method.size() > kMaxBridgeMethodLength) return false;
-        for (unsigned char c : method) {
-            if (c < 0x20 || c == 0x7F) return false;
-        }
-        return true;
-    }
+    // The rules of the bridge between the page and the core live in one
+    // place: `core/ipc/BridgeProtocol.cpp`. The page may only send a
+    // message that is small enough, that names a method that the core
+    // knows, and whose parameters have the shape that the core expects.
+    using vrutti::core::ipc::isSaneMethodName;
+    using vrutti::core::ipc::parseBridgeMessage;
 
     int fuzzyMatch(const std::string& lowerPattern, const std::string& str) {
         if (lowerPattern.empty()) return 1;
@@ -606,37 +577,43 @@ namespace vrutti::ui {
 
         w->bind("sendIpcMessage", [this](const std::string& seq, const std::string& req, void* arg) {
             if (this->m_ipc) {
+                // A message of the page is an array of two things: the name
+                // of the method and the payload of the method as a text. A
+                // message of another shape, or one that is too big, is not
+                // read at all.
                 auto parsedReq = parseBridgeMessage(req);
-                if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 2) {
-                    auto methodNode = parsedReq->arrayElements[0];
-                    auto payloadNode = parsedReq->arrayElements[1];
-                    if (methodNode && methodNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                        std::string method(methodNode->stringValue);
-                        // The name of the method has to be a name: it is
-                        // used as the key of a message and ends up in the
-                        // log.
-                        if (!isSaneMethodName(method)) {
-                            std::cerr << "[UI] The message of the page had a name that is not a name"
-                                      << std::endl;
-                            return;
-                        }
-                        // Wrap payload as a JSON node (try parsing, fallback to string)
-                        std::shared_ptr<vrutti::core::utils::JsonNode> params;
-                        if (payloadNode) {
-                            std::string payloadStr(payloadNode->stringValue);
-                            auto parsed = parseBridgeMessage(payloadStr);
-                            if (parsed) {
-                                params = parsed;
-                            } else {
-                                params = std::make_shared<vrutti::core::utils::JsonNode>(vrutti::core::utils::JsonNode::Type::String);
-                                params->stringValue = payloadStr;
-                            }
-                        } else {
-                            params = std::make_shared<vrutti::core::utils::JsonNode>(vrutti::core::utils::JsonNode::Type::Object);
-                        }
-                        this->m_ipc->sendLocalRequest(method, params);
-                    }
+                if (!parsedReq) {
+                    std::cerr << "[UI] The message of the page had a shape that the bridge does not know"
+                              << std::endl;
+                    return;
                 }
+
+                auto methodNode = parsedReq->arrayElements[0];
+                auto payloadNode = parsedReq->arrayElements[1];
+                std::string method(methodNode->stringValue);
+
+                // The name of the method has to be a name: it is used as the
+                // key of a message and ends up in the log. And it has to be
+                // a method that the core knows: the page may not make the
+                // core do something that has no name.
+                if (!isSaneMethodName(method) ||
+                    !vrutti::core::ipc::isAllowedBridgeMethod(method)) {
+                    std::cerr << "[UI] The message of the page named a method that the core does not know"
+                              << std::endl;
+                    return;
+                }
+
+                // The payload of the method is a text that holds a JSON
+                // object. A payload of another shape is not a payload.
+                auto params = vrutti::core::ipc::parseBridgePayload(
+                    std::string(payloadNode->stringValue));
+                if (!params) {
+                    std::cerr << "[UI] The message of the page had a payload that is not an object"
+                              << std::endl;
+                    return;
+                }
+
+                this->m_ipc->sendLocalRequest(method, params);
             }
         }, nullptr);
 

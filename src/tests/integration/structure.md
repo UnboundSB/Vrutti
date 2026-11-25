@@ -4,6 +4,7 @@
 Integration tests: they exercise the services through their public interfaces.
 
 ## Files
+- **BridgeProtocolTest.cpp**: The bridge between the page and the core.
 - **CoreHardeningTest.cpp**: CoreHardeningTest -- the parts of the core that hold data.
 - **ExtensionInstallE2ETest.cpp**: ExtensionInstallE2ETest -- the whole chain, from the archive to the running extension.
 - **ExtensionInstallerTest.cpp**: ExtensionInstallerTest -- the installation of an extension, from the archive to the folder of the extension.

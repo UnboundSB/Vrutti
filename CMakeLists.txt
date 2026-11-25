@@ -49,6 +49,7 @@ add_library(vrutti_core STATIC
     src/core/extensions/ExtensionService.cpp
     src/core/ipc/IPCClient.cpp
     src/core/ipc/VSCodeProtocol.cpp
+    src/core/ipc/BridgeProtocol.cpp
     src/core/ipc/ExtensionHostSpawner.cpp
     src/core/config/SettingsManager.cpp
     src/core/plugins/PluginLoader.cpp
@@ -179,6 +180,14 @@ add_executable(vrutti_core_hardening_test src/tests/integration/CoreHardeningTes
 target_link_libraries(vrutti_core_hardening_test PRIVATE vrutti_core)
 add_test(NAME CoreHardeningTest COMMAND vrutti_core_hardening_test)
 set_tests_properties(CoreHardeningTest PROPERTIES TIMEOUT 300)
+
+# The bridge between the page and the core: the page may only send a
+# message that is small enough, that names a method that the core knows,
+# and whose parameters have the shape that the core expects.
+add_executable(vrutti_bridge_test src/tests/integration/BridgeProtocolTest.cpp)
+target_link_libraries(vrutti_bridge_test PRIVATE vrutti_core)
+add_test(NAME BridgeProtocolTest COMMAND vrutti_bridge_test)
+set_tests_properties(BridgeProtocolTest PROPERTIES TIMEOUT 300)
 
 # The search plugin: it reads the files of the user, so it has to start its
 # program without a shell and it has to keep its hands off the files that

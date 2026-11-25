@@ -19,6 +19,7 @@ core cannot answer must therefore never become an error reply -- see
 |------|---------|--------|
 | `IPCClient.cpp/.h` | Pipe transport, frame decoding, pending-call tracking | Working |
 | `VSCodeProtocol.cpp/.h` | The router for the `MainThread*` / `ExtHost*` shapes | 87 handlers |
+| `BridgeProtocol.cpp/.h` | The rules of the bridge between the page and the core | Working |
 | `ExtensionHostSpawner.cpp/.h` | Starts the Node.js extension host | Working |
 | `VsCodeProxyIds.generated.h` | The numeric proxy id of every shape | Generated |
 | `VsCodeProxyFallbacks.generated.h` | The benign answer of every call | Generated |
@@ -140,7 +141,11 @@ they are the ones that are worked through shape by shape.
       system may open; the socket of the other systems belongs to the user
       alone.
 - [x] **P4.2.** Validate every message of the webview bridge. A message that
-      is too big is not read, and the name of a method has to be a name.
+      is too big is not read, the name of a method has to be a name, the
+      method has to be one that the core knows, and the parameters have to
+      have the shape that the core expects. The rules live in one place,
+      `src/core/ipc/BridgeProtocol.cpp`, and the router obeys them.
+      (`BridgeProtocolTest.cpp`.)
 - [ ] **P4.3.** Resolve the paths that come from an extension inside the
       workspace before they are used. The paths of the installation, of a
       theme and of an extension are resolved inside their own root; the paths
@@ -168,6 +173,7 @@ closed with a test.
 | A theme could name a file outside of its own package. | The file has to be inside of the package. (`ThemeService.cpp`.) |
 | A path from the page was put into a command for the shell. | The program is started without a shell. (`Window.cpp`.) |
 | A worker of the window was left running when the window went away. | The workers are waited for before the window goes away. (`Window.cpp`.) |
+| The page could send any method to the core, with any shape of parameters. | The page may only send a method that the core knows, and the parameters have to have the shape that the core expects. (`BridgeProtocol.cpp`.) |
 
 The proof is in `src/tests/integration/CoreHardeningTest.cpp`.
 

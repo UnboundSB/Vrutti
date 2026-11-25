@@ -4,6 +4,8 @@
 Inter-process communication: the pipe transport and the protocol that connects the core to the extension host.
 
 ## Files
+- **BridgeProtocol.cpp**: Implementation of the BridgeProtocol component.
+- **BridgeProtocol.h**: BridgeProtocol -- the rules of the bridge between the page and the core.
 - **ExtensionHostSpawner.cpp**: Implementation of the ExtensionHostSpawner component.
 - **ExtensionHostSpawner.h**: Header for the ExtensionHostSpawner component.
 - **IPCClient.cpp**: The security of the pipe is built with the text form of a descriptor, so the helper of the system is needed.
@@ -15,6 +17,11 @@ Inter-process communication: the pipe transport and the protocol that connects t
 - **VsCodeProxyIds.generated.h**: Header for the VsCodeProxyIds generated component.
 
 ## Public Methods
+- **bool isSaneMethodName(const std::string&)**
+- **bool isAllowedBridgeMethod(const std::string&)**
+- **std::shared_ptr<JsonNode> parseBridgeMessage(const std::string&)**
+- **std::shared_ptr<JsonNode> parseBridgePayload(const std::string&)**
+- **bool checkBridgeParams(const std::string&, const std::shared_ptr<JsonNode>&)**
 - **bool ExtensionHostSpawner::spawn(const std::string&, std::string&)**
 - **std::string ExtensionHostSpawner::pipePath(const std::string&)**
 - **std::filesystem::path ExtensionHostSpawner::nodePath()**
