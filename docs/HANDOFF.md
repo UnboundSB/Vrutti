@@ -83,6 +83,7 @@ host talk to the core over a **private named pipe**, one per window
 | Area | State |
 |---|---|
 | Foundation | Paths resolve from the executable, not the working directory. `pluginPath()` finds the release layout first, then the development layout. |
+| The window | The editor comes to the front when it opens. The console of the process takes the focus when the program starts, and the editor used to open behind it: to the user it looked as if nothing had happened. |
 | JSON | The parser decodes escapes exactly once, owns its object keys, keeps unknown escapes intact. 38 double-decodes removed. |
 | Extension host | Activates extensions end to end. The bundle is an ES module (`extensionHostProcess.mjs`) built by esbuild — the release never depends on `tsx`. |
 | Fallbacks | A call without an implementation is answered with the benign default of its return type. The table is generated from the upstream signatures, so it cannot drift. |

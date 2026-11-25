@@ -530,6 +530,15 @@ namespace vrutti::ui {
             }, 1, 0);
 
             SetWindowPos(hwnd, NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+
+            // The window of the editor comes to the front.
+            //
+            // The console of the process takes the focus when the program
+            // starts, and the editor would open behind it. To the user it
+            // looks as if nothing had happened at all.
+            ShowWindow(hwnd, SW_SHOW);
+            SetForegroundWindow(hwnd);
+            SetActiveWindow(hwnd);
         }
 #endif
 
@@ -1700,6 +1709,16 @@ namespace vrutti::ui {
         webview::webview* w = static_cast<webview::webview*>(m_windowHandle);
         w->navigate(uri);
         std::cout << "[UI] Webview navigated to: " << uri << std::endl;
+
+#ifdef _WIN32
+        // The window comes to the front once more: the page is loaded now,
+        // and the editor is what the user is waiting for.
+        HWND hwnd = static_cast<HWND>(w->window());
+        if (hwnd) {
+            ShowWindow(hwnd, SW_SHOW);
+            SetForegroundWindow(hwnd);
+        }
+#endif
 
         w->run(); // This is blocking until window is closed
 
