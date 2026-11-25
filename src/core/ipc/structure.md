@@ -20,6 +20,9 @@ Inter-process communication: the pipe transport and the protocol that connects t
 - **bool isSaneMethodName(const std::string&)**
 - **bool isAllowedBridgeMethod(const std::string&)**
 - **std::shared_ptr<JsonNode> parseBridgeMessage(const std::string&)**
+- **std::shared_ptr<JsonNode> parseBridgeArguments(const std::string&)**
+- **std::string bridgeStringAt(const std::shared_ptr<JsonNode>&, size_t)**
+- **bool bridgeBoolAt(const std::shared_ptr<JsonNode>&, size_t, bool)**
 - **std::shared_ptr<JsonNode> parseBridgePayload(const std::string&)**
 - **bool checkBridgeParams(const std::string&, const std::shared_ptr<JsonNode>&)**
 - **bool ExtensionHostSpawner::spawn(const std::string&, std::string&)**

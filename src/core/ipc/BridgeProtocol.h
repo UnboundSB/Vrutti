@@ -67,6 +67,28 @@ namespace vrutti::core::ipc {
     // does not have that shape.
     std::shared_ptr<JsonNode> parseBridgeMessage(const std::string& raw);
 
+    // Reads the arguments of a call of the page.
+    //
+    // A call of the page is a list of the things that the page gives to the
+    // core. The list may be empty, and it may hold any number of things.
+    //
+    // Returns nothing when the text is too big or does not hold a list.
+    std::shared_ptr<JsonNode> parseBridgeArguments(const std::string& raw);
+
+    // Reads the text of the thing at a place in the arguments of a call.
+    //
+    // A thing that is not there, or that is not a text, is an empty text.
+    std::string bridgeStringAt(const std::shared_ptr<JsonNode>& args,
+                               size_t index);
+
+    // Tells whether the thing at a place in the arguments of a call is true.
+    //
+    // A thing that is not there, or that is not a truth, is the answer that
+    // the caller gave.
+    bool bridgeBoolAt(const std::shared_ptr<JsonNode>& args,
+                      size_t index,
+                      bool fallback);
+
     // Reads the payload of a message of the page.
     //
     // The payload is a text that holds a JSON object. Returns nothing when

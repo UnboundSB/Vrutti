@@ -255,6 +255,7 @@ Every hole that was found was closed, and every fix has a test.
 | A pattern that the engine of the regular expressions refuses took the editor with it, and a file that was changed was written in place. | The failure is caught, the file is left as it was, and the new text is written into a file of its own that takes the place of the old one. | `plugins/search/SearchPlugin.cpp` |
 | The memory of a document was handed out with an alignment of zero, which divides by zero, and the block that was being filled could point at a block of somewhere else. | The alignment of zero is refused, the size is checked before the sum of it is made, and the block is found by its number. | `core/memory/ArenaAllocator.cpp` |
 | The page could send any method to the core, with any shape of parameters, and the core handed every unknown method over to the interface. | The page may only send a method that the core knows, and the parameters have to have the shape that the core expects. The rules live in one place and the router obeys them. | `core/ipc/BridgeProtocol.cpp` |
+| The arguments of the calls of the page were read with the reader of a message of the bridge, which asks for two things. A call that gives one thing was read as nothing at all: the explorer, the creation of a file, the renaming, the removal of a file and the source control stopped working without a word. | The two readers are apart. The bindings read their arguments with the tested helpers, and a harness reads the source of the window and says so when a binding uses the wrong reader. | `core/ipc/BridgeProtocol.cpp`, `ui/compositor/Window.cpp` |
 
 The proof is in `src/tests/integration/CoreHardeningTest.cpp`.
 
@@ -281,5 +282,6 @@ The proof is in `src/tests/integration/CoreHardeningTest.cpp`.
 | The pipe holds against hostile input | `build/vrutti_ipc_fuzz_test.exe` |
 | The parts that hold data hold against hostile input | `build/vrutti_core_hardening_test.exe` |
 | The bridge of the page holds against hostile input | `build/vrutti_bridge_test.exe` |
+| The calls of the page and their arguments hold | `build/vrutti_window_bridge_test.exe` |
 | The search of the files of the user is safe | `build/vrutti_search_test.exe` |
 | Everything at once | `ctest --test-dir build --output-on-failure` |

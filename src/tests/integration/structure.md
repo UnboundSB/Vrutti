@@ -21,6 +21,7 @@ Integration tests: they exercise the services through their public interfaces.
 - **TestZip.h**: TestZip -- a writer of ZIP archives for the tests.
 - **ThemeServiceTest.cpp**: Integration test for the theme service.
 - **TODO.md**: Open questions and planned work for this folder.
+- **WindowBridgeTest.cpp**: The bridge of the window: the calls of the page and their arguments.
 
 ## Public Methods
 - **PipeClient::PipeClient()**

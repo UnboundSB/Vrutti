@@ -189,6 +189,16 @@ target_link_libraries(vrutti_bridge_test PRIVATE vrutti_core)
 add_test(NAME BridgeProtocolTest COMMAND vrutti_bridge_test)
 set_tests_properties(BridgeProtocolTest PROPERTIES TIMEOUT 300)
 
+# The calls of the page and their arguments. The harness reads the source of
+# the window as well: a binding that reads its arguments with the wrong
+# reader makes a feature of the page stop working without a word.
+add_executable(vrutti_window_bridge_test src/tests/integration/WindowBridgeTest.cpp)
+target_link_libraries(vrutti_window_bridge_test PRIVATE vrutti_core)
+target_compile_definitions(vrutti_window_bridge_test PRIVATE
+    VRUTTI_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+add_test(NAME WindowBridgeTest COMMAND vrutti_window_bridge_test)
+set_tests_properties(WindowBridgeTest PROPERTIES TIMEOUT 300)
+
 # The search plugin: it reads the files of the user, so it has to start its
 # program without a shell and it has to keep its hands off the files that
 # are too big.

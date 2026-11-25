@@ -109,6 +109,33 @@ std::shared_ptr<JsonNode> parseBridgeMessage(const std::string& raw) {
     return node;
 }
 
+std::shared_ptr<JsonNode> parseBridgeArguments(const std::string& raw) {
+    if (raw.size() > kMaxBridgeMessageBytes) return nullptr;
+
+    auto node = vrutti::core::utils::JsonParser::parse(raw);
+    if (!node || node->type != JsonNode::Type::Array) return nullptr;
+    return node;
+}
+
+std::string bridgeStringAt(const std::shared_ptr<JsonNode>& args,
+                           size_t index) {
+    if (!args || args->type != JsonNode::Type::Array) return "";
+    if (index >= args->arrayElements.size()) return "";
+    const auto& thing = args->arrayElements[index];
+    if (!thing || thing->type != JsonNode::Type::String) return "";
+    return std::string(thing->stringValue);
+}
+
+bool bridgeBoolAt(const std::shared_ptr<JsonNode>& args,
+                  size_t index,
+                  bool fallback) {
+    if (!args || args->type != JsonNode::Type::Array) return fallback;
+    if (index >= args->arrayElements.size()) return fallback;
+    const auto& thing = args->arrayElements[index];
+    if (!thing || thing->type != JsonNode::Type::Boolean) return fallback;
+    return thing->boolValue;
+}
+
 std::shared_ptr<JsonNode> parseBridgePayload(const std::string& text) {
     if (text.size() > kMaxBridgeMessageBytes) return nullptr;
 

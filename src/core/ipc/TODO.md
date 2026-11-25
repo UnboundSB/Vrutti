@@ -146,6 +146,15 @@ they are the ones that are worked through shape by shape.
       have the shape that the core expects. The rules live in one place,
       `src/core/ipc/BridgeProtocol.cpp`, and the router obeys them.
       (`BridgeProtocolTest.cpp`.)
+- [x] **P4.4.** Read the arguments of the calls of the page with the reader
+      of the arguments. The reader of a message of the bridge asks for two
+      things -- the name of the method and its payload -- and a call that
+      gives one thing was read as nothing at all: the explorer, the creation
+      of a file, the renaming, the removal of a file and the source control
+      all stopped working without a word. The two readers are apart now,
+      the bindings use the tested helpers, and the harness of
+      `WindowBridgeTest.cpp` reads the source of the window and says so
+      when a binding uses the wrong one.
 - [ ] **P4.3.** Resolve the paths that come from an extension inside the
       workspace before they are used. The paths of the installation, of a
       theme and of an extension are resolved inside their own root; the paths

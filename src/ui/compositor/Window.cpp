@@ -22,6 +22,7 @@ namespace {
     // message that is small enough, that names a method that the core
     // knows, and whose parameters have the shape that the core expects.
     using vrutti::core::ipc::isSaneMethodName;
+    using vrutti::core::ipc::parseBridgeArguments;
     using vrutti::core::ipc::parseBridgeMessage;
 
     int fuzzyMatch(const std::string& lowerPattern, const std::string& str) {
@@ -646,7 +647,7 @@ namespace vrutti::ui {
         w->bind("vruttiTerminalInit", [this, w](const std::string& req) -> std::string {
             std::string id = "";
             std::string cwd = "";
-            auto parsedReq = parseBridgeMessage(req);
+            auto parsedReq = parseBridgeArguments(req);
             if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 2) {
                 auto idNode = parsedReq->arrayElements[0];
                 auto pathNode = parsedReq->arrayElements[1];
@@ -672,7 +673,7 @@ namespace vrutti::ui {
 
         w->bind("vruttiSearchExtensions", [this](const std::string& req) -> std::string {
             std::string payload = req;
-            auto parsedReq = parseBridgeMessage(req);
+            auto parsedReq = parseBridgeArguments(req);
             if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && !parsedReq->arrayElements.empty()) {
                 auto argNode = parsedReq->arrayElements[0];
                 if (argNode && argNode->type == vrutti::core::utils::JsonNode::Type::String) {
@@ -878,7 +879,7 @@ namespace vrutti::ui {
         });
 
         w->bind("vruttiTerminalInput", [this](const std::string& req) -> std::string {
-            auto parsedReq = parseBridgeMessage(req);
+            auto parsedReq = parseBridgeArguments(req);
             if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 2) {
                 auto idNode = parsedReq->arrayElements[0];
                 auto inputNode = parsedReq->arrayElements[1];
@@ -902,7 +903,7 @@ namespace vrutti::ui {
         });
 
         w->bind("vruttiTerminalResize", [this](const std::string& req) -> std::string {
-            auto parsedReq = parseBridgeMessage(req);
+            auto parsedReq = parseBridgeArguments(req);
             if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 3) {
                 std::string id = "";
                 auto idNode = parsedReq->arrayElements[0];
@@ -931,7 +932,7 @@ namespace vrutti::ui {
         });
 
         w->bind("vruttiTerminalClose", [this](const std::string& req) -> std::string {
-            auto parsedReq = parseBridgeMessage(req);
+            auto parsedReq = parseBridgeArguments(req);
             if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
                 auto idNode = parsedReq->arrayElements[0];
                 if (idNode && idNode->type == vrutti::core::utils::JsonNode::Type::String) {
@@ -960,7 +961,7 @@ namespace vrutti::ui {
         });
 
         w->bind("vruttiDebugEval", [this](const std::string& req) -> std::string {
-            auto parsedReq = parseBridgeMessage(req);
+            auto parsedReq = parseBridgeArguments(req);
             if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
                 auto inputNode = parsedReq->arrayElements[0];
                 if (inputNode && inputNode->type == vrutti::core::utils::JsonNode::Type::String) {
@@ -978,7 +979,7 @@ namespace vrutti::ui {
         });
 
         w->bind("vruttiUpdateSetting", [this](const std::string& req) -> std::string {
-            auto parsedReq = parseBridgeMessage(req);
+            auto parsedReq = parseBridgeArguments(req);
             if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 2) {
                 auto keyNode = parsedReq->arrayElements[0];
                 auto valNode = parsedReq->arrayElements[1];
@@ -996,20 +997,9 @@ namespace vrutti::ui {
             // archive is checked, the manifest is read, and the file is
             // written in a folder of its own. Nothing is done through a
             // shell, so an address or a name cannot become a command.
-            auto parsedReq = parseBridgeMessage(req);
-            std::string url;
-            std::string name;
-            if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array &&
-                parsedReq->arrayElements.size() >= 2) {
-                auto urlNode = parsedReq->arrayElements[0];
-                auto nameNode = parsedReq->arrayElements[1];
-                if (urlNode && urlNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    url = std::string(urlNode->stringValue.data(), urlNode->stringValue.length());
-                }
-                if (nameNode && nameNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    name = std::string(nameNode->stringValue.data(), nameNode->stringValue.length());
-                }
-            }
+            auto parsedReq = parseBridgeArguments(req);
+            const std::string url = vrutti::core::ipc::bridgeStringAt(parsedReq, 0);
+            const std::string name = vrutti::core::ipc::bridgeStringAt(parsedReq, 1);
             if (url.empty()) {
                 return "{\"ok\":false,\"error\":\"the extension has no file\"}";
             }
@@ -1105,15 +1095,8 @@ namespace vrutti::ui {
             // The extension is removed by the service of the core. The name
             // may be the name of the extension alone or the name with its
             // publisher.
-            auto parsedReq = parseBridgeMessage(req);
-            std::string identifier;
-            if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array &&
-                !parsedReq->arrayElements.empty()) {
-                auto idNode = parsedReq->arrayElements[0];
-                if (idNode && idNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    identifier = std::string(idNode->stringValue.data(), idNode->stringValue.length());
-                }
-            }
+            auto parsedReq = parseBridgeArguments(req);
+            const std::string identifier = vrutti::core::ipc::bridgeStringAt(parsedReq, 0);
             if (identifier.empty()) {
                 return "{\"ok\":false,\"error\":\"the extension has no name\"}";
             }
@@ -1197,150 +1180,126 @@ namespace vrutti::ui {
         });
 
         w->bind("vruttiReadDirectory", [this](const std::string& req) -> std::string {
-            auto parsedReq = parseBridgeMessage(req);
-            if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
-                auto pathNode = parsedReq->arrayElements[0];
-                if (pathNode && pathNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    std::string path(pathNode->stringValue);
-                    
-                    std::string json = "[";
-                    bool first = true;
-                    try {
-                        for (const auto& entry : std::filesystem::directory_iterator(path)) {
-                            if (!first) json += ",";
-                            json += "{";
-                            json += "\"name\":" + vrutti::core::utils::JsonSerializer::escapeString(entry.path().filename().string()) + ",";
-                            json += "\"isDirectory\":" + std::string(entry.is_directory() ? "true" : "false") + ",";
-                            
-                            std::string resStr = entry.path().string();
-                            for (char& c : resStr) { if (c == '\\') c = '/'; }
-                            json += "\"resource\":\"file:///" + vrutti::core::utils::JsonSerializer::escapeString(resStr).substr(1); // substr(1) to remove leading quote since file:/// is inside the string
-                            
-                            json += "}";
-                            first = false;
-                        }
-                    } catch (const std::exception& e) {
-                        std::cerr << "[UI] Failed to read directory: " << e.what() << std::endl;
+            auto parsedReq = parseBridgeArguments(req);
+            const std::string path = vrutti::core::ipc::bridgeStringAt(parsedReq, 0);
+            if (!path.empty()) {
+                std::string json = "[";
+                bool first = true;
+                try {
+                    for (const auto& entry : std::filesystem::directory_iterator(path)) {
+                        if (!first) json += ",";
+                        json += "{";
+                        json += "\"name\":" + vrutti::core::utils::JsonSerializer::escapeString(entry.path().filename().string()) + ",";
+                        json += "\"isDirectory\":" + std::string(entry.is_directory() ? "true" : "false") + ",";
+
+                        std::string resStr = entry.path().string();
+                        for (char& c : resStr) { if (c == '\\') c = '/'; }
+                        json += "\"resource\":\"file:///" + vrutti::core::utils::JsonSerializer::escapeString(resStr).substr(1); // substr(1) to remove leading quote since file:/// is inside the string
+
+                        json += "}";
+                        first = false;
                     }
-                    json += "]";
-                    return json;
+                } catch (const std::exception& e) {
+                    std::cerr << "[UI] Failed to read directory: " << e.what() << std::endl;
                 }
+                json += "]";
+                return json;
             }
             return "[]";
         });
 
         w->bind("vruttiCreateFile", [this](const std::string& req) -> std::string {
-            auto parsedReq = parseBridgeMessage(req);
-            if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
-                auto pathNode = parsedReq->arrayElements[0];
-                if (pathNode && pathNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    std::string path(pathNode->stringValue);
-                    try {
-                        std::ofstream f(path);
-                        f.close();
-                        return "{\"success\":true}";
-                    } catch (const std::exception& e) {
-                        std::cerr << "[UI] Failed to create file: " << e.what() << std::endl;
-                    }
+            auto parsedReq = parseBridgeArguments(req);
+            const std::string path = vrutti::core::ipc::bridgeStringAt(parsedReq, 0);
+            if (!path.empty()) {
+                try {
+                    std::ofstream f(path);
+                    f.close();
+                    return "{\"success\":true}";
+                } catch (const std::exception& e) {
+                    std::cerr << "[UI] Failed to create file: " << e.what() << std::endl;
                 }
             }
             return "{\"success\":false}";
         });
 
         w->bind("vruttiDeleteFile", [this](const std::string& req) -> std::string {
-            auto parsedReq = parseBridgeMessage(req);
-            if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
-                auto pathNode = parsedReq->arrayElements[0];
-                // The second name says whether a folder with things in it
-                // may be taken away. A folder that is not empty is only
-                // taken away when the page says that it may: a mistake in
-                // the page would otherwise take a whole tree with it.
-                bool recursive = false;
-                if (parsedReq->arrayElements.size() >= 2) {
-                    auto recursiveNode = parsedReq->arrayElements[1];
-                    if (recursiveNode && recursiveNode->type == vrutti::core::utils::JsonNode::Type::Boolean) {
-                        recursive = recursiveNode->boolValue;
+            auto parsedReq = parseBridgeArguments(req);
+            // The second name says whether a folder with things in it may
+            // be taken away. A folder that is not empty is only taken away
+            // when the page says that it may: a mistake in the page would
+            // otherwise take a whole tree with it.
+            const std::string path = vrutti::core::ipc::bridgeStringAt(parsedReq, 0);
+            const bool recursive = vrutti::core::ipc::bridgeBoolAt(parsedReq, 1, false);
+            if (!path.empty()) {
+                try {
+                    std::filesystem::path target(path);
+                    // The root of a drive and the home folder are never
+                    // removed: a mistake in the page would take the whole
+                    // disk with it.
+                    const std::filesystem::path parent = target.parent_path();
+                    if (target == parent || target == target.root_path()) {
+                        std::cerr << "[UI] The root of a disk is not deleted" << std::endl;
+                        return "{\"success\":false}";
                     }
-                }
-                if (pathNode && pathNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    std::string path(pathNode->stringValue);
-                    if (path.empty()) return "{\"success\":false}";
-                    try {
-                        std::filesystem::path target(path);
-                        // The root of a drive and the home folder are never
-                        // removed: a mistake in the page would take the
-                        // whole disk with it.
-                        const std::filesystem::path parent = target.parent_path();
-                        if (target == parent || target == target.root_path()) {
-                            std::cerr << "[UI] The root of a disk is not deleted" << std::endl;
+                    std::error_code ec;
+                    const bool exists = std::filesystem::exists(target, ec);
+                    if (ec) return "{\"success\":false}";
+                    if (!exists) return "{\"success\":false}";
+
+                    const bool isDirectory = std::filesystem::is_directory(target, ec);
+                    if (ec) return "{\"success\":false}";
+
+                    if (isDirectory && !recursive) {
+                        // A folder that still has things in it is not
+                        // taken away unless the page says that it may.
+                        std::error_code countError;
+                        const bool empty = std::filesystem::is_empty(target, countError);
+                        if (countError || !empty) {
+                            std::cerr << "[UI] The folder was not deleted: it still has things in it"
+                                      << std::endl;
                             return "{\"success\":false}";
                         }
-                        std::error_code ec;
-                        const bool exists = std::filesystem::exists(target, ec);
-                        if (ec) return "{\"success\":false}";
-                        if (!exists) return "{\"success\":false}";
-
-                        const bool isDirectory = std::filesystem::is_directory(target, ec);
-                        if (ec) return "{\"success\":false}";
-
-                        if (isDirectory && !recursive) {
-                            // A folder that still has things in it is not
-                            // taken away unless the page says that it may.
-                            std::error_code countError;
-                            const bool empty = std::filesystem::is_empty(target, countError);
-                            if (countError || !empty) {
-                                std::cerr << "[UI] The folder was not deleted: it still has things in it"
-                                          << std::endl;
-                                return "{\"success\":false}";
-                            }
-                            std::filesystem::remove(target, ec);
-                        } else {
-                            std::filesystem::remove_all(target, ec);
-                        }
-                        if (ec) {
-                            std::cerr << "[UI] Failed to delete file: " << ec.message() << std::endl;
-                            return "{\"success\":false}";
-                        }
-                        return "{\"success\":true}";
-                    } catch (const std::exception& e) {
-                        std::cerr << "[UI] Failed to delete file: " << e.what() << std::endl;
+                        std::filesystem::remove(target, ec);
+                    } else {
+                        std::filesystem::remove_all(target, ec);
                     }
+                    if (ec) {
+                        std::cerr << "[UI] Failed to delete file: " << ec.message() << std::endl;
+                        return "{\"success\":false}";
+                    }
+                    return "{\"success\":true}";
+                } catch (const std::exception& e) {
+                    std::cerr << "[UI] Failed to delete file: " << e.what() << std::endl;
                 }
             }
             return "{\"success\":false}";
         });
 
         w->bind("vruttiRenameFile", [this](const std::string& req) -> std::string {
-            auto parsedReq = parseBridgeMessage(req);
-            if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 2) {
-                auto oldPathNode = parsedReq->arrayElements[0];
-                auto newPathNode = parsedReq->arrayElements[1];
-                if (oldPathNode && oldPathNode->type == vrutti::core::utils::JsonNode::Type::String && newPathNode && newPathNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    std::string oldPath(oldPathNode->stringValue);
-                    std::string newPath(newPathNode->stringValue);
-                    try {
-                        std::filesystem::rename(oldPath, newPath);
-                        return "{\"success\":true}";
-                    } catch (const std::exception& e) {
-                        std::cerr << "[UI] Failed to rename file: " << e.what() << std::endl;
-                    }
+            auto parsedReq = parseBridgeArguments(req);
+            const std::string oldPath = vrutti::core::ipc::bridgeStringAt(parsedReq, 0);
+            const std::string newPath = vrutti::core::ipc::bridgeStringAt(parsedReq, 1);
+            if (!oldPath.empty() && !newPath.empty()) {
+                try {
+                    std::filesystem::rename(oldPath, newPath);
+                    return "{\"success\":true}";
+                } catch (const std::exception& e) {
+                    std::cerr << "[UI] Failed to rename file: " << e.what() << std::endl;
                 }
             }
             return "{\"success\":false}";
         });
 
         w->bind("vruttiCreateFolder", [this](const std::string& req) -> std::string {
-            auto parsedReq = parseBridgeMessage(req);
-            if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
-                auto pathNode = parsedReq->arrayElements[0];
-                if (pathNode && pathNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    std::string path(pathNode->stringValue);
-                    try {
-                        std::filesystem::create_directories(path);
-                        return "{\"success\":true}";
-                    } catch (const std::exception& e) {
-                        std::cerr << "[UI] Failed to create folder: " << e.what() << std::endl;
-                    }
+            auto parsedReq = parseBridgeArguments(req);
+            const std::string path = vrutti::core::ipc::bridgeStringAt(parsedReq, 0);
+            if (!path.empty()) {
+                try {
+                    std::filesystem::create_directories(path);
+                    return "{\"success\":true}";
+                } catch (const std::exception& e) {
+                    std::cerr << "[UI] Failed to create folder: " << e.what() << std::endl;
                 }
             }
             return "{\"success\":false}";
@@ -1381,41 +1340,34 @@ namespace vrutti::ui {
 
 
         w->bind("vruttiReadFile", [this](const std::string& req) -> std::string {
-            auto parsedReq = parseBridgeMessage(req);
-            if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
-                auto pathNode = parsedReq->arrayElements[0];
-                if (pathNode && pathNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    std::string path(pathNode->stringValue);
-                    try {
-                        std::ifstream f(path, std::ios::binary);
-                        if (f.is_open()) {
-                            std::string content((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
-                            return vrutti::core::utils::JsonSerializer::escapeString(content);
-                        }
-                    } catch (const std::exception& e) {
-                        std::cerr << "[UI] Failed to read file: " << e.what() << std::endl;
+            auto parsedReq = parseBridgeArguments(req);
+            const std::string path = vrutti::core::ipc::bridgeStringAt(parsedReq, 0);
+            if (!path.empty()) {
+                try {
+                    std::ifstream f(path, std::ios::binary);
+                    if (f.is_open()) {
+                        std::string content((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+                        return vrutti::core::utils::JsonSerializer::escapeString(content);
                     }
+                } catch (const std::exception& e) {
+                    std::cerr << "[UI] Failed to read file: " << e.what() << std::endl;
                 }
             }
             return "\"\"";
         });
 
         w->bind("vruttiWriteFile", [this](const std::string& req) -> std::string {
-            auto parsedReq = parseBridgeMessage(req);
-            if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 2) {
-                auto pathNode = parsedReq->arrayElements[0];
-                auto contentNode = parsedReq->arrayElements[1];
-                if (pathNode && pathNode->type == vrutti::core::utils::JsonNode::Type::String && contentNode && contentNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    std::string path(pathNode->stringValue);
-                    std::string content(contentNode->stringValue);
-                    try {
-                        std::ofstream f(path, std::ios::binary);
-                        f << content;
-                        f.close();
-                        return "{\"success\":true}";
-                    } catch (const std::exception& e) {
-                        std::cerr << "[UI] Failed to write file: " << e.what() << std::endl;
-                    }
+            auto parsedReq = parseBridgeArguments(req);
+            const std::string path = vrutti::core::ipc::bridgeStringAt(parsedReq, 0);
+            const std::string content = vrutti::core::ipc::bridgeStringAt(parsedReq, 1);
+            if (!path.empty()) {
+                try {
+                    std::ofstream f(path, std::ios::binary);
+                    f << content;
+                    f.close();
+                    return "{\"success\":true}";
+                } catch (const std::exception& e) {
+                    std::cerr << "[UI] Failed to write file: " << e.what() << std::endl;
                 }
             }
             return "{\"success\":false}";
@@ -1454,7 +1406,7 @@ namespace vrutti::ui {
         });
 
         w->bind("vruttiOpenNewWindow", [this](const std::string& req) -> std::string {
-            auto parsedReq = parseBridgeMessage(req);
+            auto parsedReq = parseBridgeArguments(req);
             if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
                 auto pathNode = parsedReq->arrayElements[0];
                 if (pathNode && pathNode->type == vrutti::core::utils::JsonNode::Type::String) {
@@ -1488,7 +1440,7 @@ namespace vrutti::ui {
         // last session, instead of opening a directory that is not there.
         w->bind("vruttiPathExists", [this](const std::string& req) -> std::string {
             bool exists = false;
-            auto parsedReq = parseBridgeMessage(req);
+            auto parsedReq = parseBridgeArguments(req);
             if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array &&
                 !parsedReq->arrayElements.empty()) {
                 auto pathNode = parsedReq->arrayElements[0];
@@ -1508,7 +1460,7 @@ namespace vrutti::ui {
         });
 
         w->bind("vruttiUpdateSetting", [this](const std::string& req) -> std::string {
-            auto parsedReq = parseBridgeMessage(req);
+            auto parsedReq = parseBridgeArguments(req);
             if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 2) {
                 auto keyNode = parsedReq->arrayElements[0];
                 auto valNode = parsedReq->arrayElements[1];
@@ -1522,27 +1474,20 @@ namespace vrutti::ui {
         });
 
         w->bind("vruttiGitCommand", [this](const std::string& req) -> std::string {
-            auto parsedReq = parseBridgeMessage(req);
+            auto parsedReq = parseBridgeArguments(req);
             std::string stdoutStr = "";
             int exitCode = -1;
 
-            if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 2) {
-                auto cwdNode = parsedReq->arrayElements[0];
-                auto cmdNode = parsedReq->arrayElements[1];
-                if (cwdNode && cwdNode->type == vrutti::core::utils::JsonNode::Type::String &&
-                    cmdNode && cmdNode->type == vrutti::core::utils::JsonNode::Type::String) {
-                    
-                    std::string cwd(cwdNode->stringValue);
-                    std::string cmd(cmdNode->stringValue);
-                    
+            const std::string cwd = vrutti::core::ipc::bridgeStringAt(parsedReq, 0);
+            const std::string cmd = vrutti::core::ipc::bridgeStringAt(parsedReq, 1);
+            if (!cwd.empty() && !cmd.empty()) {
 #ifdef _WIN32
-                    std::string shellCmd = "cd /d \"" + cwd + "\" && " + cmd + " 2>&1";
-                    safeExec("cmd.exe", { "/c", shellCmd }, &stdoutStr, &exitCode);
+                std::string shellCmd = "cd /d \"" + cwd + "\" && " + cmd + " 2>&1";
+                safeExec("cmd.exe", { "/c", shellCmd }, &stdoutStr, &exitCode);
 #else
-                    std::string shellCmd = "cd \"" + cwd + "\" && " + cmd + " 2>&1";
-                    safeExec("/bin/sh", { "-c", shellCmd }, &stdoutStr, &exitCode);
+                std::string shellCmd = "cd \"" + cwd + "\" && " + cmd + " 2>&1";
+                safeExec("/bin/sh", { "-c", shellCmd }, &stdoutStr, &exitCode);
 #endif
-                }
             }
             std::string result = "{";
             result += "\"stdout\":" + vrutti::core::utils::JsonSerializer::escapeString(stdoutStr) + ",";
@@ -1552,12 +1497,12 @@ namespace vrutti::ui {
         });
 
         w->bind("vruttiToggleDevTools", [this](const std::string& req) -> std::string {
-            auto parsedReq = parseBridgeMessage(req);
+            auto parsedReq = parseBridgeArguments(req);
             return "{}";
         });
 
         w->bind("vruttiRunFile", [this](const std::string& req) -> std::string {
-            auto parsedReq = parseBridgeMessage(req);
+            auto parsedReq = parseBridgeArguments(req);
             std::string stdoutStr = "";
             int exitCode = -1;
 
@@ -1626,7 +1571,7 @@ namespace vrutti::ui {
         });
 
         w->bind("vruttiOpenExternalUrl", [this](const std::string& req) -> std::string {
-            auto parsedReq = parseBridgeMessage(req);
+            auto parsedReq = parseBridgeArguments(req);
             if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
                 auto urlNode = parsedReq->arrayElements[0];
                 if (urlNode && urlNode->type == vrutti::core::utils::JsonNode::Type::String) {
@@ -1651,7 +1596,7 @@ namespace vrutti::ui {
         });
 
         w->bind("vruttiSearchAsync", [this, w](const std::string& req) -> std::string {
-            auto parsedReq = parseBridgeMessage(req);
+            auto parsedReq = parseBridgeArguments(req);
             if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
                 auto argsNode = parsedReq->arrayElements[0];
                 
