@@ -8,10 +8,14 @@
 
 #ifdef _WIN32
 #include <windows.h>
+// The security of the pipe is built with the text form of a descriptor, so
+// the helper of the system is needed.
+#include <sddl.h>
 #endif
 
 #ifndef _WIN32
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/un.h>
 #include <unistd.h>
 #include <cstring>
@@ -59,6 +63,72 @@ namespace {
         out = static_cast<int>(value);
         return true;
     }
+
+#ifdef _WIN32
+    // The security of the pipe: only the user that owns the session and the
+    // system may talk to it.
+    //
+    // The name of the pipe is known to anybody who can see the process, so
+    // the pipe itself has to say who may open it. The default of the system
+    // lets in every account that the default list of the process names, and
+    // that list is not always the one that the session needs.
+    //
+    // The descriptor is built from the identity of the user that runs the
+    // process, so it is right on a machine of an administrator and on a
+    // machine of a plain user.
+    SECURITY_ATTRIBUTES* buildPipeSecurity() {
+        HANDLE token = nullptr;
+        if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token)) {
+            return nullptr;
+        }
+
+        DWORD size = 0;
+        GetTokenInformation(token, TokenUser, nullptr, 0, &size);
+        if (size == 0) {
+            CloseHandle(token);
+            return nullptr;
+        }
+
+        std::vector<BYTE> buffer(size);
+        if (!GetTokenInformation(token, TokenUser, buffer.data(), size, &size)) {
+            CloseHandle(token);
+            return nullptr;
+        }
+        CloseHandle(token);
+
+        const auto* user = reinterpret_cast<const TOKEN_USER*>(buffer.data());
+        LPWSTR sidText = nullptr;
+        if (!ConvertSidToStringSidW(user->User.Sid, &sidText)) {
+            return nullptr;
+        }
+
+        // "GA" is "every right". The user of the session and the system get
+        // them; nobody else gets anything.
+        const std::wstring sddl = L"D:P(A;;GA;;;" + std::wstring(sidText) + L")(A;;GA;;;SY)";
+        LocalFree(sidText);
+
+        PSECURITY_DESCRIPTOR descriptor = nullptr;
+        if (!ConvertStringSecurityDescriptorToSecurityDescriptorW(
+                sddl.c_str(), SDDL_REVISION_1, &descriptor, nullptr)) {
+            return nullptr;
+        }
+
+        auto* attributes = new SECURITY_ATTRIBUTES();
+        attributes->nLength = sizeof(SECURITY_ATTRIBUTES);
+        attributes->lpSecurityDescriptor = descriptor;
+        attributes->bInheritHandle = FALSE;
+        return attributes;
+    }
+
+    // Frees the security of the pipe.
+    void freePipeSecurity(SECURITY_ATTRIBUTES* attributes) {
+        if (!attributes) return;
+        if (attributes->lpSecurityDescriptor) {
+            LocalFree(attributes->lpSecurityDescriptor);
+        }
+        delete attributes;
+    }
+#endif
 } // namespace
 
 IPCClient::IPCClient(const std::string& pipeName)
@@ -712,6 +782,15 @@ void IPCClient::handleIncomingMessage(const std::string& jsonMessage) {
 
 void IPCClient::listenLoop() {
 #ifdef _WIN32
+    // The security of the pipe is built once and used for every pipe of the
+    // loop. When it cannot be built, the default of the system is used:
+    // the pipe still works, it is just not as narrow as it could be.
+    SECURITY_ATTRIBUTES* pipeSecurity = buildPipeSecurity();
+    if (!pipeSecurity) {
+        reportError("IPC", ErrorCode::IpcPipeCreateFailed,
+                    "the pipe could not be restricted to the user of the session");
+    }
+
     bool pipeFailureReported = false;
     while (m_running) {
         std::string pipePath = "\\\\.\\pipe\\" + m_pipeName;
@@ -719,7 +798,7 @@ void IPCClient::listenLoop() {
             pipePath.c_str(),
             PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
             PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT,
-            1, 4096, 4096, 0, NULL);
+            1, 4096, 4096, 0, pipeSecurity);
 
         if (hPipe == INVALID_HANDLE_VALUE) {
             // The failure is reported once: a pipe that cannot be made (a
@@ -831,6 +910,8 @@ void IPCClient::listenLoop() {
             }
         }
     }
+
+    freePipeSecurity(pipeSecurity);
 #else
     while (m_running) {
         int server_fd = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -852,6 +933,10 @@ void IPCClient::listenLoop() {
             m_serverSocket = -1;
             return;
         }
+        // The socket belongs to the user of the session only. The name of
+        // the socket is known to anybody who can see the process, so the
+        // socket itself has to say who may open it.
+        chmod(m_pipeName.c_str(), 0600);
         if (listen(server_fd, 5) < 0) {
             close(server_fd);
             std::lock_guard<std::mutex> lock(m_pipeMutex);

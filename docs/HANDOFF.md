@@ -182,7 +182,7 @@ installs a real extension and watches it run in the real extension host.
 | **P1** | Nothing may hang: drop the reply of a cancelled request, shut the terminal down without a deadlock, write the settings without blocking the caller. | The settings are done; the other two are not. |
 | **P2** | Nothing may crash: fuzz the JSON parser, reject a frame that lies about its length, drop a malformed frame and keep the connection. | done |
 | **P3** | Nothing may leak: bound the pending-request table, unload unused plugins, release the buffers of a closed document. | The table is bounded; the other two are not. |
-| **P4** | Nothing may be reached that should not be: restrict the named pipe to the owning user, validate every webview message, resolve extension paths inside the workspace. | The paths of the installation, of the extensions and of the themes are resolved inside their root; the pipe and the webview are not. |
+| **P4** | Nothing may be reached that should not be: restrict the named pipe to the owning user, validate every webview message, resolve extension paths inside the workspace. | The pipe and the webview are done; the paths of the workspace are not. |
 
 The parts that hold data have been walked one by one -- the payloads, the
 paths, the version ranges, the files, the documents, the settings, the themes,

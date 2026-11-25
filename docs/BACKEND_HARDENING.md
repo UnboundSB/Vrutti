@@ -200,10 +200,16 @@ the wake-up from the answer of the delta, never before it.
 
 ## P4 -- Nothing may be reached that should not be
 
-* The named pipe is restricted to the user that owns the session.
-* The webview bridge validates every message before it reaches the core.
+* The named pipe is restricted to the user that owns the session. The pipe is
+  made with a security that only the user of the session and the system may
+  open; the socket of the other systems belongs to the user alone.
+* The webview bridge validates every message before it reaches the core: a
+  message that is too big is not read, and the name of a method has to be a
+  name.
 * The paths that come from an extension are resolved inside the workspace
-  before they are used.
+  before they are used. The paths of the installation, of a theme and of an
+  extension are resolved inside their own root; the paths of the workspace
+  are not yet.
 
 ---
 

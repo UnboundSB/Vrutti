@@ -6,7 +6,7 @@ Inter-process communication: the pipe transport and the protocol that connects t
 ## Files
 - **ExtensionHostSpawner.cpp**: Implementation of the ExtensionHostSpawner component.
 - **ExtensionHostSpawner.h**: Header for the ExtensionHostSpawner component.
-- **IPCClient.cpp**: Implementation of the IPCClient component.
+- **IPCClient.cpp**: The security of the pipe is built with the text form of a descriptor, so the helper of the system is needed.
 - **IPCClient.h**: Header for the IPCClient component.
 - **TODO.md**: Open questions and planned work for this folder.
 - **VSCodeProtocol.cpp**: Implementation of the VSCodeProtocol component.

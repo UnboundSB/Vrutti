@@ -135,10 +135,16 @@ they are the ones that are worked through shape by shape.
       given up on at once.
 - [ ] **P3.2.** Unload plugins that are not used any more.
 - [ ] **P3.3.** Release the buffers of a document when it is closed.
-- [ ] **P4.1.** Restrict the named pipe to the user that owns the session.
-- [ ] **P4.2.** Validate every message of the webview bridge.
+- [x] **P4.1.** Restrict the named pipe to the user that owns the session. The
+      pipe is made with a security that only the user of the session and the
+      system may open; the socket of the other systems belongs to the user
+      alone.
+- [x] **P4.2.** Validate every message of the webview bridge. A message that
+      is too big is not read, and the name of a method has to be a name.
 - [ ] **P4.3.** Resolve the paths that come from an extension inside the
-      workspace before they are used.
+      workspace before they are used. The paths of the installation, of a
+      theme and of an extension are resolved inside their own root; the paths
+      of the workspace are not yet.
 
 ## The hardening of the parts that hold data
 
