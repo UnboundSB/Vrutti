@@ -4,14 +4,19 @@
 Integration tests: they exercise the services through their public interfaces.
 
 ## Files
+- **CoreHardeningTest.cpp**: CoreHardeningTest -- the parts of the core that hold data.
 - **ExtensionInstallE2ETest.cpp**: ExtensionInstallE2ETest -- the whole chain, from the archive to the running extension.
 - **ExtensionInstallerTest.cpp**: ExtensionInstallerTest -- the installation of an extension, from the archive to the folder of the extension.
 - **ExtensionInstallProtocolTest.cpp**: ExtensionInstallProtocolTest -- proves that an extension that is installed while the editor is open reaches...
 - **ExthostFileSystemTest.cpp**: ExthostFileSystemTest -- proves that an extension can use `vscode.workspace.fs`.
 - **ExtHostIntegrationTest.cpp**: Implementation of the ExtHostIntegrationTest component.
 - **ExtHostPipeClient.h**: The pipe client of the integration tests.
+- **HostileRunner.h**: HostileRunner -- runs pieces of work that must not be trusted.
+- **IpcFuzzTest.cpp**: IpcFuzzTest -- the pipe under hostile input.
+- **JsonFuzzTest.cpp**: JsonFuzzTest -- the JSON layer of the core under hostile input.
 - **MainThreadDocumentsTest.cpp**: MainThreadDocumentsTest -- proves that an extension can open, create and save a text document.
 - **ProtocolFallbackTest.cpp**: ProtocolFallbackTest -- proves the contract of the extension host router.
+- **TestZip.h**: TestZip -- a writer of ZIP archives for the tests.
 - **ThemeServiceTest.cpp**: Integration test for the theme service.
 - **TODO.md**: Open questions and planned work for this folder.
 
@@ -23,6 +28,10 @@ Integration tests: they exercise the services through their public interfaces.
 - **disconnect()**
 - **CloseHandle(m_handle)**
 - **bool sendLine(const std::string&)**
+- **bool sendBytes(const std::string&)**
+- **bool drainBytes(int)**
+- **Sleep(1)**
+- **bool connected()**
 - **bool readLine(std::string&, int)**
 - **m_pending. append(buffer, got)**
 - **Sleep(5)**
@@ -37,3 +46,44 @@ Integration tests: they exercise the services through their public interfaces.
 - **std::string stringField(const std::shared_ptr<JsonNode>&, const char*)**
 - **std::string makeBufferArgument(const std::string&)**
 - **std::string decodeBufferResult(const std::shared_ptr<JsonNode>&)**
+- **HostileRunner::~HostileRunner()**
+- **std::lock_guard<std::mutex> HostileRunner::lock(m_mutex)**
+- **m_signal. notify_all()**
+- **HostileRunner(const HostileRunner&)**
+- **push(std::function<void()>)**
+- **std::lock_guard<std::mutex> lock(m_mutex)**
+- **m_jobs. push_back(std::move(work))**
+- **m_signal. notify_one()**
+- **bool waitIdle(int)**
+- **size_t done()**
+- **size_t started()**
+- **run()**
+- **m_jobs. pop_front()**
+- **m_started. fetch_add(1)**
+- **job()**
+- **TestZip::add(const std::string&, const std::string&)**
+- **TestZip::addDeflated(const std::string&, const std::string&, const std::string&, uint32_t)**
+- **TestZip::addRaw(const std::string&, const std::string&, uint32_t)**
+- **TestZip::corruptChecksumOf(const std::string&)**
+- **bool write(const std::string&)**
+- **localOffsets. push_back(offset)**
+- **writeU32(out, 0x04034b50)**
+- **writeU16(out, 20)**
+- **writeU16(out, 0)**
+- **writeU16(out, entry.method)**
+- **writeU32(out, crc)**
+- **writeU32(out, compressed)**
+- **writeU32(out, uncompressed)**
+- **writeU16(out, nameLength)**
+- **out. write(entry.name.data(), nameLength)**
+- **out. write(entry.raw.data(), static_cast<std::streamsize>(entry.raw.size()))**
+- **writeU32(out, 0x06054b50)**
+- **writeU16(out, static_cast<uint16_t>(m_entries.size()))**
+- **writeU32(out, directorySize)**
+- **writeU32(out, directoryOffset)**
+- **return out. good()**
+- **writeU16(std::ofstream&, uint16_t)**
+- **out. write(bytes, 2)**
+- **writeU32(std::ofstream&, uint32_t)**
+- **out. write(bytes, 4)**
+- **std::string manifestOf(const std::string&, const std::string&, const std::string&, const std::string&, const std::string&)**

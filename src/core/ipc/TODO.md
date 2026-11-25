@@ -117,22 +117,54 @@ they are the ones that are worked through shape by shape.
       settles cannot leak. The watchdog lives in `IPCClient`.
 - [ ] **P1.2.** Drop the reply of a request that was cancelled.
 - [ ] **P1.3.** Shut the terminal down without a deadlock.
-- [ ] **P1.4.** Write the settings without blocking the caller.
-- [ ] **P2.1.** Fuzz the JSON parser with random and truncated input.
-- [ ] **P2.2.** Reject a frame that claims a length it does not have, and a
-      frame that is larger than the limit.
-- [ ] **P2.3.** Drop a malformed frame, log the error code, keep the
+- [x] **P1.4.** Write the settings without blocking the caller. The writer
+      runs on a thread of its own, the queue of the changes has a limit, and
+      the file is written in one go and then put in place, so a reader never
+      sees half of a file.
+- [x] **P2.1.** Fuzz the JSON parser with random and truncated input.
+      (`JsonFuzzTest.cpp`.)
+- [x] **P2.2.** Reject a frame that claims a length it does not have, and a
+      frame that is larger than the limit. (`IpcFuzzTest.cpp`.)
+- [x] **P2.3.** Drop a malformed frame, log the error code, keep the
       connection.
-- [ ] **P2.4.** Wrap every handler, so an exception becomes an error reply
+- [x] **P2.4.** Wrap every handler, so an exception becomes an error reply
       instead of a crash. *(The wrapper exists; the frame limits do not.)*
-- [ ] **P3.1.** Bound the pending-request table and empty it when a request is
-      cancelled, times out, or the peer dies.
+- [x] **P3.1.** Bound the pending-request table and empty it when a request is
+      cancelled, times out, or the peer dies. The table holds 4096 calls; a
+      call that is full, that cannot be written, or that is out of time is
+      given up on at once.
 - [ ] **P3.2.** Unload plugins that are not used any more.
 - [ ] **P3.3.** Release the buffers of a document when it is closed.
 - [ ] **P4.1.** Restrict the named pipe to the user that owns the session.
 - [ ] **P4.2.** Validate every message of the webview bridge.
 - [ ] **P4.3.** Resolve the paths that come from an extension inside the
       workspace before they are used.
+
+## The hardening of the parts that hold data
+
+The transport is only one part of the core. The parts that hold the data of
+the user -- the files, the documents, the settings, the themes and the
+extensions -- were walked one by one, and every hole that was found was
+closed with a test.
+
+| What was wrong | What it is now |
+| -------------- | -------------- |
+| The decoder of the binary payloads stopped at the first character it did not know and handed back half of the payload as if it were all of it. | The decoder refuses a text that is not valid and says so. (`Base64.h`.) |
+| A name of a file of the installation could walk out of the installation with `..`. | The name has to stay inside. (`Paths.cpp`.) |
+| The entry point of an extension could name a file outside of the extension. | The entry point has to be a file of the extension. (`ExtensionService.cpp`.) |
+| The version range of an extension was read as the *lowest* version it accepts. | The range is read as it is written: `^`, `~`, `>`, `>=`, `<`, `<=`, `=`, `*`, a space between two parts, `||` between two alternatives. |
+| A file could be read into the memory of the core without a limit. | A file that is bigger than 64 MiB is not read. (`FileService.cpp`.) |
+| A rename over a folder removed the whole folder with everything in it. | A folder is never replaced by a file. |
+| A folder tree was walked without a limit. | The walk has a depth and a number of entries. |
+| A range of a document that was not there took the length of the text with it. | A range outside of the document changes nothing. (`PieceTable.cpp`.) |
+| A document that was opened again took the text from the disk and threw the changes of the user away. | The changes that were not written are kept. (`DocumentStore.cpp`.) |
+| A plugin that took the name of another one was thrown away without being shut down. | The old plugin is shut down and given back first. (`PluginLoader.cpp`.) |
+| A theme could name a file outside of its own package. | The file has to be inside of the package. (`ThemeService.cpp`.) |
+| A path from the page was put into a command for the shell. | The program is started without a shell. (`Window.cpp`.) |
+| A worker of the window was left running when the window went away. | The workers are waited for before the window goes away. (`Window.cpp`.) |
+
+The proof is in `src/tests/integration/CoreHardeningTest.cpp`.
+
 
 ## Related
 - `docs/BACKEND_HARDENING.md` — the full plan and the verification table.

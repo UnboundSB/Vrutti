@@ -256,6 +256,11 @@ namespace vrutti::core::editor {
 
     void PieceTable::insert(size_t offset, const std::string& text) {
         if (text.empty()) return;
+        // The place of the new text has to be inside of the document. A
+        // place that is not there used to make the tree walk over a piece
+        // that does not exist.
+        if (offset > m_totalLength) return;
+
         size_t appendStart = m_appendBuffer.length();
         m_appendBuffer += text;
         Piece newPiece = { BufferType::Append, appendStart, text.length() };
@@ -274,6 +279,16 @@ namespace vrutti::core::editor {
 
     void PieceTable::remove(size_t offset, size_t length) {
         if (length == 0) return;
+        // The range has to be inside of the document.
+        //
+        // The old code added the two numbers of the range without looking
+        // at them: a range that ended past the end of the document made
+        // the sum of the two numbers wrap around, and the length of the
+        // document was taken away by a number that was far too big.
+        if (offset > m_totalLength) return;
+        if (length > m_totalLength - offset) length = m_totalLength - offset;
+        if (length == 0) return;
+
         PieceLocation startLoc = findNode(offset);
         if (startLoc.node != m_nil) splitNode(startLoc.node, startLoc.offsetInPiece);
         PieceLocation endLoc = findNode(offset + length);
@@ -328,6 +343,16 @@ namespace vrutti::core::editor {
     }
 
     std::string PieceTable::substring(size_t offset, size_t length) const {
+        // The range has to be inside of the document.
+        //
+        // The old code believed the caller: a range that ended past the end
+        // of the document asked for a text of a length that the caller had
+        // chosen, and that text was made ready before it was filled. A
+        // caller that asked for a text of the size of the whole address
+        // space took the editor with it.
+        if (offset > m_totalLength) return std::string();
+        if (length > m_totalLength - offset) length = m_totalLength - offset;
+
         std::string result;
         result.reserve(length);
         size_t currentOffset = 0;

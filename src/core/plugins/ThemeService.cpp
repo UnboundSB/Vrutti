@@ -48,6 +48,18 @@ namespace {
         return std::string(node->stringValue);
     }
 
+    // The path of a file that has to stay inside of a folder.
+    //
+    // A theme may only name files that belong to it. A manifest that names
+    // a file with "../" in it would otherwise make the editor read any
+    // file of the disk as a theme, and the renderer would load any file of
+    // the disk as an icon.
+    //
+    // The path is empty when the file would be outside of the folder.
+    fs::path pathInside(const fs::path& root, const std::string& relative) {
+        return vrutti::core::utils::pathInsideFolder(root, relative);
+    }
+
     std::string userHome() {
 #ifdef _WIN32
         char path[MAX_PATH];
@@ -130,6 +142,7 @@ namespace {
         std::string uiTheme;
         fs::path themePath;
         std::string extensionName;
+        fs::path root;         // the folder of the package that offers the theme
     };
 
     // Reads `contributes.themes` / `contributes.iconThemes` from a package.json
@@ -147,7 +160,7 @@ namespace {
         auto list = contributes->get(icons ? "iconThemes" : "themes");
         if (!list || list->type != JsonNode::Type::Array) return;
 
-        fs::path themeRoot = packagePath.parent_path();
+        fs::path themeRoot = fs::weakly_canonical(packagePath.parent_path());
 
         for (const auto& item : list->arrayElements) {
             if (!item || item->type != JsonNode::Type::Object) continue;
@@ -165,8 +178,13 @@ namespace {
             entry.id = packageName.empty() ? rawId : (rawId.empty() ? packageName : packageName + "." + rawId);
             entry.label = label.empty() ? entry.id : label;
             entry.uiTheme = uiTheme.empty() ? "vs-dark" : uiTheme;
-            entry.themePath = fs::weakly_canonical(themeRoot / relPath);
+            // The theme has to be a file of the package that offers it. A
+            // manifest that names a file outside of the package is refused.
+            entry.themePath = pathInside(themeRoot, relPath);
             entry.extensionName = packageName;
+            entry.root = themeRoot;
+
+            if (entry.themePath.empty()) continue;
 
             out.push_back(entry);
         }
@@ -257,8 +275,14 @@ namespace {
 
     // Loads a theme file and resolves its `include` chain. The base theme is
     // merged first, the including theme overrides it.
+    //
+    // The `root` is the folder of the package that offers the theme. Every
+    // file that is read has to be inside of it: a theme that includes a
+    // file outside of its own package would make the editor read any file
+    // of the disk as a theme.
     std::shared_ptr<JsonNode> loadThemeRecursive(const fs::path& themePath,
-                                                 std::set<std::string>& visited) {
+                                                 std::set<std::string>& visited,
+                                                 const fs::path& root) {
         auto result = std::make_shared<JsonNode>(JsonNode::Type::Object);
         result->objectProperties.emplace_back("colors",
             std::make_shared<JsonNode>(JsonNode::Type::Object));
@@ -277,9 +301,18 @@ namespace {
         // Resolve the base theme first.
         std::string include = stringOf(theme->get("include"));
         if (!include.empty()) {
-            fs::path includePath = fs::weakly_canonical(themePath.parent_path() / include);
-            auto parent = loadThemeRecursive(includePath, visited);
-            mergeInto(result, parent);
+            const fs::path includeRoot = root.empty() ? themePath.parent_path() : root;
+            fs::path includePath = pathInside(includeRoot, include);
+            if (includePath.empty()) {
+                // The theme names a file that is not its own. The theme is
+                // used without its base, rather than reading a file of
+                // somewhere else.
+                std::cerr << "[ThemeService] The theme includes a file that is not its own: "
+                          << include << "\n";
+            } else {
+                auto parent = loadThemeRecursive(includePath, visited, includeRoot);
+                mergeInto(result, parent);
+            }
         }
 
         // The including theme wins.
@@ -386,7 +419,7 @@ std::string ThemeService::executeCommand(const std::string& command, const std::
         }
 
         std::set<std::string> visited;
-        auto theme = loadThemeRecursive(entry->themePath, visited);
+        auto theme = loadThemeRecursive(entry->themePath, visited, entry->root);
         if (!theme) theme = std::make_shared<JsonNode>(JsonNode::Type::Object);
 
         auto out = std::make_shared<JsonNode>(JsonNode::Type::Object);
@@ -410,7 +443,16 @@ std::string ThemeService::executeCommand(const std::string& command, const std::
                     if (!def.second || def.second->type != JsonNode::Type::Object) continue;
                     auto iconPath = def.second->get("iconPath");
                     if (!iconPath || iconPath->type != JsonNode::Type::String) continue;
-                    fs::path absolute = fs::weakly_canonical(themeDir / std::string(iconPath->stringValue));
+                    // The icon has to be a file of the theme. An icon that
+                    // is somewhere else would make the renderer load any
+                    // file of the disk.
+                    fs::path absolute = pathInside(themeDir,
+                                                  std::string(iconPath->stringValue));
+                    if (absolute.empty()) {
+                        def.second->objectProperties.emplace_back(
+                            "iconPath", vrutti::core::utils::makeJsonString(""));
+                        continue;
+                    }
                     def.second->objectProperties.emplace_back(
                         "iconPath", vrutti::core::utils::makeJsonString(toFileUrl(absolute)));
                 }

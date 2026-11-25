@@ -1,4 +1,5 @@
 #include "Window.h"
+#include "../../core/utils/Base64.h"
 #include <iostream>
 #include <filesystem>
 #include <fstream>
@@ -9,6 +10,10 @@
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
+
+// The encoding of the binary payloads that travel over the bridge.
+using vrutti::core::utils::base64_encode;
 
 namespace {
     int fuzzyMatch(const std::string& lowerPattern, const std::string& str) {
@@ -69,8 +74,96 @@ namespace {
         return out;
     }
 
+    // The most text that is read from a program that the page started.
+    //
+    // A program that writes without end would use the memory of the editor
+    // until there is none left.
+    constexpr size_t kMaxCapturedOutput = 4u * 1024u * 1024u;
+
+    // How long a program that the page started may run.
+    //
+    // The page asks for a command to be run. The command may wait for
+    // something that never happens, and the editor would wait with it.
+    constexpr unsigned int kExecTimeoutMs = 120000;
+
+    // Puts a text into a command line the way Windows wants it: the text is
+    // put between two quotes, and every backslash that stands in front of a
+    // quote is doubled.
+    //
+    // The old code put a path that came from the page into a command for
+    // the shell. A path with a quote in it ended the quoted part, and the
+    // rest of the path was run as a command of its own.
+    std::wstring quoteArgument(const std::wstring& argument) {
+        std::wstring result;
+        bool needsQuote = argument.find(L' ') != std::wstring::npos ||
+                          argument.find(L'\t') != std::wstring::npos ||
+                          argument.find(L'"') != std::wstring::npos ||
+                          argument.empty();
+        if (needsQuote) result += L'"';
+        size_t backslashes = 0;
+        for (wchar_t c : argument) {
+            if (c == L'\\') {
+                ++backslashes;
+                continue;
+            }
+            if (c == L'"') {
+                // The backslashes in front of the quote are doubled, and the
+                // quote itself is escaped with one more backslash.
+                result.append(backslashes * 2 + 1, L'\\');
+                backslashes = 0;
+                result += L'"';
+                continue;
+            }
+            result.append(backslashes, L'\\');
+            backslashes = 0;
+            result += c;
+        }
+        // The backslashes at the end are doubled: they stand in front of the
+        // closing quote.
+        result.append(backslashes * 2, L'\\');
+        if (needsQuote) result += L'"';
+        return result;
+    }
+
+    std::wstring widen(const std::string& text) {
+        if (text.empty()) return std::wstring();
+        const int size = MultiByteToWideChar(CP_UTF8, 0, text.c_str(),
+                                              static_cast<int>(text.size()), nullptr, 0);
+        if (size <= 0) return std::wstring();
+        std::wstring out(static_cast<size_t>(size), L'\0');
+        MultiByteToWideChar(CP_UTF8, 0, text.c_str(), static_cast<int>(text.size()),
+                            out.data(), size);
+        return out;
+    }
+
+    // Tells whether a text may be opened as a link.
+    //
+    // Only the schemes that show a page or a mail are allowed. A link that
+    // names a program ("file:", "ms-msdt:") would let the page run a
+    // program of its own choosing.
+    bool isAllowedExternalUrl(const std::string& url) {
+        static const char* allowed[] = {"http://", "https://", "mailto:"};
+        for (const char* scheme : allowed) {
+            const size_t length = std::strlen(scheme);
+            if (url.size() >= length &&
+                std::equal(scheme, scheme + length, url.begin(),
+                           [](char a, char b) {
+                               return std::tolower(static_cast<unsigned char>(a)) ==
+                                      std::tolower(static_cast<unsigned char>(b));
+                           })) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     // Securely spawn a process without a shell, preventing command injection.
     // Optionally captures stdout into stdoutStr and exit code into exitCode.
+    //
+    // The text of the program is read on a thread of its own, so that a
+    // program that writes a lot does not fill the pipe and wait for a
+    // reader that is not there yet. The program itself is waited for with a
+    // deadline: a program that never ends is stopped.
     #ifdef _WIN32
     bool safeExec(const std::string& exePath, const std::vector<std::string>& args,
                   std::string* stdoutStr = nullptr, int* exitCode = nullptr) {
@@ -78,35 +171,10 @@ namespace {
         int localExitCode = -1;
         
         // Build command line with proper quoting (no shell, no injection)
-        std::wstring cmdLine;
-        auto quoteArg = [](const std::string& a) -> std::wstring {
-            std::wstring result;
-            bool needsQuote = a.find(' ') != std::string::npos || a.find('\t') != std::string::npos;
-            if (needsQuote) result += L'"';
-            size_t bsCount = 0;
-            for (char c : a) {
-                if (c == '\\') {
-                    bsCount++;
-                } else if (c == '"') {
-                    result.append(bsCount + 1, L'\\');
-                    bsCount = 0;
-                    result += L'"';
-                } else {
-                    if (bsCount > 0) {
-                        result.append(bsCount, L'\\');
-                        bsCount = 0;
-                    }
-                    result += static_cast<wchar_t>(static_cast<unsigned char>(c));
-                }
-            }
-            if (bsCount > 0) result.append(bsCount, L'\\');
-            if (needsQuote) result += L'"';
-            return result;
-        };
-        cmdLine = quoteArg(exePath);
+        std::wstring cmdLine = quoteArgument(widen(exePath));
         for (const auto& a : args) {
             cmdLine += L" ";
-            cmdLine += quoteArg(a);
+            cmdLine += quoteArgument(widen(a));
         }
 
         // Create pipe for stdout capture
@@ -119,6 +187,7 @@ namespace {
         PROCESS_INFORMATION pi = { 0 };
         si.dwFlags = STARTF_USESHOWWINDOW | STARTF_USESTDHANDLES;
         si.wShowWindow = SW_HIDE;
+        si.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
         si.hStdOutput = hWrite;
         si.hStdError = hWrite;
 
@@ -138,18 +207,38 @@ namespace {
             return false;
         }
 
-        char buffer[4096];
-        DWORD bytesRead;
-        while (ReadFile(hRead, buffer, sizeof(buffer) - 1, &bytesRead, nullptr) && bytesRead > 0) {
-            buffer[bytesRead] = '\0';
-            localStdout += buffer;
-        }
-        CloseHandle(hRead);
+        // The text of the program is read on a thread of its own. The
+        // thread ends when the program closes the pipe, which it does when
+        // it ends -- or when it is stopped.
+        std::thread reader([&]() {
+            char buffer[4096];
+            DWORD bytesRead;
+            while (ReadFile(hRead, buffer, sizeof(buffer) - 1, &bytesRead, nullptr) && bytesRead > 0) {
+                // The text of the program is kept inside of its limit: a
+                // program that writes without end would use the memory of
+                // the editor until there is none left.
+                if (localStdout.size() < kMaxCapturedOutput) {
+                    localStdout.append(buffer, std::min<size_t>(bytesRead,
+                                                               kMaxCapturedOutput - localStdout.size()));
+                }
+            }
+            CloseHandle(hRead);
+        });
 
-        WaitForSingleObject(pi.hProcess, INFINITE);
-        DWORD dwExit = 0;
-        GetExitCodeProcess(pi.hProcess, &dwExit);
-        localExitCode = static_cast<int>(dwExit);
+        // The program gets a while to finish. A program that waits for
+        // something that never happens is stopped, so that the editor does
+        // not wait with it.
+        if (WaitForSingleObject(pi.hProcess, kExecTimeoutMs) == WAIT_TIMEOUT) {
+            TerminateProcess(pi.hProcess, 1);
+            WaitForSingleObject(pi.hProcess, 1000);
+            localExitCode = -1;
+        } else {
+            DWORD dwExit = 0;
+            GetExitCodeProcess(pi.hProcess, &dwExit);
+            localExitCode = static_cast<int>(dwExit);
+        }
+
+        reader.join();
         
         CloseHandle(pi.hThread);
         CloseHandle(pi.hProcess);
@@ -187,27 +276,98 @@ namespace {
         }
         
         close(pipefd[1]);
-        char buffer[4096];
-        ssize_t n;
-        while ((n = read(pipefd[0], buffer, sizeof(buffer) - 1)) > 0) {
-            buffer[n] = '\0';
-            localStdout += buffer;
-        }
-        close(pipefd[0]);
-        
+
+        // The text of the program is read on a thread of its own.
+        std::thread reader([&]() {
+            char buffer[4096];
+            ssize_t n;
+            while ((n = read(pipefd[0], buffer, sizeof(buffer))) > 0) {
+                if (localStdout.size() < kMaxCapturedOutput) {
+                    localStdout.append(buffer, std::min<size_t>(static_cast<size_t>(n),
+                                                               kMaxCapturedOutput - localStdout.size()));
+                }
+            }
+            close(pipefd[0]);
+        });
+
+        // The program is waited for with a deadline.
         int status = 0;
-        waitpid(pid, &status, 0);
-        if (WIFEXITED(status)) {
-            localExitCode = WEXITSTATUS(status);
-        } else {
-            localExitCode = -1;
+        const auto deadline = std::chrono::steady_clock::now() +
+                              std::chrono::milliseconds(kExecTimeoutMs);
+        bool stopped = false;
+        while (true) {
+            const pid_t result = waitpid(pid, &status, WNOHANG);
+            if (result == pid) break;
+            if (result < 0) break;
+            if (std::chrono::steady_clock::now() >= deadline) {
+                kill(pid, SIGKILL);
+                waitpid(pid, &status, 0);
+                localExitCode = -1;
+                stopped = true;
+                break;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
         }
+        if (!stopped) {
+            if (WIFEXITED(status)) {
+                localExitCode = WEXITSTATUS(status);
+            } else {
+                localExitCode = -1;
+            }
+        }
+
+        reader.join();
         
         if (stdoutStr) *stdoutStr = localStdout;
         if (exitCode) *exitCode = localExitCode;
         return true;
     }
     #endif
+
+    // Starts a program without a shell and lets it run on its own.
+    //
+    // The old code built a command for the shell out of a path that came
+    // from the page: a path with a quote in it ended the quoted part, and
+    // the rest of the path was run as a command of its own.
+    void startDetached(const std::string& exePath, const std::vector<std::string>& args) {
+#ifdef _WIN32
+        std::wstring cmdLine = quoteArgument(widen(exePath));
+        for (const auto& a : args) {
+            cmdLine += L" ";
+            cmdLine += quoteArgument(widen(a));
+        }
+        std::vector<wchar_t> cmdBuf(cmdLine.begin(), cmdLine.end());
+        cmdBuf.push_back(L'\0');
+
+        STARTUPINFOW si = { sizeof(si) };
+        si.dwFlags = STARTF_USESHOWWINDOW;
+        si.wShowWindow = SW_SHOWNORMAL;
+        PROCESS_INFORMATION pi = { 0 };
+        if (!CreateProcessW(nullptr, cmdBuf.data(), nullptr, nullptr, FALSE,
+                            CREATE_UNICODE_ENVIRONMENT, nullptr, nullptr, &si, &pi)) {
+            std::cerr << "[UI] The program could not be started" << std::endl;
+            return;
+        }
+        CloseHandle(pi.hThread);
+        CloseHandle(pi.hProcess);
+#else
+        pid_t pid = fork();
+        if (pid == 0) {
+            // The child: the program is started without a shell.
+            std::vector<char*> argv;
+            argv.push_back(const_cast<char*>(exePath.c_str()));
+            for (const auto& a : args) {
+                argv.push_back(const_cast<char*>(a.c_str()));
+            }
+            argv.push_back(nullptr);
+            execvp(exePath.c_str(), argv.data());
+            _exit(127);
+        }
+        if (pid < 0) {
+            std::cerr << "[UI] The program could not be started" << std::endl;
+        }
+#endif
+    }
 }
 
 // We must include webview.h here. It's a single header library.
@@ -226,6 +386,7 @@ namespace {
 #include <shobjidl.h>
 #else
 #include <unistd.h>
+#include <signal.h>
 #include <sys/wait.h>
 #include <sys/types.h>
 #endif
@@ -241,6 +402,39 @@ namespace vrutti::ui {
             m_pluginLoader.unloadPlugin(m_searchPlugin->getName());
         }
         shutdown();
+    }
+
+    void Window::startWorker(std::function<void()> job) {
+        // The flag says when the work is done. It lets the window give
+        // back the threads that are finished, so that the list of the
+        // workers does not grow for ever.
+        auto done = std::make_shared<std::atomic<bool>>(false);
+        std::thread thread([job, done]() {
+            job();
+            done->store(true);
+        });
+
+        std::lock_guard<std::mutex> lock(m_workerMutex);
+        for (auto it = m_workers.begin(); it != m_workers.end();) {
+            if (it->done->load()) {
+                if (it->thread.joinable()) it->thread.join();
+                it = m_workers.erase(it);
+            } else {
+                ++it;
+            }
+        }
+        m_workers.push_back({std::move(thread), done});
+    }
+
+    void Window::joinWorkers() {
+        std::vector<Worker> workers;
+        {
+            std::lock_guard<std::mutex> lock(m_workerMutex);
+            workers.swap(m_workers);
+        }
+        for (auto& worker : workers) {
+            if (worker.thread.joinable()) worker.thread.join();
+        }
     }
 
     bool Window::init() {
@@ -660,7 +854,14 @@ namespace vrutti::ui {
                 if (idNode && idNode->type == vrutti::core::utils::JsonNode::Type::String &&
                     inputNode && inputNode->type == vrutti::core::utils::JsonNode::Type::String) {
                     std::string id(idNode->stringValue);
-                    std::string input = base64_decode(std::string(inputNode->stringValue));
+                    std::string input;
+                    // The text that comes from the page may be broken. A
+                    // broken text is not written into the terminal: half of
+                    // a command is worse than none.
+                    if (!vrutti::core::utils::base64_decode(
+                            std::string(inputNode->stringValue), input)) {
+                        return "{}";
+                    }
                     if (this->m_terminals.count(id)) {
                         this->m_terminals[id]->writeInput(input);
                     }
@@ -784,7 +985,7 @@ namespace vrutti::ui {
 
             std::cout << "[Core] Request to install extension '" << name << "' from " << url << std::endl;
 
-            std::thread([this, w, url, name]() {
+            startWorker([this, w, url, name]() {
                 // The progress of the installation, the way the interface
                 // expects it.
                 auto progress = [&](int percentage) {
@@ -865,7 +1066,7 @@ namespace vrutti::ui {
                             "} catch(e) { console.warn('Failed to parse the list of the extensions:', e); }"
                             "}");
                 });
-            }).detach();
+            });
             return "{}";
         });
 
@@ -886,7 +1087,7 @@ namespace vrutti::ui {
                 return "{\"ok\":false,\"error\":\"the extension has no name\"}";
             }
 
-            std::thread([this, w, identifier]() {
+            startWorker([this, w, identifier]() {
                 std::string error;
                 std::string errorCode;
                 const bool ok = vrutti::core::extensions::ExtensionService::uninstall(
@@ -917,12 +1118,12 @@ namespace vrutti::ui {
                             "} catch(e) { console.warn('Failed to parse the list of the extensions:', e); }"
                             "}");
                 });
-            }).detach();
+            });
             return "{}";
         });
 
         w->bind("vruttiRequestInstalledExtensions", [this, w](const std::string& req) -> std::string {
-            std::thread([this, w]() {
+            startWorker([this, w]() {
                 // The list comes from the service of the core, so it is the
                 // same list that the extension host gets.
                 const auto list =
@@ -960,7 +1161,7 @@ namespace vrutti::ui {
                             "} catch(e) { console.warn('Failed to parse extensions list:', e); }"
                             "}");
                 });
-            }).detach();
+            });
             return "{}";
         });
 
@@ -1019,10 +1220,56 @@ namespace vrutti::ui {
             auto parsedReq = vrutti::core::utils::JsonParser::parse(req);
             if (parsedReq && parsedReq->type == vrutti::core::utils::JsonNode::Type::Array && parsedReq->arrayElements.size() >= 1) {
                 auto pathNode = parsedReq->arrayElements[0];
+                // The second name says whether a folder with things in it
+                // may be taken away. A folder that is not empty is only
+                // taken away when the page says that it may: a mistake in
+                // the page would otherwise take a whole tree with it.
+                bool recursive = false;
+                if (parsedReq->arrayElements.size() >= 2) {
+                    auto recursiveNode = parsedReq->arrayElements[1];
+                    if (recursiveNode && recursiveNode->type == vrutti::core::utils::JsonNode::Type::Boolean) {
+                        recursive = recursiveNode->boolValue;
+                    }
+                }
                 if (pathNode && pathNode->type == vrutti::core::utils::JsonNode::Type::String) {
                     std::string path(pathNode->stringValue);
+                    if (path.empty()) return "{\"success\":false}";
                     try {
-                        std::filesystem::remove_all(path);
+                        std::filesystem::path target(path);
+                        // The root of a drive and the home folder are never
+                        // removed: a mistake in the page would take the
+                        // whole disk with it.
+                        const std::filesystem::path parent = target.parent_path();
+                        if (target == parent || target == target.root_path()) {
+                            std::cerr << "[UI] The root of a disk is not deleted" << std::endl;
+                            return "{\"success\":false}";
+                        }
+                        std::error_code ec;
+                        const bool exists = std::filesystem::exists(target, ec);
+                        if (ec) return "{\"success\":false}";
+                        if (!exists) return "{\"success\":false}";
+
+                        const bool isDirectory = std::filesystem::is_directory(target, ec);
+                        if (ec) return "{\"success\":false}";
+
+                        if (isDirectory && !recursive) {
+                            // A folder that still has things in it is not
+                            // taken away unless the page says that it may.
+                            std::error_code countError;
+                            const bool empty = std::filesystem::is_empty(target, countError);
+                            if (countError || !empty) {
+                                std::cerr << "[UI] The folder was not deleted: it still has things in it"
+                                          << std::endl;
+                                return "{\"success\":false}";
+                            }
+                            std::filesystem::remove(target, ec);
+                        } else {
+                            std::filesystem::remove_all(target, ec);
+                        }
+                        if (ec) {
+                            std::cerr << "[UI] Failed to delete file: " << ec.message() << std::endl;
+                            return "{\"success\":false}";
+                        }
                         return "{\"success\":true}";
                     } catch (const std::exception& e) {
                         std::cerr << "[UI] Failed to delete file: " << e.what() << std::endl;
@@ -1181,11 +1428,19 @@ namespace vrutti::ui {
                 auto pathNode = parsedReq->arrayElements[0];
                 if (pathNode && pathNode->type == vrutti::core::utils::JsonNode::Type::String) {
                     std::string path(pathNode->stringValue);
+                    if (path.empty()) return "{}";
 #ifdef _WIN32
                     char exePath[MAX_PATH];
-                    GetModuleFileNameA(NULL, exePath, MAX_PATH);
-                    std::string cmd = "start \"\" \"" + std::string(exePath) + "\" \"" + path + "\"";
-                    std::system(cmd.c_str());
+                    const DWORD length = GetModuleFileNameA(NULL, exePath, MAX_PATH);
+                    if (length > 0 && length < MAX_PATH) {
+                        // The program is started without a shell. The path
+                        // is put between quotes the way the command line of
+                        // Windows wants it, so a path that holds a quote
+                        // cannot end the program and start another one.
+                        startDetached(std::string(exePath), { path });
+                    }
+#else
+                    startDetached("/proc/self/exe", { path });
 #endif
                 }
             }
@@ -1345,11 +1600,19 @@ namespace vrutti::ui {
                 auto urlNode = parsedReq->arrayElements[0];
                 if (urlNode && urlNode->type == vrutti::core::utils::JsonNode::Type::String) {
                     std::string url(urlNode->stringValue);
+                    // Only a link that shows a page or a mail is opened. A
+                    // link that names a program would run that program.
+                    if (!isAllowedExternalUrl(url)) {
+                        std::cerr << "[UI] The link was not opened: its scheme is not allowed"
+                                  << std::endl;
+                        return "{}";
+                    }
 #ifdef _WIN32
                     ShellExecuteA(NULL, "open", url.c_str(), NULL, NULL, SW_SHOWNORMAL);
 #else
-                    std::string cmd = "xdg-open \"" + url + "\"";
-                    std::system(cmd.c_str());
+                    // The program is started without a shell: a link with a
+                    // quote in it cannot become a command of its own.
+                    startDetached("xdg-open", { url });
 #endif
                 }
             }
@@ -1374,7 +1637,7 @@ namespace vrutti::ui {
 
                 auto t_start = std::chrono::high_resolution_clock::now();
 
-                std::thread([this, w, argsJsonString, searchId, t_start]() {
+                startWorker([this, w, argsJsonString, searchId, t_start]() {
                     std::string resultJson = "{\"files\":[],\"folders\":[],\"words\":[]}";
                     if (m_searchPlugin) {
                         resultJson = m_searchPlugin->executeCommand("search", argsJsonString);
@@ -1393,7 +1656,7 @@ namespace vrutti::ui {
                     auto t_end = std::chrono::high_resolution_clock::now();
                     auto ms_total = std::chrono::duration_cast<std::chrono::milliseconds>(t_end - t_start).count();
                     printf("[SearchProfile] SearchId %d FINISHED in %lld ms using SearchPlugin.\n", searchId, ms_total);
-                }).detach();
+                });
             }
             return "{}";
         });
@@ -1417,7 +1680,12 @@ namespace vrutti::ui {
         std::cout << "[UI] Webview navigated to: " << uri << std::endl;
 
         w->run(); // This is blocking until window is closed
-        
+
+        // The work that is still running is waited for before the window
+        // goes away. A worker that is still running when the webview is
+        // gone would write into a window that is not there any more.
+        joinWorkers();
+
         // Clean up webview after event loop ends
         if (m_windowHandle) {
             delete w;
@@ -1427,6 +1695,11 @@ namespace vrutti::ui {
     }
 
     void Window::shutdown() {
+        // The work that is still running is waited for first: a worker that
+        // is still running would use the terminals and the window that are
+        // taken away here.
+        joinWorkers();
+
         for (auto& [id, term] : m_terminals) {
             if (term) term->stop();
         }

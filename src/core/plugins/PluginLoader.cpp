@@ -93,6 +93,23 @@ namespace vrutti::core::plugins {
         }
 
         std::string name = plugin->getName();
+
+        // A plugin that has the same name as one that is already loaded
+        // takes its place. The old one is shut down and given back first:
+        // the old code threw it away without shutting it down, so the old
+        // plugin kept running and its memory was never given back.
+        auto existing = m_loadedPlugins.find(name);
+        if (existing != m_loadedPlugins.end()) {
+            existing->second.instance->shutdown();
+            existing->second.destroyFunc(existing->second.instance);
+#ifdef _WIN32
+            FreeLibrary(static_cast<HMODULE>(existing->second.osHandle));
+#else
+            dlclose(existing->second.osHandle);
+#endif
+            m_loadedPlugins.erase(existing);
+        }
+
         m_loadedPlugins[name] = { handle, plugin, destroyFunc };
         
         return plugin;

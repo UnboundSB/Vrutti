@@ -171,6 +171,14 @@ target_link_libraries(vrutti_ipc_fuzz_test PRIVATE vrutti_core)
 add_test(NAME IpcFuzzTest COMMAND vrutti_ipc_fuzz_test)
 set_tests_properties(IpcFuzzTest PROPERTIES TIMEOUT 300)
 
+# The parts of the core that hold data: the encoding of the binary payloads,
+# the paths of the installation, the version range of an extension, the
+# files of the user, the text of a document and the settings.
+add_executable(vrutti_core_hardening_test src/tests/integration/CoreHardeningTest.cpp)
+target_link_libraries(vrutti_core_hardening_test PRIVATE vrutti_core)
+add_test(NAME CoreHardeningTest COMMAND vrutti_core_hardening_test)
+set_tests_properties(CoreHardeningTest PROPERTIES TIMEOUT 300)
+
 
 
 

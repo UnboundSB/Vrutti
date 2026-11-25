@@ -558,7 +558,11 @@ bool IPCClient::decodeVSBuffer(const std::shared_ptr<JsonNode>& node, std::vecto
     auto markerNode = node->get("$vsbuffer");
     if (markerNode && markerNode->type == JsonNode::Type::String) {
         std::string encoded(markerNode->stringValue.data(), markerNode->stringValue.length());
-        std::string decoded = base64_decode(encoded);
+        std::string decoded;
+        // The text has to be valid. A broken text is refused: half of a
+        // picture would be worse than none, and the caller would not know
+        // that it got half.
+        if (!vrutti::core::utils::base64_decode(encoded, decoded)) return false;
         if (decoded.size() > kMaxBufferBytes) return false;
         out.assign(decoded.begin(), decoded.end());
         return true;

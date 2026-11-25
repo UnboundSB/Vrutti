@@ -10,6 +10,7 @@
 #include <functional>
 #include <iomanip>
 #include <sstream>
+#include <vector>
 
 namespace fs = std::filesystem;
 
@@ -125,6 +126,191 @@ namespace {
             else break;
         }
         return numbers > 0;
+    }
+
+    // Compares two versions.
+    int compareVersions(int majorA, int minorA, int patchA,
+                        int majorB, int minorB, int patchB) {
+        if (majorA != majorB) return majorA < majorB ? -1 : 1;
+        if (minorA != minorB) return minorA < minorB ? -1 : 1;
+        if (patchA != patchB) return patchA < patchB ? -1 : 1;
+        return 0;
+    }
+
+    // Reads one part of a range of versions.
+    //
+    // The part is one of the shapes that the manifests use:
+    //
+    //   `^1.2.3`   the next big version is not allowed
+    //   `~1.2.3`   the next small version is not allowed
+    //   `>=1.2.3`  the version has to be at least this one
+    //   `>1.2.3`   the version has to be newer than this one
+    //   `<=1.2.3`  the version has to be at most this one
+    //   `<1.2.3`   the version has to be older than this one
+    //   `=1.2.3`   the version has to be this one
+    //   `1.2.3`    the same as `=1.2.3`
+    //   `*`        every version is allowed
+    //
+    // Returns false when the part is a shape that is not known. A range that
+    // is not known is accepted later on: an extension that asks for
+    // something strange is better refused by the extension host than by a
+    // guess in the installer.
+    enum class RangeKind { Any, Exact, Greater, GreaterOrEqual, Less, LessOrEqual, Caret, Tilde };
+
+    bool parseRangePart(const std::string& text, RangeKind& kind,
+                        int& major, int& minor, int& patch) {
+        major = minor = patch = 0;
+        kind = RangeKind::Any;
+
+        std::string rest = text;
+        while (!rest.empty() && (rest.front() == ' ' || rest.front() == '\t')) {
+            rest.erase(rest.begin());
+        }
+        if (rest.empty()) return true;
+        if (rest == "*" || rest == "x" || rest == "X") return true;
+
+        if (rest[0] == '^') { kind = RangeKind::Caret; rest.erase(rest.begin()); }
+        else if (rest[0] == '~') { kind = RangeKind::Tilde; rest.erase(rest.begin()); }
+        else if (rest[0] == '>') {
+            kind = RangeKind::Greater;
+            rest.erase(rest.begin());
+            if (!rest.empty() && rest[0] == '=') { kind = RangeKind::GreaterOrEqual; rest.erase(rest.begin()); }
+        } else if (rest[0] == '<') {
+            kind = RangeKind::Less;
+            rest.erase(rest.begin());
+            if (!rest.empty() && rest[0] == '=') { kind = RangeKind::LessOrEqual; rest.erase(rest.begin()); }
+        } else if (rest[0] == '=') {
+            kind = RangeKind::Exact;
+            rest.erase(rest.begin());
+        } else {
+            kind = RangeKind::Exact;
+        }
+
+        // The text after the sign may still have spaces in it.
+        while (!rest.empty() && (rest.front() == ' ' || rest.front() == '\t')) {
+            rest.erase(rest.begin());
+        }
+        if (rest.empty()) return false;
+
+        // A part that is only a big number means "this big version and
+        // everything that is under it".
+        const size_t dot = rest.find('.');
+        if (dot == std::string::npos) {
+            int value = 0;
+            if (!parseVersion(rest, value, minor, patch)) return false;
+            if (minor != 0 || patch != 0) return false;
+            major = value;
+            if (kind == RangeKind::Exact) kind = RangeKind::Caret;
+            return true;
+        }
+
+        return parseVersion(rest, major, minor, patch);
+    }
+
+    // Tells whether a version is inside of a range.
+    //
+    // The range is a list of parts that all have to hold, separated by
+    // spaces. The parts are separated by `||` into alternatives: one of the
+    // alternatives has to hold.
+    bool versionMatchesRange(const std::string& range,
+                             int hostMajor, int hostMinor, int hostPatch) {
+        // The alternatives are separated by `||`.
+        std::vector<std::string> alternatives;
+        {
+            std::string rest = range;
+            size_t pos = 0;
+            while (true) {
+                const size_t bar = rest.find("||", pos);
+                if (bar == std::string::npos) {
+                    alternatives.push_back(rest.substr(pos));
+                    break;
+                }
+                alternatives.push_back(rest.substr(pos, bar - pos));
+                pos = bar + 2;
+            }
+        }
+
+        for (const auto& alternative : alternatives) {
+            // The parts of one alternative are separated by spaces.
+            std::vector<std::string> parts;
+            {
+                std::istringstream stream(alternative);
+                std::string part;
+                while (stream >> part) parts.push_back(part);
+            }
+            if (parts.empty()) {
+                // An empty alternative allows every version.
+                return true;
+            }
+
+            bool allHold = true;
+            bool allKnown = true;
+            for (const auto& part : parts) {
+                RangeKind kind = RangeKind::Any;
+                int major = 0, minor = 0, patch = 0;
+                if (!parseRangePart(part, kind, major, minor, patch)) {
+                    allKnown = false;
+                    break;
+                }
+
+                const int order = compareVersions(hostMajor, hostMinor, hostPatch,
+                                                  major, minor, patch);
+                bool holds = true;
+                switch (kind) {
+                    case RangeKind::Any:
+                        holds = true;
+                        break;
+                    case RangeKind::Exact:
+                        holds = order == 0;
+                        break;
+                    case RangeKind::Greater:
+                        holds = order > 0;
+                        break;
+                    case RangeKind::GreaterOrEqual:
+                        holds = order >= 0;
+                        break;
+                    case RangeKind::Less:
+                        holds = order < 0;
+                        break;
+                    case RangeKind::LessOrEqual:
+                        holds = order <= 0;
+                        break;
+                    case RangeKind::Caret: {
+                        // The next big version is not allowed. A version
+                        // that starts with a zero is special: the next
+                        // small version is not allowed either.
+                        holds = order >= 0;
+                        if (holds) {
+                            if (major > 0) {
+                                holds = hostMajor == major;
+                            } else if (minor > 0) {
+                                holds = hostMajor == 0 && hostMinor == minor;
+                            } else {
+                                holds = hostMajor == 0 && hostMinor == 0 && hostPatch == patch;
+                            }
+                        }
+                        break;
+                    }
+                    case RangeKind::Tilde: {
+                        // The next small version is not allowed.
+                        holds = order >= 0 && hostMajor == major && hostMinor == minor;
+                        break;
+                    }
+                }
+                if (!holds) {
+                    allHold = false;
+                    break;
+                }
+            }
+
+            if (!allKnown) {
+                // A shape that is not known: the range cannot be read, so
+                // the extension is let through.
+                return true;
+            }
+            if (allHold) return true;
+        }
+        return false;
     }
 
     // Reads the manifest of an extension out of a parsed JSON tree.
@@ -280,34 +466,14 @@ bool ExtensionService::isCompatible(const std::string& enginesVscode,
                                     std::string& error) {
     if (enginesVscode.empty()) return true;
 
-    // The range is read as the *lowest* version that the extension accepts.
-    // The ranges that Vrutti cannot read are accepted: an extension that
-    // asks for something strange is better refused by the extension host
-    // than by a guess in the installer.
-    std::string range = enginesVscode;
-    const size_t space = range.find(' ');
-    if (space != std::string::npos) range = range.substr(0, space);
-    if (range.empty()) return true;
-
-    size_t start = 0;
-    while (start < range.size() &&
-           (range[start] == '^' || range[start] == '~' || range[start] == '>' ||
-            range[start] == '=' || range[start] == '<' || range[start] == ' ')) {
-        ++start;
-    }
-    const std::string wanted = range.substr(start);
-
-    int major = 0, minor = 0, patch = 0;
-    if (!parseVersion(wanted, major, minor, patch)) return true;
-
+    // A range that Vrutti cannot read is accepted: an extension that asks
+    // for something strange is better refused by the extension host than by
+    // a guess in the installer.
     int hostMajor = 0, hostMinor = 0, hostPatch = 0;
-    parseVersion(hostVersion(), hostMajor, hostMinor, hostPatch);
+    if (!parseVersion(hostVersion(), hostMajor, hostMinor, hostPatch)) return true;
 
-    const bool newer = major > hostMajor ||
-        (major == hostMajor && minor > hostMinor) ||
-        (major == hostMajor && minor == hostMinor && patch > hostPatch);
-    if (newer) {
-        error = "the extension asks for version " + wanted +
+    if (!versionMatchesRange(enginesVscode, hostMajor, hostMinor, hostPatch)) {
+        error = "the extension asks for version " + enginesVscode +
                 " of the host, but this host is version " + hostVersion();
         return false;
     }
@@ -430,13 +596,63 @@ bool ExtensionService::installVsix(const std::string& vsixPath,
     // The entry point of the extension has to be there.
     const std::string entryPoint = description.main.empty() ? description.browser : description.main;
     if (!entryPoint.empty()) {
-        const fs::path entryPath = staging / entryPoint;
+        // The entry point has to be a file inside of the extension.
+        //
+        // A manifest may name a path that walks out of the extension
+        // ("../outside.js") or a path that is absolute. The extension host
+        // would load that file, and the extension would run code that is
+        // somewhere else on the disk: the archive that was installed is not
+        // the thing that runs.
         std::error_code entryError;
+        const fs::path relative(entryPoint);
+        if (relative.is_absolute() || relative.has_root_name() ||
+            relative.has_root_directory()) {
+            fs::remove_all(staging, ec);
+            error = "the entry point of the extension is outside of the extension: " +
+                    entryPoint;
+            errorCode = "InvalidExtension";
+            return false;
+        }
+
+        const fs::path normalized = relative.lexically_normal();
+        const bool walksOut = normalized.empty() || normalized == ".." ||
+                              (*normalized.begin() == "..");
+        if (walksOut) {
+            fs::remove_all(staging, ec);
+            error = "the entry point of the extension is outside of the extension: " +
+                    entryPoint;
+            errorCode = "InvalidExtension";
+            return false;
+        }
+
+        const fs::path entryPath = staging / normalized;
         if (!fs::exists(entryPath, entryError) || fs::is_directory(entryPath, entryError)) {
             fs::remove_all(staging, ec);
             error = "the entry point of the extension is missing: " + entryPoint;
             errorCode = "InvalidExtension";
             return false;
+        }
+
+        // The entry point has to be inside of the extension even when the
+        // folder of the extension holds a link that points somewhere else.
+        fs::path resolvedStaging = fs::weakly_canonical(staging, entryError);
+        if (entryError) resolvedStaging = fs::canonical(staging, entryError);
+        fs::path resolvedEntry = fs::weakly_canonical(entryPath, entryError);
+        if (entryError) resolvedEntry = fs::canonical(entryPath, entryError);
+        if (!entryError) {
+            const std::string root = resolvedStaging.generic_string();
+            const std::string entry = resolvedEntry.generic_string();
+            const bool inside = entry.size() > root.size() &&
+                                entry.compare(0, root.size(), root) == 0 &&
+                                (root.back() == '/' || root.back() == '\\' ||
+                                 entry[root.size()] == '/' || entry[root.size()] == '\\');
+            if (!inside) {
+                fs::remove_all(staging, ec);
+                error = "the entry point of the extension is outside of the extension: " +
+                        entryPoint;
+                errorCode = "InvalidExtension";
+                return false;
+            }
         }
     }
 

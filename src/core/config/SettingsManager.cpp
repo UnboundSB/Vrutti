@@ -7,6 +7,18 @@
 
 namespace vrutti::core::config {
 
+namespace {
+
+    // The most changes that wait to be written.
+    //
+    // Every change asks for a write. A program that changes a setting in a
+    // loop would fill the queue and use the memory of the editor. The
+    // queue only has to hold the last change: the one before it is not
+    // needed any more.
+    constexpr size_t kMaxSaveQueue = 64;
+
+} // namespace
+
 SettingsManager& SettingsManager::getInstance() {
     static SettingsManager instance;
     return instance;
@@ -52,25 +64,40 @@ std::string SettingsManager::getConfigFilePath() const {
 
 void SettingsManager::load() {
     std::string filePath = getConfigFilePath();
-    if (!std::filesystem::exists(filePath)) {
-        cachedSource_ = "{}";
-        root_ = utils::JsonParser::parse(cachedSource_);
-        // Schedule default write (non-blocking)
-        enqueueSave(cachedSource_);
-        return;
+    std::string source;
+    bool hasFile = false;
+    if (std::filesystem::exists(filePath)) {
+        std::ifstream file(filePath);
+        if (file.is_open()) {
+            std::stringstream buffer;
+            buffer << file.rdbuf();
+            source = buffer.str();
+            hasFile = true;
+        }
     }
 
-    std::ifstream file(filePath);
-    if (file.is_open()) {
-        std::stringstream buffer;
-        buffer << file.rdbuf();
-        cachedSource_ = buffer.str();
-        root_ = utils::JsonParser::parse(cachedSource_);
-        if (!root_ || root_->type != utils::JsonNode::Type::Object) {
+    std::shared_ptr<utils::JsonNode> root;
+    if (hasFile) {
+        root = utils::JsonParser::parse(source);
+        if (!root || root->type != utils::JsonNode::Type::Object) {
             // A malformed settings file must never take the editor down.
-            cachedSource_ = "{}";
-            root_ = utils::JsonParser::parse(cachedSource_);
+            root = utils::JsonParser::parse("{}");
+            source = "{}";
         }
+    } else {
+        source = "{}";
+        root = utils::JsonParser::parse(source);
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        cachedSource_ = std::move(source);
+        root_ = std::move(root);
+    }
+
+    if (!hasFile) {
+        // Schedule default write (non-blocking)
+        enqueueSave("{}");
     }
 }
 
@@ -84,6 +111,7 @@ void SettingsManager::updateSetting(const std::string& key, const std::string& v
     auto newValueNode = utils::JsonParser::parse(valueRawJson);
     if (!newValueNode) return;
 
+    std::string text;
     {
         std::lock_guard<std::mutex> lock(mutex_);
         if (!root_ || root_->type != utils::JsonNode::Type::Object) {
@@ -107,10 +135,13 @@ void SettingsManager::updateSetting(const std::string& key, const std::string& v
         // even when a legacy file contained raw Windows paths such as
         // "D:\projects\app".
         cachedSource_ = utils::JsonSerializer::stringify(root_, 0, true);
+        text = cachedSource_;
     }
 
-    // Non-blocking: hand off to background writer
-    enqueueSave(cachedSource_);
+    // Non-blocking: hand off to background writer. The text is taken under
+    // the lock above: reading it outside of the lock would read a value
+    // that another thread is changing at the same time.
+    enqueueSave(text);
 }
 
 void SettingsManager::saveAsync() {
@@ -126,6 +157,11 @@ void SettingsManager::enqueueSave(const std::string& jsonStr) {
     std::string path = getConfigFilePath();
     {
         std::lock_guard<std::mutex> lock(m_queueMutex);
+        // Only the last change is needed: the one before it would be
+        // written over by it anyway.
+        while (m_saveQueue.size() >= kMaxSaveQueue) {
+            m_saveQueue.pop();
+        }
         m_saveQueue.push({std::move(path), jsonStr});
     }
     m_queueCv.notify_one();
@@ -142,9 +178,37 @@ void SettingsManager::writerLoop() {
             m_saveQueue.pop();
         }
 
-        std::ofstream file(job.path);
-        if (file.is_open()) {
-            file << job.content;
+        // The file is written in one go and then put in place.
+        //
+        // A file that is written directly can be read while it is written,
+        // and a program that stops in the middle leaves a file that is half
+        // written. The text is written into a file of its own first, and
+        // that file takes the place of the old one.
+        std::error_code ec;
+        const std::filesystem::path target(job.path);
+        const std::filesystem::path temporary =
+            std::filesystem::path(job.path + ".tmp");
+
+        {
+            std::ofstream file(temporary, std::ios::binary | std::ios::trunc);
+            if (file.is_open()) {
+                file << job.content;
+                file.flush();
+                if (file.good()) {
+                    file.close();
+                    std::filesystem::rename(temporary, target, ec);
+                    if (ec) {
+                        // The file that is there is kept: a broken settings
+                        // file is worse than an old one.
+                        std::error_code removeEc;
+                        std::filesystem::remove(temporary, removeEc);
+                    }
+                }
+            }
+        }
+        if (ec) {
+            std::cerr << "[Settings] the settings could not be written: "
+                      << ec.message() << std::endl;
         }
     }
 }

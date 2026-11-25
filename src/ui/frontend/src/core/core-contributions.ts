@@ -628,7 +628,11 @@ export function registerCoreContributions() {
             else if (pathClean.startsWith('file://')) pathClean = pathClean.substring(7);
             
             if ((window as any).vruttiDeleteFile) {
-                await (window as any).vruttiDeleteFile(pathClean);
+                // The second name says whether a folder with things in it
+                // may be taken away. The core only takes a whole tree away
+                // when it is told that it may.
+                const isDirectory = (context as any).isDirectory === true;
+                await (window as any).vruttiDeleteFile(pathClean, isDirectory);
                 window.dispatchEvent(new CustomEvent('explorer-refresh'));
             } else {
                 console.warn('vruttiDeleteFile not available in native backend');

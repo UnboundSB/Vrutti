@@ -4,7 +4,7 @@
 Shared helpers: the JSON parser and serializer, path resolution, string pools and the error code registry.
 
 ## Files
-- **Base64.h**: Header for the Base64 component.
+- **Base64.h**: Base64 -- the encoding that carries binary payloads over the bridge.
 - **ErrorCodes.cpp**: Implementation of the ErrorCodes component.
 - **ErrorCodes.h**: Header for the ErrorCodes component.
 - **HttpDownload.cpp**: Implementation of the HttpDownload component.
@@ -25,7 +25,14 @@ Shared helpers: the JSON parser and serializer, path resolution, string pools an
 
 ## Public Methods
 - **std::string base64_encode(const std::string&)**
-- **std::string base64_decode(const std::string&)**
+- **bool base64_decode(const std::string&, std::string&)**
+- **int base64_value(unsigned char)**
+- **out. push_back(kBase64Alphabet[(triple >> 18) & 0x3F])**
+- **out. push_back(kBase64Alphabet[(triple >> 12) & 0x3F])**
+- **out. push_back(kBase64Alphabet[(triple >> 6) & 0x3F])**
+- **out. push_back(kBase64Alphabet[triple & 0x3F])**
+- **out. push_back(')**
+- **out. reserve((in.size() / 4) * 3)**
 - **std::string errorCodeId(ErrorCode)**
 - **const char* errorCodeName(ErrorCode)**
 - **std::string formatError(ErrorCode, const std::string&)**
@@ -41,10 +48,13 @@ Shared helpers: the JSON parser and serializer, path resolution, string pools an
 - **std::string JsonParser::unescapeString(std::string_view)**
 - **std::string JsonSerializer::stringify(const std::shared_ptr<JsonNode>&, int, bool)**
 - **std::string JsonSerializer::escapeString(std::string_view)**
+- **std::string JsonSerializer::formatNumber(double)**
 - **std::vector<size_t> LineScanner::computeLineStarts(std::string_view)**
 - **std::filesystem::path appBasePath()**
 - **std::filesystem::path appResourcePath(const std::string&)**
 - **std::filesystem::path pluginPath(const std::string&)**
+- **bool pathStaysInside(const std::filesystem::path&, const std::filesystem::path&)**
+- **std::filesystem::path pathInsideFolder(const std::filesystem::path&, const std::string&)**
 - **StringPool::StringPool()**
 - **StringPool::~StringPool()**
 - **std::string_view StringPool::intern(std::string_view)**

@@ -31,6 +31,26 @@ namespace {
     // The number of bytes that are read at a time when a file is copied.
     constexpr size_t kCopyChunk = 64 * 1024;
 
+    // The biggest file that is read into the memory of the core.
+    //
+    // A file is read as a whole: the extension host wants the bytes, not a
+    // stream. A file that is bigger than this is refused, so that a
+    // request for a file that is too big cannot use all of the memory of
+    // the editor.
+    constexpr uint64_t kMaxReadBytes = 64ull * 1024ull * 1024ull;
+
+    // The most entries that are read out of one folder.
+    constexpr size_t kMaxDirectoryEntries = 100000;
+
+    // The most entries that are walked when a folder is copied or removed,
+    // and the deepest folder that is walked.
+    //
+    // A folder tree can be very deep and very wide. The work of walking it
+    // has to end somewhere, or a request for a folder that is a link to
+    // itself would never come back.
+    constexpr size_t kMaxTreeEntries = 100000;
+    constexpr size_t kMaxTreeDepth = 64;
+
     // Turns a `std::error_code` into the failure the extension expects.
     FileResult failureOf(const std::error_code& ec, const std::string& path) {
         if (ec == std::errc::no_such_file_or_directory) {
@@ -119,7 +139,20 @@ namespace {
     }
 
     // Copies a file or a directory tree.
-    FileResult copyTree(const fs::path& from, const fs::path& to, bool overwrite) {
+    FileResult copyTree(const fs::path& from, const fs::path& to, bool overwrite,
+                         size_t depth = 0, size_t* budget = nullptr) {
+        if (depth > kMaxTreeDepth) {
+            return FileResult::failure(kUnavailable,
+                "the folder '" + from.string() + "' is nested too deeply");
+        }
+        if (budget) {
+            if (*budget == 0) {
+                return FileResult::failure(kUnavailable,
+                    "the folder '" + from.string() + "' has too many entries");
+            }
+            --(*budget);
+        }
+
         std::error_code ec;
         fs::file_status status = fs::symlink_status(from, ec);
         if (ec) return failureOf(ec, from.string());
@@ -131,7 +164,8 @@ namespace {
             fs::directory_iterator it(from, fs::directory_options::skip_permission_denied, ec);
             if (ec) return failureOf(ec, from.string());
             for (const auto& entry : it) {
-                FileResult child = copyTree(entry.path(), to / entry.path().filename(), overwrite);
+                FileResult child = copyTree(entry.path(), to / entry.path().filename(),
+                                            overwrite, depth + 1, budget);
                 if (!child.ok) return child;
             }
             return FileResult::success();
@@ -229,6 +263,10 @@ FileResult FileService::readDirectory(const std::string& path,
     if (ec) return failureOf(ec, path);
 
     for (const auto& entry : it) {
+        if (out.size() >= kMaxDirectoryEntries) {
+            return FileResult::failure(kUnavailable,
+                "the folder '" + path + "' has too many entries");
+        }
         DirectoryEntry item;
         item.name = entry.path().filename().string();
         item.type = fileTypeOf(entry.path());
@@ -269,6 +307,14 @@ FileResult FileService::readFile(const std::string& path, std::vector<uint8_t>& 
     std::streamoff size = input.tellg();
     if (size < 0) size = 0;
     input.seekg(0, std::ios::beg);
+
+    // A file that is too big is not read. The bytes of the file would have
+    // to be in the memory of the core, and the editor would be gone after
+    // a few such requests.
+    if (static_cast<uint64_t>(size) > kMaxReadBytes) {
+        return FileResult::failure(kUnavailable,
+            "the file '" + path + "' is too big to be read");
+    }
 
     out.resize(static_cast<size_t>(size));
     if (size > 0) {
@@ -336,8 +382,19 @@ FileResult FileService::rename(const std::string& from, const std::string& to,
     if (ec) {
         // Windows refuses to rename over an existing file.
         if (overwrite && fs::exists(fs::path(to))) {
+            // Only a file may be replaced by a file. A folder is not
+            // removed: the old code removed the whole tree of the target
+            // and then tried to put a file in its place, so a rename over a
+            // folder took the folder and everything in it away.
+            std::error_code statusError;
+            const bool targetIsDirectory = fs::is_directory(fs::path(to), statusError);
+            if (targetIsDirectory) {
+                return FileResult::failure(kFileIsADirectory,
+                    "'" + to + "' is a directory");
+            }
             std::error_code removeEc;
-            fs::remove_all(fs::path(to), removeEc);
+            fs::remove(fs::path(to), removeEc);
+            if (removeEc) return failureOf(removeEc, to);
             ec.clear();
             fs::rename(fs::path(from), fs::path(to), ec);
         }
@@ -361,7 +418,8 @@ FileResult FileService::copy(const std::string& from, const std::string& to,
         return FileResult::failure(kFileExists,
             "the file '" + to + "' already exists");
     }
-    return copyTree(fs::path(from), fs::path(to), overwrite);
+    size_t budget = kMaxTreeEntries;
+    return copyTree(fs::path(from), fs::path(to), overwrite, 0, &budget);
 }
 
 FileResult FileService::createDirectory(const std::string& path) const {

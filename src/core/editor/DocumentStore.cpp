@@ -103,14 +103,20 @@ bool DocumentStore::openFile(const std::string& uriPath,
         const std::string key = document.key();
         auto it = m_documents.find(key);
         if (it != m_documents.end()) {
-            // The document is already open. The text on disk is the truth, so
-            // the copy in the store is refreshed.
-            it->second.content = document.content;
-            it->second.eol = document.eol;
-            it->second.encoding = document.encoding;
-            it->second.languageId = document.languageId;
-            it->second.versionId = document.versionId;
-            it->second.isDirty = false;
+            // The document is already open.
+            //
+            // The text that is in the store is the text that the user sees.
+            // When the document has changes that were not written yet, those
+            // changes are kept: the old code took the text from the disk and
+            // threw the changes of the user away.
+            if (!it->second.isDirty) {
+                it->second.content = document.content;
+                it->second.eol = document.eol;
+                it->second.encoding = document.encoding;
+                it->second.languageId = document.languageId;
+                it->second.versionId = document.versionId;
+                it->second.isDirty = false;
+            }
             m_used[key] = ++m_clock;
             out = it->second;
             return true;

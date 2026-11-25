@@ -92,6 +92,7 @@ host talk to the core over a **private named pipe**, one per window
 | Documents | The `workspace.openTextDocument()` surface: open, create and save a text document. The text lives in the core and is mirrored to the extension host with the delta of the documents. |
 | Extensions | A `.vsix` is installed by the core: the archive is read by a reader that trusts nothing, the manifest is checked, and the host learns about the new extension through `$deltaExtensions` and wakes it up through `$activate`. No shell is involved. |
 | Timeouts | Every outbound request has a deadline, so a silent peer cannot hang an extension. |
+| Hardening | The parts of the core that hold data were walked one by one -- the payloads, the paths, the version ranges, the files, the documents, the settings, the themes, the plugins -- and every hole was closed with a test. `CoreHardeningTest` is the proof. |
 | Documentation | A `structure.md` and a `TODO.md` in every first-party folder. A central error code registry. |
 | Releases | `0.0.4` is built and published through Inno Setup 6. |
 
@@ -176,12 +177,18 @@ installs a real extension and watches it run in the real extension host.
 
 ### Then the rest of the plan
 
-| Phase | What |
-|---|---|
-| **P1** | Nothing may hang: drop the reply of a cancelled request, shut the terminal down without a deadlock, write the settings without blocking the caller. |
-| **P2** | Nothing may crash: fuzz the JSON parser, reject a frame that lies about its length, drop a malformed frame and keep the connection. |
-| **P3** | Nothing may leak: bound the pending-request table, unload unused plugins, release the buffers of a closed document. |
-| **P4** | Nothing may be reached that should not be: restrict the named pipe to the owning user, validate every webview message, resolve extension paths inside the workspace. |
+| Phase | What | State |
+|---|---|---|
+| **P1** | Nothing may hang: drop the reply of a cancelled request, shut the terminal down without a deadlock, write the settings without blocking the caller. | The settings are done; the other two are not. |
+| **P2** | Nothing may crash: fuzz the JSON parser, reject a frame that lies about its length, drop a malformed frame and keep the connection. | done |
+| **P3** | Nothing may leak: bound the pending-request table, unload unused plugins, release the buffers of a closed document. | The table is bounded; the other two are not. |
+| **P4** | Nothing may be reached that should not be: restrict the named pipe to the owning user, validate every webview message, resolve extension paths inside the workspace. | The paths of the installation, of the extensions and of the themes are resolved inside their root; the pipe and the webview are not. |
+
+The parts that hold data have been walked one by one -- the payloads, the
+paths, the version ranges, the files, the documents, the settings, the themes,
+the plugins and the window. The table of what was wrong and what it is now
+is in `docs/BACKEND_HARDENING.md`; the proof is
+`src/tests/integration/CoreHardeningTest.cpp`.
 
 ### Later, not urgent
 
@@ -292,8 +299,10 @@ harness truncates a long log.
 ctest --test-dir build --output-on-failure
 ```
 
-The four suites are the JSON layer, the theme service, the protocol fallback
-contract and the file system surface.
+There are eleven suites: the integration test, the theme service, the protocol
+fallback contract, the file system surface, the document surface, the three
+extension-installation suites, the two hostile-input suites (the JSON layer
+and the pipe) and the hardening suite for the parts that hold data.
 
 ### Check the generators
 

@@ -5,7 +5,7 @@ The native compositor that owns the window and the webview.
 
 ## Files
 - **TODO.md**: Open questions and planned work for this folder.
-- **Window.cpp**: Implementation of the Window component.
+- **Window.cpp**: The encoding of the binary payloads that travel over the bridge.
 - **Window.h**: Header for the Window component.
 
 ## Public Methods

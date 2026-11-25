@@ -207,6 +207,45 @@ the wake-up from the answer of the delta, never before it.
 
 ---
 
+## The hardening of the parts that hold data
+
+The transport is only one part of the core. The parts that hold the data of
+the user -- the files, the documents, the settings, the themes, the plugins
+and the extensions -- were walked one by one, in three directions:
+
+* **The safety of the data.** Can a name that comes from outside reach a file
+  that it should not reach? Can a file of the user be taken away, changed or
+  read without being asked for?
+* **The wholeness of the data.** Can two things be half done at the same
+  time? Can a file be read while it is written? Can a length be counted
+  wrongly and take the memory of the editor with it?
+* **The closeness of the parts.** Does one part reach into another one
+  directly? Does a worker of the window outlive the window? Does a plugin
+  that takes the name of another one leave the old one running?
+
+Every hole that was found was closed, and every fix has a test.
+
+| What was wrong | What it is now | Where |
+| -------------- | -------------- | ----- |
+| The decoder of the binary payloads stopped at the first character it did not know and handed back half of the payload as if it were all of it. The arithmetic was done on a signed number, which is undefined behaviour once the value does not fit. | The decoder refuses a text that is not valid and says so; the arithmetic is done on unsigned numbers. | `core/utils/Base64.h` |
+| A name of a file of the installation could walk out of the installation with `..` or name a place of its own. | The name has to stay inside; the path of the installation itself is returned otherwise. | `core/utils/Paths.cpp` |
+| The entry point of an extension could name a file outside of the extension, and the extension host would load it. | The entry point has to be a file of the extension, before the link is followed. | `core/extensions/ExtensionService.cpp` |
+| The version range of an extension was read as the *lowest* version it accepts: `<0.5.0` and `>=1.0.0 <1.50.0` were both read as "1.0.0". | The range is read as it is written: `^`, `~`, `>`, `>=`, `<`, `<=`, `=`, `*`, a space between two parts, `||` between two alternatives. A range that cannot be read is let through. | `core/extensions/ExtensionService.cpp` |
+| A file could be read into the memory of the core without a limit. | A file that is bigger than 64 MiB is not read, and the bytes of it are not kept. | `core/fs/FileService.cpp` |
+| A rename over a folder removed the whole folder with everything in it. | A folder is never replaced by a file; the target stays as it was. | `core/fs/FileService.cpp` |
+| A folder tree was walked without a limit, and a folder was listed without a limit. | The walk has a depth of 64 and 100 000 entries; a folder holds 100 000 entries. | `core/fs/FileService.cpp` |
+| A range of a document that was not there took the length of the text with it, and a text of a length that the caller chose was made ready before it was filled. | A range outside of the document changes nothing; a text is cut at the end of the document. | `core/editor/PieceTable.cpp` |
+| A document that was opened again took the text from the disk and threw the changes of the user away. | The changes that were not written are kept, and the document stays marked as changed. | `core/editor/DocumentStore.cpp` |
+| A plugin that took the name of another one was thrown away without being shut down: the old plugin kept running and its memory was never given back. | The old plugin is shut down and given back first. | `core/plugins/PluginLoader.cpp` |
+| A theme could name a file outside of its own package -- in the theme itself, in the file it includes, and in the path of an icon. | Every file of a theme has to be inside of the package that offers it. | `core/plugins/ThemeService.cpp` |
+| The settings were written in place, so a reader could see half of a file, and the queue of the changes had no limit. | The file is written in one go and then put in place; the queue holds 64 changes; a file that is broken is never written. | `core/config/SettingsManager.cpp` |
+| A path from the page was put into a command for the shell, so a quote in the path was the end of the path and the start of a command. A link could name a program of its own choosing. | The program is started without a shell; only `http`, `https` and `mailto` are opened; the output of a program is bounded and the program is stopped after two minutes. | `ui/compositor/Window.cpp` |
+| A worker of the window was left running when the window went away, and it wrote into a window that was not there any more. | The workers are held by the window and are waited for before it goes away. | `ui/compositor/Window.cpp` |
+
+The proof is in `src/tests/integration/CoreHardeningTest.cpp`.
+
+---
+
 ## How it is verified
 
 | Check | Command |
@@ -224,3 +263,7 @@ the wake-up from the answer of the delta, never before it.
 | The installation of an extension is safe | `build/vrutti_installer_test.exe` |
 | An installed extension reaches the host | `build/vrutti_install_protocol_test.exe` |
 | An installed extension really runs | `build/vrutti_install_e2e_test.exe` |
+| The JSON layer holds against hostile input | `build/vrutti_json_fuzz_test.exe` |
+| The pipe holds against hostile input | `build/vrutti_ipc_fuzz_test.exe` |
+| The parts that hold data hold against hostile input | `build/vrutti_core_hardening_test.exe` |
+| Everything at once | `ctest --test-dir build --output-on-failure` |
