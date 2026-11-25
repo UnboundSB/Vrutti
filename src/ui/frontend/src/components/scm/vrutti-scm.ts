@@ -1,6 +1,7 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
+import { unsafeSVG } from 'lit/directives/unsafe-svg.js';
 import { globalHoverStyle } from '../../shared-styles';
 import { registry } from '../../core/Registry';
 import { 
@@ -358,6 +359,24 @@ export class VruttiScm extends LitElement {
         return html`<span class="file-status ${cls}">${text}</span>`;
     }
 
+    // Draws the icon of a menu item.
+    //
+    // The icon of a menu item is a text that holds a drawing. A drawing
+    // that is put into the page as a text is shown as the path of the
+    // drawing and not as the drawing itself, so the text has to be put
+    // into the page as markup.
+    //
+    // The text comes from the registry of the editor. A text that does not
+    // look like a drawing is shown as the text it is, and a text that
+    // holds a script is not shown at all.
+    private renderIcon(content: string) {
+        if (!content) return '';
+        const text = content.trim();
+        if (!text.startsWith('<svg')) return content;
+        if (text.includes('<script') || /\son\w+\s*=/i.test(text)) return '';
+        return unsafeSVG(text);
+    }
+
     render() {
         return html`
             <div class="header">
@@ -365,7 +384,7 @@ export class VruttiScm extends LitElement {
                 <div class="actions">
                     ${(registry.getMenu('scm/title')?.items || []).map(item => html`
                         <div class="icon-btn" title="${item.label}" @click=${() => registry.executeCommand(item.command || '')}>
-                            ${item.iconContent ? html`${item.iconContent}` : ''}
+                            ${this.renderIcon(item.iconContent || '')}
                         </div>
                     `)}
                 </div>
@@ -398,7 +417,7 @@ export class VruttiScm extends LitElement {
                         <div class="file-actions">
                             ${(registry.getMenu('scm/resourceState/staged')?.items || []).map(item => html`
                                 <div class="icon-btn" title="${item.label}" @click=${(e: Event) => { e.stopPropagation(); registry.executeCommand(item.command || '', { path: f.path }); }}>
-                                    ${item.iconContent ? html`${item.iconContent}` : ''}
+                                    ${this.renderIcon(item.iconContent || '')}
                                 </div>
                             `)}
                         </div>
@@ -420,7 +439,7 @@ export class VruttiScm extends LitElement {
                         <div class="file-actions">
                             ${(registry.getMenu('scm/resourceState/unstaged')?.items || []).map(item => html`
                                 <div class="icon-btn" title="${item.label}" @click=${(e: Event) => { e.stopPropagation(); registry.executeCommand(item.command || '', { path: f.path }); }}>
-                                    ${item.iconContent ? html`${item.iconContent}` : ''}
+                                    ${this.renderIcon(item.iconContent || '')}
                                 </div>
                             `)}
                         </div>
