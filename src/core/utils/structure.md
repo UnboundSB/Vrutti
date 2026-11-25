@@ -17,6 +17,8 @@ Shared helpers: the JSON parser and serializer, path resolution, string pools an
 - **LineScanner.h**: Header for the LineScanner component.
 - **Paths.cpp**: Implementation of the Paths component.
 - **Paths.h**: Header for the Paths component.
+- **ProcessRunner.cpp**: Implementation of the ProcessRunner component.
+- **ProcessRunner.h**: ProcessRunner -- runs a program of the installation and reads what it says.
 - **StringPool.cpp**: Implementation of the StringPool component.
 - **StringPool.h**: Header for the StringPool component.
 - **TODO.md**: Open questions and planned work for this folder.
@@ -55,6 +57,7 @@ Shared helpers: the JSON parser and serializer, path resolution, string pools an
 - **std::filesystem::path pluginPath(const std::string&)**
 - **bool pathStaysInside(const std::filesystem::path&, const std::filesystem::path&)**
 - **std::filesystem::path pathInsideFolder(const std::filesystem::path&, const std::string&)**
+- **ProcessResult runProcess(const std::string&, const std::vector<std::string>&, size_t, unsigned int)**
 - **StringPool::StringPool()**
 - **StringPool::~StringPool()**
 - **std::string_view StringPool::intern(std::string_view)**

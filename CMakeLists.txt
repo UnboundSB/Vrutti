@@ -45,6 +45,7 @@ add_library(vrutti_core STATIC
     src/core/utils/Inflate.cpp
     src/core/utils/ZipArchive.cpp
     src/core/utils/HttpDownload.cpp
+    src/core/utils/ProcessRunner.cpp
     src/core/extensions/ExtensionService.cpp
     src/core/ipc/IPCClient.cpp
     src/core/ipc/VSCodeProtocol.cpp
@@ -178,6 +179,15 @@ add_executable(vrutti_core_hardening_test src/tests/integration/CoreHardeningTes
 target_link_libraries(vrutti_core_hardening_test PRIVATE vrutti_core)
 add_test(NAME CoreHardeningTest COMMAND vrutti_core_hardening_test)
 set_tests_properties(CoreHardeningTest PROPERTIES TIMEOUT 300)
+
+# The search plugin: it reads the files of the user, so it has to start its
+# program without a shell and it has to keep its hands off the files that
+# are too big.
+add_executable(vrutti_search_test src/tests/integration/SearchPluginTest.cpp)
+target_link_libraries(vrutti_search_test PRIVATE vrutti_core)
+add_dependencies(vrutti_search_test vrutti_search)
+add_test(NAME SearchPluginTest COMMAND vrutti_search_test)
+set_tests_properties(SearchPluginTest PROPERTIES TIMEOUT 300)
 
 
 

@@ -39,6 +39,12 @@ namespace vrutti::plugins::search {
 
         SearchResponse performSearch(const std::string& query, const std::string& directory, const SearchOptions& options);
         std::vector<std::string> findFiles(const std::string& directory);
+
+    private:
+        // Changes the words that were found in the files.
+        void replaceInFiles(const std::vector<std::string>& files,
+                            const std::string& query,
+                            const SearchOptions& options);
     };
 
 }

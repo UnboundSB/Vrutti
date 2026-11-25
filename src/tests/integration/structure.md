@@ -16,6 +16,7 @@ Integration tests: they exercise the services through their public interfaces.
 - **JsonFuzzTest.cpp**: JsonFuzzTest -- the JSON layer of the core under hostile input.
 - **MainThreadDocumentsTest.cpp**: MainThreadDocumentsTest -- proves that an extension can open, create and save a text document.
 - **ProtocolFallbackTest.cpp**: ProtocolFallbackTest -- proves the contract of the extension host router.
+- **SearchPluginTest.cpp**: A small harness that drives the search plugin the way the window does.
 - **TestZip.h**: TestZip -- a writer of ZIP archives for the tests.
 - **ThemeServiceTest.cpp**: Integration test for the theme service.
 - **TODO.md**: Open questions and planned work for this folder.

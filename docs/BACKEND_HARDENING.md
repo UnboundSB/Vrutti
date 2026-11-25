@@ -247,6 +247,11 @@ Every hole that was found was closed, and every fix has a test.
 | The settings were written in place, so a reader could see half of a file, and the queue of the changes had no limit. | The file is written in one go and then put in place; the queue holds 64 changes; a file that is broken is never written. | `core/config/SettingsManager.cpp` |
 | A path from the page was put into a command for the shell, so a quote in the path was the end of the path and the start of a command. A link could name a program of its own choosing. | The program is started without a shell; only `http`, `https` and `mailto` are opened; the output of a program is bounded and the program is stopped after two minutes. | `ui/compositor/Window.cpp` |
 | A worker of the window was left running when the window went away, and it wrote into a window that was not there any more. | The workers are held by the window and are waited for before it goes away. | `ui/compositor/Window.cpp` |
+| The search program was started through a shell, so the name of a folder could run a command of its own. | The program is started without a shell; every name is an argument of the program. | `plugins/search/SearchPlugin.cpp` |
+| The pattern of a search was written into a file with a name that everybody knows, in the folder of the temporary files of everybody. | The file has a name of its own, is made with the flag that says that it may not exist, and belongs to the user alone. | `plugins/search/SearchPlugin.cpp` |
+| A search kept every match and every file without a limit, and a replace read a file of any size into the memory. | The matches, the files and the text of the program have a limit; a file that is too big is left alone. | `plugins/search/SearchPlugin.cpp` |
+| A pattern that the engine of the regular expressions refuses took the editor with it, and a file that was changed was written in place. | The failure is caught, the file is left as it was, and the new text is written into a file of its own that takes the place of the old one. | `plugins/search/SearchPlugin.cpp` |
+| The memory of a document was handed out with an alignment of zero, which divides by zero, and the block that was being filled could point at a block of somewhere else. | The alignment of zero is refused, the size is checked before the sum of it is made, and the block is found by its number. | `core/memory/ArenaAllocator.cpp` |
 
 The proof is in `src/tests/integration/CoreHardeningTest.cpp`.
 
@@ -272,4 +277,5 @@ The proof is in `src/tests/integration/CoreHardeningTest.cpp`.
 | The JSON layer holds against hostile input | `build/vrutti_json_fuzz_test.exe` |
 | The pipe holds against hostile input | `build/vrutti_ipc_fuzz_test.exe` |
 | The parts that hold data hold against hostile input | `build/vrutti_core_hardening_test.exe` |
+| The search of the files of the user is safe | `build/vrutti_search_test.exe` |
 | Everything at once | `ctest --test-dir build --output-on-failure` |

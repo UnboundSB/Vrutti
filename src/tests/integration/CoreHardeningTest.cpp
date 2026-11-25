@@ -23,6 +23,7 @@
 #include "../../core/editor/PieceTable.h"
 #include "../../core/extensions/ExtensionService.h"
 #include "../../core/fs/FileService.h"
+#include "../../core/memory/ArenaAllocator.h"
 #include "../../core/plugins/PluginLoader.h"
 #include "../../core/utils/Base64.h"
 #include "../../core/utils/Paths.h"
@@ -30,6 +31,7 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -466,6 +468,49 @@ int main() {
 
         std::error_code ec;
         fs::remove_all(folder, ec);
+    }
+
+    // --- the memory of the document -----------------------------------------------------
+    std::cout << "\n-- the memory of the document\n";
+    {
+        // The arena holds the pieces of the tree of a document. The list of
+        // its blocks grows, and a growing list moves its blocks: the block
+        // that is being filled has to be found again every time.
+        vrutti::core::memory::ArenaAllocator arena(64);
+        bool allAligned = true;
+        for (int i = 0; i < 500; ++i) {
+            void* mem = arena.allocate(13, 16);
+            if (mem == nullptr) { allAligned = false; break; }
+            if (reinterpret_cast<uintptr_t>(mem) % 16 != 0) { allAligned = false; break; }
+            std::memset(mem, 0xAB, 13);
+        }
+        check(allAligned, "every piece of the arena is where it belongs");
+
+        // An alignment of zero has no meaning. The old code divided by it,
+        // which takes the whole process down.
+        void* mem = nullptr;
+        bool survived = true;
+        try {
+            mem = arena.allocate(8, 0);
+        } catch (...) {
+            survived = false;
+        }
+        check(survived && mem != nullptr,
+              "an alignment of zero does not take the process down");
+
+        // A size that is very large may not make the counter of the block
+        // wrap around: the pieces would then lie on top of each other.
+        bool refused = false;
+        try {
+            arena.allocate(static_cast<size_t>(-1) - 8, 8);
+        } catch (const std::bad_alloc&) {
+            refused = true;
+        } catch (...) {
+        }
+        check(refused, "a piece that is too large is refused");
+
+        // The memory that was handed out is still its own after all of it.
+        arena.reset();
     }
 
     // --- a plugin that takes the place of another one ------------------------------------

@@ -15,7 +15,10 @@ namespace vrutti::core::memory {
         ArenaAllocator(const ArenaAllocator&) = delete;
         ArenaAllocator& operator=(const ArenaAllocator&) = delete;
 
-        // Allocate memory of specified size and alignment
+        // Allocate memory of specified size and alignment.
+        //
+        // The alignment may not be zero: an alignment of zero has no
+        // meaning, and the old code divided by it.
         void* allocate(size_t size, size_t alignment = alignof(std::max_align_t));
 
         // Templated helper for type-safe allocation
@@ -37,9 +40,18 @@ namespace vrutti::core::memory {
 
         void allocateNewBlock(size_t minimumSize);
 
+        // The block that is being filled, or nothing when there is none.
+        //
+        // The blocks are held in a list that grows, and a growing list
+        // moves its blocks to another place. The index is used instead of
+        // a pointer, so that the block that is being filled is always the
+        // block that is meant and never a block of somewhere else.
+        Block* currentBlock();
+        static constexpr size_t kNoBlock = static_cast<size_t>(-1);
+
         std::vector<Block> m_blocks;
         size_t m_blockSize;
-        Block* m_currentBlock;
+        size_t m_currentBlockIndex = kNoBlock;
     };
 
 } // namespace vrutti::core::memory
