@@ -36,6 +36,22 @@ namespace vrutti::plugins::search {
 
 namespace {
 
+    // The folder a search may walk.
+    //
+    // A search walks the files of the user, so it may only walk a folder
+    // that was given to it as a whole path. A name that is not a whole path
+    // ("." or "..") would mean the folder the editor itself is in -- the
+    // folder of the program -- and the search would show the user the
+    // inside of the editor instead of the inside of their own work.
+    bool isSearchableFolder(const std::string& directory) {
+        if (directory.empty()) return false;
+        std::error_code ec;
+        const std::filesystem::path path(directory);
+        if (!path.is_absolute()) return false;
+        if (!std::filesystem::is_directory(path, ec) || ec) return false;
+        return true;
+    }
+
     // The most text that is read from the search program.
     //
     // A folder of the user may hold a lot of files, and the program says
@@ -196,7 +212,12 @@ namespace {
                         dir = dirNode->stringValue;
                     }
                     if (dir.empty()) return "[]";
-                    
+                    if (!isSearchableFolder(dir)) {
+                        std::cerr << "[SearchPlugin] The search was not made: "
+                                  << dir << " is not a folder of its own.\n";
+                        return "[]";
+                    }
+
                     auto files = findFiles(dir);
                     std::string json = "[";
                     for (size_t i = 0; i < files.size(); ++i) {
@@ -245,6 +266,11 @@ namespace {
             }
             
             if (query.empty() || dir.empty()) return "[]";
+            if (!isSearchableFolder(dir)) {
+                std::cerr << "[SearchPlugin] The search was not made: "
+                          << dir << " is not a folder of its own.\n";
+                return "{\"files\":[],\"folders\":[],\"words\":[]}";
+            }
 
             auto results = performSearch(query, dir, options);
             

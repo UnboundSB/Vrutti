@@ -298,14 +298,27 @@ export class VruttiSearch extends LitElement {
     private currentSearchId: number = 0;
 
     private performSearch = async (replace: boolean = false) => {
+        // The search runs in the folder of the workspace. When there is no
+        // folder, there is nothing to search: the search must not fall back
+        // to the folder the editor itself is in, and it must not walk the
+        // disk either.
         let actualDir = this.directory;
         if (!actualDir || actualDir === '.') {
-            actualDir = (window as any).currentWorkspace || '.';
+            actualDir = (window as any).currentWorkspace || '';
             if (actualDir.startsWith('file:///')) actualDir = actualDir.substring(8);
             else if (actualDir.startsWith('file://')) actualDir = actualDir.substring(7);
         }
-        
-        if (!actualDir) return;
+
+        if (!actualDir) {
+            this.results = { files: [], folders: [], words: [] };
+            this.isSearching = false;
+            this.dispatchEvent(new CustomEvent('search-error', {
+                detail: { message: 'No folder is opened. Open a folder to search in it.' },
+                bubbles: true,
+                composed: true
+            }));
+            return;
+        }
         
         if (replace && this.query && this.replaceString && this.results.words?.length > 0) {
             // ... (replace logic untouched)
