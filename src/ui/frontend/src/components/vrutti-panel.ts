@@ -16,6 +16,20 @@ export class VruttiPanel extends LitElement {
   @state()
   private panelTabs: PanelTabContribution[] = [];
 
+  // The tabs that belong to the editor itself.
+  //
+  // The registry only holds the panels that an extension opens. The tabs of
+  // the editor -- the terminal, the problems, the output, the console of
+  // the debugger -- are always there. Before, the panel looked for its tab
+  // in the registry alone, found nothing, and said "Panel not found" when
+  // the terminal was opened.
+  private static readonly BUILT_IN_TABS: PanelTabContribution[] = [
+    { id: 'PROBLEMS', title: 'Problems', component: 'vrutti-problems-view', order: 1 },
+    { id: 'OUTPUT', title: 'Output', component: 'vrutti-output-view', order: 2 },
+    { id: 'DEBUG CONSOLE', title: 'Debug Console', component: 'vrutti-debug-console', order: 3 },
+    { id: 'TERMINAL', title: 'Terminal', component: 'vrutti-terminal-view', order: 4 }
+  ];
+
   @state()
   private outputChannels: string[] = ['System'];
 
@@ -45,7 +59,22 @@ export class VruttiPanel extends LitElement {
   };
 
   private updateFromRegistry() {
-    this.panelTabs = registry.getPanelTabs();
+    // The tabs of the editor are always there. The panels that an extension
+    // opens are added to them.
+    const tabs = [...VruttiPanel.BUILT_IN_TABS];
+    for (const tab of this.registryTabs()) {
+      if (tabs.some(known => known.id === tab.id)) continue;
+      tabs.push(tab);
+    }
+    this.panelTabs = tabs;
+  }
+
+  private registryTabs(): PanelTabContribution[] {
+    try {
+      return registry.getPanelTabs() || [];
+    } catch {
+      return [];
+    }
   }
 
   private handleSwitchToDebugConsole = () => {
