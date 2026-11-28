@@ -470,18 +470,20 @@ export class VruttiSettings extends LitElement {
     }
 
     if (this.activeCategory === 'Theme') {
+        // The themes are the ones the core knows. A name that is written
+        // here as well would show up twice: "Vrutti Glass Light" was in the
+        // list of the editor and in the list of the core at the same time.
+        // And a theme that does not exist ("Vrutti Glass") could be chosen
+        // and then nothing happened.
+        const themes = this.availableThemes.length > 0
+          ? this.availableThemes
+          : [{ id: '', label: 'Vrutti Default Dark' }];
         return html`
           <div class="setting-group">
             <div class="setting-title">Color Theme</div>
             <div class="setting-desc">Select the active color theme for the workspace. Applies upon clicking Apply and Exit.</div>
             <select class="input-field" @change=${(e: any) => this.selectedTheme = e.target.value}>
-              <option value="Default Dark" ?selected=${this.selectedTheme === 'Default Dark'}>Default Dark</option>
-              <option value="One Dark Pro" ?selected=${this.selectedTheme === 'One Dark Pro'}>One Dark Pro</option>
-              <option value="Vrutti Glass" ?selected=${this.selectedTheme === 'Vrutti Glass'}>Vrutti Glass</option>
-              <option value="Vrutti Light" ?selected=${this.selectedTheme === 'Vrutti Light'}>Vrutti Light</option>
-              <option value="Vrutti Glass Light" ?selected=${this.selectedTheme === 'Vrutti Glass Light'}>Vrutti Glass Light</option>
-              <option value="Light+" ?selected=${this.selectedTheme === 'Light+'}>Light+</option>
-              ${this.availableThemes.map(t => html`<option value="${t.id}" ?selected=${t.id === this.selectedTheme}>${t.label}</option>`)}
+              ${themes.map(t => html`<option value="${t.id}" ?selected=${t.id === this.selectedTheme}>${t.label}</option>`)}
             </select>
           </div>
           <div class="setting-group">
