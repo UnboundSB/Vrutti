@@ -11,6 +11,7 @@ import './components/vrutti-tree-view';
 import { VruttiTaskManager } from './components/vrutti-task-manager';
 import { themeBridge } from './ThemeBridge';
 import { registry } from './core/Registry';
+import { readFolderPath } from './core/bridge';
 import { registerCoreContributions } from './core/core-contributions';
 
 import { globalHoverStyle } from './shared-styles';
@@ -381,14 +382,14 @@ export class VruttiApp extends LitElement {
     registry.registerCommand('vrutti.action.openFolder', async () => {
       if ((window as any).vruttiOpenFolderDialog) {
         try {
-          const json = await (window as any).vruttiOpenFolderDialog();
-          if (json && json.path && json.path !== "") {
+          const path = readFolderPath(await (window as any).vruttiOpenFolderDialog());
+          if (path) {
             if ((window as any).currentWorkspace) {
-              this.pendingFolderPath = json.path;
+              this.pendingFolderPath = path;
               this.showOpenFolderModal = true;
             } else {
               window.dispatchEvent(new CustomEvent('workspace-changed', {
-                detail: { path: json.path }
+                detail: { path }
               }));
             }
           }

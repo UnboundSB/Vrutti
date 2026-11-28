@@ -10,6 +10,7 @@ import './vrutti-extensions';
 import './vrutti-debug-sidebar';
 import './vrutti-webview';
 import { registry, ActivityBarContribution, ViewContribution } from '../core/Registry';
+import { readFolderPath } from '../core/bridge';
 
 import { globalHoverStyle } from '../shared-styles';
 
@@ -66,17 +67,19 @@ export class VruttiSidebar extends LitElement {
     registry.addEventListener('change', this.handleRegistryChange);
     this.updateFromRegistry();
     
-    // If no initial path was provided via CLI argument, restore from localStorage
+    // The folder of the workspace comes from the core and from nowhere else.
+    //
+    // The core knows the folder that was given on the command line. When
+    // there is none, the app opens without a folder and the explorer says
+    // that no folder is opened. The folder of the last time is not opened
+    // again: the user asked for nothing, and a folder that opens itself is
+    // a folder the user did not ask for.
     let initialPath = '';
-    let restoredFromStorage = false;
     if ((window as any).vruttiGetInitialWorkspace) {
       try {
-        const json = await (window as any).vruttiGetInitialWorkspace();
-        if (json && json.path && json.path !== "") {
-          initialPath = json.path;
-        }
+        initialPath = readFolderPath(await (window as any).vruttiGetInitialWorkspace());
       } catch (e) {
-        console.warn("Failed to get initial workspace from backend, falling back to local storage.", e);
+        console.warn("Failed to get initial workspace from backend.", e);
       }
     }
 
@@ -88,34 +91,8 @@ export class VruttiSidebar extends LitElement {
       }
     });
 
-    if (!initialPath) {
-      const savedPath = localStorage.getItem('lastWorkspace');
-      if (savedPath) {
-        initialPath = savedPath;
-        restoredFromStorage = true;
-      }
-    }
-
-    // A workspace folder can be deleted or moved between sessions. Opening a
-    // path that no longer exists leaves the explorer empty and every git
-    // command fails, so drop it and start without a workspace instead.
-    if (initialPath && (window as any).vruttiPathExists) {
-      try {
-        const res = await (window as any).vruttiPathExists(initialPath);
-        const exists = typeof res === 'string' ? JSON.parse(res)?.exists : res?.exists;
-        if (!exists) {
-          console.warn(`[vrutti-sidebar] Workspace "${initialPath}" no longer exists -- ignoring it.`);
-          if (restoredFromStorage) localStorage.removeItem('lastWorkspace');
-          initialPath = '';
-        }
-      } catch (e) {
-        console.warn("[vrutti-sidebar] Failed to verify the workspace path.", e);
-      }
-    }
-
     if (initialPath) {
       (window as any).currentWorkspace = initialPath;
-      localStorage.setItem('lastWorkspace', initialPath);
       window.dispatchEvent(new CustomEvent('workspace-changed', { detail: { path: initialPath } }));
     } else {
       (window as any).currentWorkspace = '';
@@ -148,7 +125,6 @@ export class VruttiSidebar extends LitElement {
     const detail = (e as CustomEvent).detail;
     if (detail.path) {
       (window as any).currentWorkspace = detail.path;
-      localStorage.setItem('lastWorkspace', detail.path);
     }
   };
 

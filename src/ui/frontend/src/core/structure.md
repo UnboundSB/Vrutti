@@ -4,11 +4,14 @@
 Frontend core: contribution registry, core contributions, and service layer. The `Registry.ts` is Vrutti's hand-rolled contribution system (modeled loosely on...
 
 ## Files
+- **bridge.ts**: bridge.ts
 - **core-contributions.ts**: TypeScript module: core contributions.
 - **Registry.ts**: TypeScript module: Registry.
 - **TODO.md**: Open questions and planned work for this folder.
 
 ## Public Methods
+- **readAnswer()**
+- **readFolderPath()**
 - **registerCoreContributions()**
 - **ContributionType** (exported type)
 - **CommandContribution** (exported type)
