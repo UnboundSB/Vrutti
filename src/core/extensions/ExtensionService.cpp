@@ -137,6 +137,21 @@ namespace {
         return 0;
     }
 
+    // Compares two versions that are written as text.
+    //
+    // A version that cannot be read is the smallest one: a folder with a
+    // broken name does not take the place of a folder with a good one.
+    int compareVersionText(const std::string& left, const std::string& right) {
+        int lmajor = 0, lminor = 0, lpatch = 0;
+        int rmajor = 0, rminor = 0, rpatch = 0;
+        const bool leftOk = parseVersion(left, lmajor, lminor, lpatch);
+        const bool rightOk = parseVersion(right, rmajor, rminor, rpatch);
+        if (!leftOk && !rightOk) return 0;
+        if (!leftOk) return -1;
+        if (!rightOk) return 1;
+        return compareVersions(lmajor, lminor, lpatch, rmajor, rminor, rpatch);
+    }
+
     // Reads one part of a range of versions.
     //
     // The part is one of the shapes that the manifests use:
@@ -377,6 +392,20 @@ namespace {
 
     // A name of a folder that is unique for this run, so that two
     // installations never work in the same place.
+    // Does this extension answer to the name that was given?
+    //
+    // The name is already in lower case. A name without a publisher asks
+    // for the extension of that name, whatever the publisher is.
+    bool matchesIdentifier(const ExtensionDescription& description,
+                           const std::string& wanted) {
+        if (wanted.empty()) return false;
+        if (description.lowerIdentifier == wanted) return true;
+        if (wanted.find('.') == std::string::npos) {
+            return toLower(description.name) == wanted;
+        }
+        return false;
+    }
+
     std::string uniqueFolderSuffix() {
         const auto now = std::chrono::steady_clock::now().time_since_epoch().count();
         std::ostringstream out;
@@ -717,34 +746,62 @@ bool ExtensionService::uninstall(const std::string& identifier,
     // The name of an extension may be given without its publisher. The
     // publisher is then not part of the name, so the extension is looked up
     // by the name of the extension alone.
-    const bool onlyName = wanted.find('.') == std::string::npos;
 
+    // An extension that ships with the editor is not removed: it is part of
+    // the editor, and removing it would leave the editor broken.
+    for (const auto& description : builtinFoldersOnDisk()) {
+        if (!matchesIdentifier(description, wanted)) continue;
+        error = "the extension is built into the editor";
+        errorCode = "InvalidExtension";
+        return false;
+    }
+
+    // The folders of the extension on the disk.
+    //
+    // The list the user sees is made of the disk, so the removal is made of
+    // the disk too: an extension that is in a folder but not in the
+    // metadata is still installed, and the user may take it away. Before,
+    // the list showed it and the removal said that it was not installed.
+    //
+    // Every copy of the extension is taken away: two folders may hold the
+    // same extension, and one of them would stay behind and show up again.
+    std::vector<std::string> removedFolders;
+    for (const auto& description : userFoldersOnDisk()) {
+        if (!matchesIdentifier(description, wanted)) continue;
+
+        // The name of the folder has to be a single part of a name. A
+        // metadata file that was edited by hand must not be able to point
+        // outside of the folder of the extensions.
+        const std::string& location = description.relativeLocation;
+        const bool safe = !location.empty() &&
+            location.find('/') == std::string::npos &&
+            location.find('\\') == std::string::npos &&
+            location != "." && location != "..";
+        if (!safe) continue;
+
+        std::error_code ec;
+        fs::remove_all(userExtensionsDirectory() / location, ec);
+        if (ec) {
+            error = "the folder of the extension could not be removed: " + ec.message();
+            errorCode = "Unavailable";
+            return false;
+        }
+        removedFolders.push_back(location);
+    }
+
+    // The entry of the metadata.
     auto installedList = readMetadata();
     std::vector<ExtensionDescription> remaining;
-    bool found = false;
+    bool foundInMetadata = false;
     for (const auto& entry : installedList) {
-        const bool matches = entry.lowerIdentifier == wanted ||
-            (onlyName && toLower(entry.name) == wanted);
-        if (matches) {
-            found = true;
-            std::error_code ec;
-            // The name of the folder has to be a single part of a name. A
-            // metadata file that was edited by hand must not be able to
-            // point outside of the folder of the extensions.
-            const std::string& location = entry.relativeLocation;
-            const bool safe = !location.empty() &&
-                location.find('/') == std::string::npos &&
-                location.find('\\') == std::string::npos &&
-                location != "." && location != "..";
-            if (safe) {
-                fs::remove_all(userExtensionsDirectory() / location, ec);
-            }
+        if (matchesIdentifier(entry, wanted)) {
+            foundInMetadata = true;
             continue;
         }
         remaining.push_back(entry);
     }
 
-    if (!found) {
+    if (removedFolders.empty() && !foundInMetadata) {
         error = "the extension is not installed";
         errorCode = "FileNotFound";
         return false;
@@ -768,18 +825,40 @@ bool ExtensionService::setEnabled(const std::string& identifier,
                                   std::string& error,
                                   std::string& errorCode) {
     const std::string wanted = toLower(identifier);
-    const bool onlyName = wanted.find('.') == std::string::npos;
+
     auto installedList = readMetadata();
     bool found = false;
     for (auto& entry : installedList) {
-        if (entry.lowerIdentifier == wanted ||
-            (onlyName && toLower(entry.name) == wanted)) {
+        if (matchesIdentifier(entry, wanted)) {
             entry.enabled = enabled;
             found = true;
             break;
         }
     }
+
     if (!found) {
+        // The extension is on the disk but not in the metadata: it was put
+        // there by hand, or by an older version of the editor. It is added
+        // to the metadata, so that its state is kept from now on. Before,
+        // the list showed it and the switch said that it was not installed.
+        for (const auto& description : userFoldersOnDisk()) {
+            if (!matchesIdentifier(description, wanted)) continue;
+            auto entry = description;
+            entry.enabled = enabled;
+            if (entry.uuid.empty()) entry.uuid = stableUuid(entry.identifier);
+            installedList.push_back(entry);
+            found = true;
+            break;
+        }
+    }
+
+    if (!found) {
+        for (const auto& description : builtinFoldersOnDisk()) {
+            if (!matchesIdentifier(description, wanted)) continue;
+            error = "the extension is built into the editor";
+            errorCode = "InvalidExtension";
+            return false;
+        }
         error = "the extension is not installed";
         errorCode = "FileNotFound";
         return false;
@@ -821,44 +900,103 @@ bool ExtensionService::describeFolder(const fs::path& root,
     return true;
 }
 
-std::vector<ExtensionDescription> ExtensionService::listAll() {
+std::vector<ExtensionDescription> ExtensionService::userFoldersOnDisk() {
     std::vector<ExtensionDescription> result;
     std::error_code ec;
+
+    const fs::path userDir = userExtensionsDirectory();
+    if (!fs::exists(userDir, ec) || !fs::is_directory(userDir, ec)) return result;
+
+    for (const auto& entry : fs::directory_iterator(userDir, ec)) {
+        if (ec) break;
+        if (!entry.is_directory()) continue;
+
+        ExtensionDescription description;
+        if (!describeFolder(entry.path(), false, description)) continue;
+        result.push_back(description);
+    }
+    return result;
+}
+
+std::vector<ExtensionDescription> ExtensionService::builtinFoldersOnDisk() {
+    std::vector<ExtensionDescription> result;
+    std::error_code ec;
+
+    const fs::path builtinDir = builtinExtensionsDirectory();
+    if (!fs::exists(builtinDir, ec) || !fs::is_directory(builtinDir, ec)) return result;
+
+    for (const auto& entry : fs::directory_iterator(builtinDir, ec)) {
+        if (ec) break;
+        if (!entry.is_directory()) continue;
+
+        ExtensionDescription description;
+        if (!describeFolder(entry.path(), true, description)) continue;
+        result.push_back(description);
+    }
+    return result;
+}
+
+std::vector<ExtensionDescription> ExtensionService::listAll() {
+    std::vector<ExtensionDescription> result;
 
     // The state of the extensions of the user comes from the metadata file:
     // it knows which ones are turned off.
     auto metadata = readMetadata();
 
-    const fs::path builtinDir = builtinExtensionsDirectory();
-    if (fs::exists(builtinDir, ec) && fs::is_directory(builtinDir, ec)) {
-        for (const auto& entry : fs::directory_iterator(builtinDir, ec)) {
-            if (!entry.is_directory()) continue;
-            ExtensionDescription description;
-            if (!describeFolder(entry.path(), true, description)) continue;
-            result.push_back(description);
+    // The folder the metadata points at, for every extension it knows.
+    auto knownFolder = [&](const std::string& lowerIdentifier) -> std::string {
+        for (const auto& known : metadata) {
+            if (known.lowerIdentifier == lowerIdentifier) return known.relativeLocation;
         }
+        return "";
+    };
+
+    // The extensions that ship with the editor.
+    for (const auto& description : builtinFoldersOnDisk()) {
+        result.push_back(description);
     }
 
-    const fs::path userDir = userExtensionsDirectory();
-    if (fs::exists(userDir, ec) && fs::is_directory(userDir, ec)) {
-        for (const auto& entry : fs::directory_iterator(userDir, ec)) {
-            if (!entry.is_directory()) continue;
+    // The extensions of the user.
+    //
+    // Two folders may hold the same extension: a copy that was made by
+    // hand, or a folder that an older version of the editor left behind.
+    // Only one of them is shown -- the folder the metadata points at, or
+    // the newest one -- so that the list of the user does not show the same
+    // extension twice.
+    std::vector<ExtensionDescription> chosen;
+    for (const auto& description : userFoldersOnDisk()) {
+        bool replaced = false;
+        for (auto& kept : chosen) {
+            if (kept.lowerIdentifier != description.lowerIdentifier) continue;
+            replaced = true;
 
-            ExtensionDescription description;
-            if (!describeFolder(entry.path(), false, description)) continue;
+            const std::string wanted = knownFolder(description.lowerIdentifier);
+            const bool keptIsKnown = !wanted.empty() &&
+                kept.relativeLocation == wanted;
+            const bool thisIsKnown = !wanted.empty() &&
+                description.relativeLocation == wanted;
 
-            // The metadata file has the last word about the state of an
-            // extension: it knows that one was turned off.
-            for (const auto& known : metadata) {
-                if (known.lowerIdentifier == description.lowerIdentifier) {
-                    description.enabled = known.enabled;
-                    description.relativeLocation = known.relativeLocation.empty()
-                        ? description.relativeLocation : known.relativeLocation;
-                    break;
-                }
+            if (thisIsKnown && !keptIsKnown) {
+                kept = description;
+            } else if (thisIsKnown == keptIsKnown &&
+                       compareVersionText(description.version, kept.version) > 0) {
+                kept = description;
             }
-            result.push_back(description);
+            break;
         }
+        if (!replaced) chosen.push_back(description);
+    }
+
+    for (auto& description : chosen) {
+        // The metadata file has the last word about the state of an
+        // extension: it knows that one was turned off.
+        for (const auto& known : metadata) {
+            if (known.lowerIdentifier == description.lowerIdentifier) {
+                description.enabled = known.enabled;
+                break;
+            }
+        }
+        result.push_back(description);
     }
 
     return result;

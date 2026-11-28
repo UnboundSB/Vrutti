@@ -149,6 +149,17 @@ namespace vrutti::core::extensions {
         static bool describeFolder(const std::filesystem::path& root,
                                    bool isBuiltin,
                                    ExtensionDescription& out);
+
+        // Every extension of the user that is on the disk.
+        //
+        // The list is made of the disk and not of the metadata file: a
+        // folder that was put there by hand, or that an older version of the
+        // editor left behind, holds an extension that is installed. The
+        // metadata has the last word about whether it is turned on.
+        static std::vector<ExtensionDescription> userFoldersOnDisk();
+
+        // Every extension that ships with the editor.
+        static std::vector<ExtensionDescription> builtinFoldersOnDisk();
     };
 
 } // namespace vrutti::core::extensions

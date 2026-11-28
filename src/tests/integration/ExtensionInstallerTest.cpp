@@ -656,6 +656,97 @@ int main() {
         }
     }
 
+    // =======================================================================
+    // 13. The list and the removal must agree
+    // =======================================================================
+    std::cout << "\n-- the list and the removal must agree\n";
+    {
+        // A folder that was put there by hand, without the metadata file
+        // knowing about it. The list shows it, so the removal has to take
+        // it away: before, the list showed it and the removal said that it
+        // was not installed.
+        const fs::path handmade = extensionsDir / "hand.made-1.0.0";
+        fs::create_directories(handmade / "extension", ec);
+        {
+            std::ofstream out(handmade / "extension" / "package.json",
+                              std::ios::binary | std::ios::trunc);
+            out << manifestOf("made", "hand", "1.0.0");
+        }
+
+        int shown = 0;
+        for (const auto& description : ExtensionService::listAll()) {
+            if (description.identifier == "hand.made") shown++;
+        }
+        check(shown == 1, "the extension that is on the disk is on the list");
+
+        std::string error;
+        std::string errorCode;
+        check(ExtensionService::uninstall("hand.made", error, errorCode),
+              "the extension that is on the disk is removed (" + error + ")");
+        check(!fs::exists(handmade), "the folder of the extension is gone");
+    }
+    {
+        // Two folders that hold the same extension. The list shows it once,
+        // and the removal takes both folders away: one of them would stay
+        // behind and show up again.
+        const fs::path first = extensionsDir / "twice.copy-1.0.0";
+        const fs::path second = extensionsDir / "copy-again-1.0.0";
+        for (const auto& folder : { first, second }) {
+            fs::create_directories(folder / "extension", ec);
+            std::ofstream out(folder / "extension" / "package.json",
+                              std::ios::binary | std::ios::trunc);
+            out << manifestOf("copy", "twice", "1.0.0");
+        }
+
+        int shown = 0;
+        for (const auto& description : ExtensionService::listAll()) {
+            if (description.identifier == "twice.copy") shown++;
+        }
+        check(shown == 1, "the same extension is shown once");
+
+        std::string error;
+        std::string errorCode;
+        check(ExtensionService::uninstall("twice.copy", error, errorCode),
+              "the extension is removed (" + error + ")");
+        check(!fs::exists(first) && !fs::exists(second),
+              "every copy of the extension is gone");
+    }
+    {
+        // The switch of an extension that is not in the metadata file.
+        const fs::path folder = extensionsDir / "switch.me-1.0.0";
+        fs::create_directories(folder / "extension", ec);
+        {
+            std::ofstream out(folder / "extension" / "package.json",
+                              std::ios::binary | std::ios::trunc);
+            out << manifestOf("me", "switch", "1.0.0");
+        }
+
+        std::string error;
+        std::string errorCode;
+        check(ExtensionService::setEnabled("switch.me", false, error, errorCode),
+              "the extension that is on the disk is turned off (" + error + ")");
+
+        bool given = false;
+        for (const auto& description : ExtensionService::listEnabled()) {
+            if (description.identifier == "switch.me") given = true;
+        }
+        check(!given, "the extension that was turned off is not given to the host");
+
+        check(ExtensionService::setEnabled("switch.me", true, error, errorCode),
+              "the extension is turned on again");
+    }
+    {
+        // A built-in extension is not removed: it is part of the editor.
+        std::string error;
+        std::string errorCode;
+        check(!ExtensionService::uninstall("vrutti.builtin", error, errorCode),
+              "a built-in extension is not removed");
+        check(errorCode == "InvalidExtension",
+              "the refusal has the code of a bad extension");
+        check(fs::exists(root / "builtin" / "vrutti.builtin-1.0.0"),
+              "the folder of the built-in extension is still there");
+    }
+
     fs::remove_all(root, ec);
 
     std::cout << "\n";
