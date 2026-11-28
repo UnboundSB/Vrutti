@@ -6,6 +6,7 @@ Frontend core: contribution registry, core contributions, and service layer. The
 ## Files
 - **bridge.ts**: bridge.ts
 - **core-contributions.ts**: TypeScript module: core contributions.
+- **dialogs.ts**: The questions and the news of the editor.
 - **Registry.ts**: TypeScript module: Registry.
 - **TODO.md**: Open questions and planned work for this folder.
 
@@ -13,6 +14,8 @@ Frontend core: contribution registry, core contributions, and service layer. The
 - **readAnswer()**
 - **readFolderPath()**
 - **registerCoreContributions()**
+- **confirmInPage()**
+- **notifyInPage()**
 - **ContributionType** (exported type)
 - **CommandContribution** (exported type)
 - **KeybindingContribution** (exported type)

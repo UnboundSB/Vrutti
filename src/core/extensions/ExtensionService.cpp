@@ -1252,6 +1252,8 @@ std::shared_ptr<JsonNode> ExtensionService::userInterfaceJson(
         node->objectProperties.emplace_back(
             "name", vrutti::core::utils::makeJsonString(description.name));
         node->objectProperties.emplace_back(
+            "publisher", vrutti::core::utils::makeJsonString(description.publisher));
+        node->objectProperties.emplace_back(
             "displayName", vrutti::core::utils::makeJsonString(description.displayName));
         node->objectProperties.emplace_back(
             "publisherDisplayName",

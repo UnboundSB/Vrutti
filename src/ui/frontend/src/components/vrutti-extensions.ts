@@ -13,6 +13,13 @@ interface ExtensionResult {
     publisherDisplayName: string;
     isTheme?: boolean;
     id?: string;
+    // What the extension offers: the themes of the colours, the themes of
+    // the icons, the views and the rest.
+    contributes?: {
+        themes?: { id?: string, label?: string }[];
+        iconThemes?: { id?: string, label?: string }[];
+        [key: string]: any;
+    };
 }
 
 @customElement('vrutti-extensions')
@@ -354,12 +361,59 @@ export class VruttiExtensions extends LitElement {
         }
     }
 
-    private setTheme(ext: ExtensionResult, e: Event) {
+    // The extension of the list that is installed, if it is.
+    //
+    // The list of the marketplace and the list of what is installed are two
+    // lists. The themes of an extension are only in the second one, so the
+    // themes of the button are taken from there.
+    private installedEntry(ext: ExtensionResult): ExtensionResult | undefined {
+        const extId = `${ext.namespace}.${ext.name}`.toLowerCase();
+        const extName = (ext.name || '').toLowerCase();
+        return this.installed.find(i => {
+            const iId = (i.id || '').toLowerCase();
+            const iName = (i.name || '').toLowerCase();
+            return iId === extId || iName === extName;
+        });
+    }
+
+    // The buttons that apply the themes of an extension.
+    //
+    // A theme of the colours and a theme of the icons are two different
+    // things: the core keeps them apart, and a button that sends a theme of
+    // the colours for a theme of the icons does nothing at all.
+    private themeButtons(ext: ExtensionResult) {
+        const entry = this.installedEntry(ext);
+        if (!entry) return html``;
+        const themes = entry.contributes?.themes;
+        const iconThemes = entry.contributes?.iconThemes;
+        const hasColour = Array.isArray(themes) && themes.length > 0;
+        const hasIcon = Array.isArray(iconThemes) && iconThemes.length > 0;
+        if (!hasColour && !hasIcon) return html``;
+
+        return html`
+            ${hasColour ? html`<button class="install-btn" @click=${(e: Event) => this.setTheme(ext, e, 'colour')}>Set Theme</button>` : ''}
+            ${hasIcon ? html`<button class="install-btn" @click=${(e: Event) => this.setTheme(ext, e, 'icon')}>Set Icon Theme</button>` : ''}
+        `;
+    }
+
+    private setTheme(ext: ExtensionResult, e: Event, kind: 'colour' | 'icon') {
         e.stopPropagation();
-        console.log(`Setting theme for ${ext.name}`);
+
+        const entry = this.installedEntry(ext) || ext;
+        const list = kind === 'colour'
+            ? entry.contributes?.themes
+            : entry.contributes?.iconThemes;
+        const theme = Array.isArray(list) && list.length > 0 ? list[0] : undefined;
+
+        // The name of a theme in the core is the name of the extension that
+        // offers it and the name of the theme, with a dot between them.
+        const name = theme && theme.id ? `${entry.name}.${theme.id}` : entry.name;
+        console.log(`Setting the ${kind} theme '${name}'`);
 
         if ((window as any).sendIpcMessage) {
-            (window as any).sendIpcMessage('theme/set', JSON.stringify({ name: ext.name }));
+            (window as any).sendIpcMessage(
+                kind === 'colour' ? 'theme/set' : 'icon_theme/set',
+                JSON.stringify({ name }));
         }
     }
 
@@ -400,7 +454,7 @@ export class VruttiExtensions extends LitElement {
                             <div style="display: flex; gap: 8px;">
                                 <span style="font-size: 11px; color: var(--vrutti-text, #888); background: var(--vrutti-surface-border, #333); padding: 2px 6px; border-radius: 4px; align-self: flex-start;">Installed</span>
                                 <button class="install-btn" style="background: #e81123;" @click=${(e: Event) => this.uninstall(ext, e)}>Uninstall</button>
-                                ${ext.isTheme || this.installed.find(i => i.name === ext.name)?.isTheme ? html`<button class="install-btn" @click=${(e: Event) => this.setTheme(ext, e)}>Set Theme</button>` : ''}
+                                ${this.themeButtons(ext)}
                             </div>
                         ` : html`
                             <button class="install-btn" @click=${(e: Event) => this.install(ext, e)}>Install</button>

@@ -4,6 +4,7 @@ import './vrutti-editor';
 import './vrutti-diff-editor';
 import { globalHoverStyle } from '../shared-styles';
 import { registry } from '../core/Registry';
+import { notifyInPage } from '../core/dialogs';
 
 type PaneId = string;
 
@@ -500,7 +501,7 @@ export class VruttiEditorLayout extends LitElement {
             }
         } else {
             console.warn("Backend run functionality not connected yet.");
-            window.alert("Backend run functionality not connected yet.");
+            notifyInPage("The running of a file is not built yet");
         }
     }
 

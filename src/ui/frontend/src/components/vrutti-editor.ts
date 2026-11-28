@@ -1,5 +1,6 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property, query, state } from 'lit/decorators.js';
+import { notifyInPage } from '../core/dialogs';
 import { EditorState, StateField, StateEffect, RangeSet, RangeSetBuilder } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers, highlightActiveLineGutter, highlightSpecialChars, drawSelection, dropCursor, rectangularSelection, crosshairCursor, highlightActiveLine, gutter, GutterMarker, Decoration, DecorationSet } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
@@ -411,7 +412,7 @@ export class VruttiEditor extends LitElement {
             case 'Go to Type Definition':
             case 'Go to Implementations':
             case 'Go to References':
-                window.alert(`Language server required for ${detail.action}`);
+                notifyInPage(`Language server required for ${detail.action}`);
                 break;
             case 'Next Problem':
                 import('@codemirror/lint').then(m => { if(m.nextDiagnostic) m.nextDiagnostic(view); });

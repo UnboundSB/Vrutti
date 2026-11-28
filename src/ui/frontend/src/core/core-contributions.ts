@@ -1,4 +1,5 @@
 import { registry } from './Registry';
+import { confirmInPage, notifyInPage } from './dialogs';
 import { VruttiTaskManager } from '../components/vrutti-task-manager';
 import { 
     icon_files, 
@@ -620,9 +621,14 @@ export function registerCoreContributions() {
 
     registry.registerCommand('explorer.delete', async (context) => {
         if (!context || !context.path || !context.name) return;
-        
-        const confirmStr = window.confirm(`Are you sure you want to delete '${context.name}'?`);
-        if (confirmStr) {
+
+        // The question is asked in the page: the browser of the editor does
+        // not show the questions of the page, so the answer would always be
+        // "no" and nothing would ever be deleted.
+        const answer = await confirmInPage(
+            `Are you sure you want to delete '${context.name}'?`,
+            'The file is taken away for good.', 'Delete');
+        if (answer) {
             let pathClean = context.path;
             if (pathClean.startsWith('file:///')) pathClean = pathClean.substring(8);
             else if (pathClean.startsWith('file://')) pathClean = pathClean.substring(7);
@@ -652,7 +658,7 @@ export function registerCoreContributions() {
         },
         onSelect: (item) => {
             if (item.data && item.data.type === 'task_active') {
-                window.alert('Viewing active task logs in Terminal');
+                notifyInPage('Viewing active task logs in Terminal');
             }
         }
     });
