@@ -662,14 +662,26 @@ namespace vrutti::ui {
             if (id.empty()) return "{}";
 
             this->m_terminals[id] = std::make_unique<vrutti::core::terminal::TerminalProcess>();
-            this->m_terminals[id]->start(cwd, [w, id](const std::string& out) {
+            std::string error;
+            const bool started = this->m_terminals[id]->start(cwd, [w, id](const std::string& out) {
                 std::string b64 = base64_encode(out);
                 std::string safeId = jsEscape(id);
                 w->dispatch([w, safeId, b64]() {
                     w->eval("if (window.vruttiTerminalOutput) window.vruttiTerminalOutput('" + safeId + "', '" + b64 + "');");
                 });
-            });
-            return "{}";
+            }, error);
+
+            if (!started) {
+                // The page is told that the shell did not start, so that it
+                // can say what went wrong instead of showing a terminal that
+                // stays empty.
+                std::cerr << "[Terminal] The shell did not start: " << error << std::endl;
+                this->m_terminals.erase(id);
+                const std::string safeError = vrutti::core::utils::JsonSerializer::escapeString(
+                    error.empty() ? "the shell did not start" : error);
+                return "{\"ok\":false,\"error\":\"" + safeError + "\"}";
+            }
+            return "{\"ok\":true}";
         });
 
         w->bind("vruttiSearchExtensions", [this](const std::string& req) -> std::string {

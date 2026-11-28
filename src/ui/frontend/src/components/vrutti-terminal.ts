@@ -3,6 +3,7 @@ import { customElement, property, query } from 'lit/decorators.js';
 import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import { xtermStyles } from './xterm-styles';
+import { readAnswer } from '../core/bridge';
 
 @customElement('vrutti-terminal')
 export class VruttiTerminal extends LitElement {
@@ -215,7 +216,12 @@ export class VruttiTerminal extends LitElement {
     this.terminal.loadAddon(this.fitAddon);
     
     this.terminal.open(this.container);
-    this.fitAddon.fit();
+    try {
+      this.fitAddon.fit();
+    } catch (e) {
+      // The panel may have no size yet. The terminal is fitted again when
+      // the panel is shown.
+    }
 
     // Send input to backend
     this.terminal.onData((data) => {
@@ -236,10 +242,23 @@ export class VruttiTerminal extends LitElement {
       let cwd = (window as any).currentWorkspace || '';
       if (cwd.startsWith('file:///')) cwd = cwd.substring(8);
       else if (cwd.startsWith('file://')) cwd = cwd.substring(7);
-      
-      (window as any).vruttiTerminalInit(this.terminalId, cwd).then(() => {
+
+      try {
+        const answer = await (window as any).vruttiTerminalInit(this.terminalId, cwd);
+        const result = readAnswer(answer);
+        if (result && result.ok === false) {
+          // The shell did not start. The reason is written into the
+          // terminal, so that the user knows why it stays empty instead of
+          // waiting for a shell that will never come.
+          this.terminal.write(
+            `\r\n\x1b[31mThe shell did not start: ${result.error || 'the reason is not known'}\x1b[0m\r\n`);
+          return;
+        }
         this.dispatchEvent(new CustomEvent('terminal-ready', { detail: { id: this.terminalId }, bubbles: true, composed: true }));
-      }).catch(console.error);
+      } catch (e) {
+        console.error('Failed to start the terminal', e);
+        this.terminal.write(`\r\n\x1b[31mThe shell did not start: ${String(e)}\x1b[0m\r\n`);
+      }
     }
   }
 

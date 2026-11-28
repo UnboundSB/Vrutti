@@ -14,9 +14,9 @@ export class VruttiTerminalView extends LitElement {
   @state()
   private terminalGroups: TerminalGroup[] = [{
     id: 'group-1',
-    name: 'bash',
+    name: 'PowerShell',
     activeTerminalId: 'term-1',
-    terminals: [{ id: 'term-1', name: 'bash' }]
+    terminals: [{ id: 'term-1', name: 'PowerShell' }]
   }];
 
   @state()
@@ -81,9 +81,9 @@ export class VruttiTerminalView extends LitElement {
     const newTermId = `term-${this.nextTerminalId++}`;
     const newGroup: TerminalGroup = {
       id: newGroupId,
-      name: 'bash',
+      name: 'PowerShell',
       activeTerminalId: newTermId,
-      terminals: [{ id: newTermId, name: 'bash' }]
+      terminals: [{ id: newTermId, name: 'PowerShell' }]
     };
     this.terminalGroups = [...this.terminalGroups, newGroup];
     this.setActiveGroup(newGroupId);
@@ -94,7 +94,7 @@ export class VruttiTerminalView extends LitElement {
     if (group) {
       const newTermId = `term-${this.nextTerminalId++}`;
       const newGroup = { ...group };
-      newGroup.terminals = [...newGroup.terminals, { id: newTermId, name: 'bash' }];
+      newGroup.terminals = [...newGroup.terminals, { id: newTermId, name: 'PowerShell' }];
       newGroup.name = newGroup.terminals.map(t => t.name).join(', ');
       newGroup.activeTerminalId = newTermId;
       
@@ -106,21 +106,21 @@ export class VruttiTerminalView extends LitElement {
 
   closeTerminalGroup(groupId: string, e?: Event) {
     if (e) e.stopPropagation();
-    
+
     this.terminalGroups = this.terminalGroups.filter(g => g.id !== groupId);
-    
+
+    // The last terminal is not made again by itself.
+    //
+    // Before, closing the only terminal made a new one right away, so the
+    // button did nothing that the user could see: the terminal was closed
+    // and another one was opened in the same moment. The panel now shows
+    // that there is no terminal, and the button that makes one is there.
     if (this.terminalGroups.length === 0) {
-      // Just recreate a new default terminal if all are closed
-      const newGroupId = `group-${this.nextGroupId++}`;
-      const newTermId = `term-${this.nextTerminalId++}`;
-      this.terminalGroups = [{
-        id: newGroupId,
-        name: 'bash',
-        activeTerminalId: newTermId,
-        terminals: [{ id: newTermId, name: 'bash' }]
-      }];
-      this.activeGroupId = newGroupId;
-    } else if (this.activeGroupId === groupId) {
+      this.activeGroupId = '';
+      return;
+    }
+
+    if (this.activeGroupId === groupId) {
       this.setActiveGroup(this.terminalGroups[this.terminalGroups.length - 1].id);
     }
   }
@@ -277,6 +277,29 @@ export class VruttiTerminalView extends LitElement {
       min-width: 0;
       overflow: hidden;
     }
+    .terminal-empty {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      color: var(--vrutti-text, #717cb4);
+      font-size: 12px;
+    }
+    .terminal-empty-title {
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .terminal-empty-button {
+      background: var(--vrutti-accent, #7aa2f7);
+      color: #1a1b26;
+      border: none;
+      border-radius: 4px;
+      padding: 5px 14px;
+      font-size: 12px;
+      cursor: pointer;
+    }
     .terminal-split-container {
       flex: 1;
       height: 100%;
@@ -421,6 +444,14 @@ export class VruttiTerminalView extends LitElement {
   render() {
     return html`
       <div class="terminal-instances">
+        ${this.terminalGroups.length === 0 ? html`
+          <div class="terminal-empty">
+            <div class="terminal-empty-title">There is no terminal</div>
+            <button class="terminal-empty-button" @click=${this.createTerminalGroup}>
+              New Terminal
+            </button>
+          </div>
+        ` : ''}
         ${this.terminalGroups.map(group => html`
           <div class="terminal-group-wrapper" style="display: ${this.activeGroupId === group.id ? 'flex' : 'none'}; flex: 1; min-width: 0; position: relative;">
             ${group.terminals.map((t, index) => html`

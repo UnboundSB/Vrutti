@@ -217,6 +217,14 @@ target_link_libraries(vrutti_process_runner_test PRIVATE vrutti_core)
 add_test(NAME ProcessRunnerTest COMMAND vrutti_process_runner_test)
 set_tests_properties(ProcessRunnerTest PROPERTIES TIMEOUT 300)
 
+# The terminal of the editor. The test opens a terminal, types a command
+# into it and waits for the answer, so that the terminal cannot become a
+# drawing of a terminal without the test noticing.
+add_executable(vrutti_terminal_process_test src/tests/integration/TerminalProcessTest.cpp)
+target_link_libraries(vrutti_terminal_process_test PRIVATE vrutti_core)
+add_test(NAME TerminalProcessTest COMMAND vrutti_terminal_process_test)
+set_tests_properties(TerminalProcessTest PROPERTIES TIMEOUT 300)
+
 
 
 

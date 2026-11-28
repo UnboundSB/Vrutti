@@ -12,6 +12,7 @@ import { VruttiTaskManager } from './components/vrutti-task-manager';
 import { themeBridge } from './ThemeBridge';
 import { registry } from './core/Registry';
 import { readFolderPath } from './core/bridge';
+import { notifyInPage } from './core/dialogs';
 import { registerCoreContributions } from './core/core-contributions';
 
 import { globalHoverStyle } from './shared-styles';
@@ -456,11 +457,11 @@ export class VruttiApp extends LitElement {
     registry.registerCommand('vrutti.action.quickOpen', () => { this.quickPickPrefix = ''; this.showQuickPick = true; });
 
     registry.registerCommand('vrutti.action.help.about', () => {
-      window.alert('Vrutti IDE\\nVersion 1.0.0\\nBuilt by UnboundSB');
+      notifyInPage('Vrutti IDE - Version 1.0.0 - Built by UnboundSB');
     });
 
     registry.registerCommand('vrutti.action.help.checkUpdates', () => {
-      window.alert('There are currently no updates available.');
+      notifyInPage('There are currently no updates available.');
     });
 
     registry.registerCommand('vrutti.action.terminal.new', () => { this.showTerminal = true; });
@@ -500,10 +501,10 @@ export class VruttiApp extends LitElement {
         if ((window as any).vruttiOpenNewWindow) (window as any).vruttiOpenNewWindow('');
     });
     registry.registerCommand('vrutti.action.saveAs', () => {
-        window.alert('Save As not implemented');
+      notifyInPage('Save As is not built yet');
     });
     registry.registerCommand('vrutti.action.saveAll', () => {
-        window.alert('Save All not implemented');
+      notifyInPage('Save All is not built yet');
     });
 
     const externalLinks: Record<string, string> = {
@@ -637,6 +638,11 @@ export class VruttiApp extends LitElement {
 
   private toggleTerminal = () => {
     this.showTerminal = !this.showTerminal;
+    if (this.showTerminal) {
+      // The panel was closed a moment ago, so the terminal had no room and
+      // could not know its size. It is told that the room is there now.
+      setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
+    }
   };
 
   private handleGlobalKeydown = (e: KeyboardEvent) => {
