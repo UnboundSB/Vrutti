@@ -18,7 +18,7 @@ Native PTY (Pseudo-Terminal) broker for the integrated terminal. Uses ConPTY on 
 - **ReplProcess::evaluate(const std::string&)**
 - **TerminalProcess::TerminalProcess()**
 - **TerminalProcess::~TerminalProcess()**
-- **bool TerminalProcess::start(const std::string&, OutputCallback)**
+- **bool TerminalProcess::start(const std::string&, OutputCallback, std::string&)**
 - **TerminalProcess::stop()**
 - **TerminalProcess::writeInput(const std::string&)**
 - **TerminalProcess::resize(int, int)**

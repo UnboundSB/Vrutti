@@ -19,6 +19,7 @@ Integration tests: they exercise the services through their public interfaces.
 - **ProcessRunnerTest.cpp**: The runner of programs and the splitter of a command line.
 - **ProtocolFallbackTest.cpp**: ProtocolFallbackTest -- proves the contract of the extension host router.
 - **SearchPluginTest.cpp**: A small harness that drives the search plugin the way the window does.
+- **TerminalProcessTest.cpp**: Integration test for the terminal of the editor.
 - **TestZip.h**: TestZip -- a writer of ZIP archives for the tests.
 - **ThemeServiceTest.cpp**: Integration test for the theme service.
 - **TODO.md**: Open questions and planned work for this folder.
