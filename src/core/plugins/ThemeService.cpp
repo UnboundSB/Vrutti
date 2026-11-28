@@ -132,6 +132,70 @@ namespace {
         return JsonParser::parse(stripJsonComments(text));
     }
 
+    // The folder the extensions of the user live in.
+    //
+    // The folder may be pointed at with the environment, so that a test may
+    // work with a folder of its own. It is the same folder the extension
+    // service uses, so the editor and the service always look at the same
+    // extensions.
+    fs::path userExtensionsDirectory() {
+        const char* override = std::getenv("VRUTTI_EXTENSIONS_DIR");
+        if (override && *override) return fs::path(override);
+        const std::string home = userHome();
+        if (home.empty()) return fs::path();
+        return fs::path(home) / ".vrutti" / "extensions";
+    }
+
+    // Sets a property of an object.
+    //
+    // The properties of an object are held in a list, so a property that is
+    // added without looking at the old ones would be written twice, and the
+    // page would read the first one instead of the new one.
+    void setProperty(const std::shared_ptr<JsonNode>& object,
+                     const std::string& name,
+                     const std::shared_ptr<JsonNode>& value) {
+        if (!object || object->type != JsonNode::Type::Object) return;
+        for (auto& prop : object->objectProperties) {
+            if (prop.first == name) {
+                prop.second = value;
+                return;
+            }
+        }
+        object->objectProperties.emplace_back(name, value);
+    }
+
+    // The path of an icon of a theme.
+    //
+    // The name of an icon in a theme file is relative to the folder of that
+    // file, and it may walk up with "..": the icons of a theme often live in
+    // a folder of their own, next to the file of the theme.
+    //
+    // The icon still has to be a file of the package that offers the theme.
+    // An icon that is somewhere else would make the page load any file of
+    // the disk.
+    fs::path iconPathInside(const fs::path& themeDir,
+                            const fs::path& packageRoot,
+                            const std::string& relative) {
+        if (relative.empty()) return fs::path();
+
+        const fs::path name(relative);
+        // A name that names a place of its own is not a name inside of the
+        // package.
+        if (name.is_absolute() || name.has_root_name() || name.has_root_directory()) {
+            return fs::path();
+        }
+
+        const fs::path candidate(themeDir / name);
+        if (!vrutti::core::utils::pathStaysInside(packageRoot, candidate)) {
+            return fs::path();
+        }
+
+        std::error_code ec;
+        fs::path resolved = fs::weakly_canonical(candidate, ec);
+        if (ec) return fs::path();
+        return resolved;
+    }
+
     // -------------------------------------------------------------------------
     // Theme discovery
     // -------------------------------------------------------------------------
@@ -204,29 +268,26 @@ namespace {
         }
 
         // Themes contributed by installed extensions.
-        std::string home = userHome();
-        if (!home.empty()) {
-            fs::path extRoot = fs::path(home) / ".vrutti" / "extensions";
-            if (fs::exists(extRoot) && fs::is_directory(extRoot)) {
-                std::error_code ec;
-                for (const auto& entry : fs::directory_iterator(extRoot, ec)) {
-                    if (ec) break;
-                    if (!entry.is_directory()) continue;
+        const fs::path extRoot = userExtensionsDirectory();
+        if (!extRoot.empty() && fs::exists(extRoot) && fs::is_directory(extRoot)) {
+            std::error_code ec;
+            for (const auto& entry : fs::directory_iterator(extRoot, ec)) {
+                if (ec) break;
+                if (!entry.is_directory()) continue;
 
-                    fs::path pkgPath = entry.path() / "extension" / "package.json";
-                    if (!fs::exists(pkgPath)) {
-                        pkgPath = entry.path() / "package.json";
-                    }
-                    if (!fs::exists(pkgPath)) continue;
-
-                    auto pkg = parseJsonc(readFile(pkgPath));
-                    if (!pkg || pkg->type != JsonNode::Type::Object) continue;
-
-                    std::string packageName = stringOf(pkg->get("name"));
-                    if (packageName.empty()) continue;
-
-                    collectThemes(pkgPath, packageName, themes, icons);
+                fs::path pkgPath = entry.path() / "extension" / "package.json";
+                if (!fs::exists(pkgPath)) {
+                    pkgPath = entry.path() / "package.json";
                 }
+                if (!fs::exists(pkgPath)) continue;
+
+                auto pkg = parseJsonc(readFile(pkgPath));
+                if (!pkg || pkg->type != JsonNode::Type::Object) continue;
+
+                std::string packageName = stringOf(pkg->get("name"));
+                if (packageName.empty()) continue;
+
+                collectThemes(pkgPath, packageName, themes, icons);
             }
         }
 
@@ -431,30 +492,47 @@ std::string ThemeService::executeCommand(const std::string& command, const std::
         auto colors = std::make_shared<JsonNode>(JsonNode::Type::Object);
 
         if (icons) {
-            // Icon themes keep their own structure; the icon paths have to be
-            // turned into URLs the renderer can load.
+            // An icon theme is a structure of its own: which icon belongs to
+            // which folder, to which file and to which kind of file. The page
+            // needs all of it to draw the icons of the files of the user.
+            //
+            // Before, only the definitions of the icons were sent. The page
+            // then held the icons, but it did not know which file each one
+            // belonged to, so choosing another icon theme changed nothing at
+            // all.
+            for (const auto& prop : theme->objectProperties) {
+                if (prop.first == "id" || prop.first == "name" ||
+                    prop.first == "uiTheme" || prop.first == "colors" ||
+                    prop.first == "tokenColors" || prop.first == "iconDefinitions") {
+                    continue;
+                }
+                out->objectProperties.emplace_back(prop.first, prop.second);
+            }
+
             if (sourceColors && sourceColors->type == JsonNode::Type::Object) {
                 mergeInto(colors, sourceColors);
             }
             auto definitions = theme->get("iconDefinitions");
             if (definitions && definitions->type == JsonNode::Type::Object) {
-                fs::path themeDir = entry->themePath.parent_path();
+                const fs::path themeDir = entry->themePath.parent_path();
                 for (auto& def : definitions->objectProperties) {
                     if (!def.second || def.second->type != JsonNode::Type::Object) continue;
                     auto iconPath = def.second->get("iconPath");
                     if (!iconPath || iconPath->type != JsonNode::Type::String) continue;
-                    // The icon has to be a file of the theme. An icon that
-                    // is somewhere else would make the renderer load any
-                    // file of the disk.
-                    fs::path absolute = pathInside(themeDir,
-                                                  std::string(iconPath->stringValue));
+                    // The name of the icon is relative to the folder of the
+                    // file of the theme, and it may walk up with "..": the
+                    // icons of a theme often live in a folder of their own.
+                    // The icon still has to be a file of the package that
+                    // offers the theme.
+                    fs::path absolute = iconPathInside(themeDir, entry->root,
+                                                       std::string(iconPath->stringValue));
                     if (absolute.empty()) {
-                        def.second->objectProperties.emplace_back(
-                            "iconPath", vrutti::core::utils::makeJsonString(""));
+                        setProperty(def.second, "iconPath",
+                                    vrutti::core::utils::makeJsonString(""));
                         continue;
                     }
-                    def.second->objectProperties.emplace_back(
-                        "iconPath", vrutti::core::utils::makeJsonString(toFileUrl(absolute)));
+                    setProperty(def.second, "iconPath",
+                                vrutti::core::utils::makeJsonString(toFileUrl(absolute)));
                 }
                 out->objectProperties.emplace_back("iconDefinitions", definitions);
             }
