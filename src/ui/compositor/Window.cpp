@@ -1557,11 +1557,12 @@ namespace vrutti::ui {
                     std::string exeName = stem + ".exe";
                     
                     if (ext == ".py") {
-#ifdef _WIN32
-                        safeExec("python", { path }, &stdoutStr, &exitCode);
-#else
-                        safeExec("python3", { path }, &stdoutStr, &exitCode);
-#endif
+                        // The editor does not run Python. It is written in C++
+                        // and it does not ask for a Python to be installed to
+                        // run a file: the run menu says what it cannot do
+                        // instead of starting a program that is not there.
+                        stdoutStr = "the editor does not run Python files";
+                        exitCode = 1;
                     } else if (ext == ".js") {
                         safeExec("node", { path }, &stdoutStr, &exitCode);
                     } else if (ext == ".ts") {

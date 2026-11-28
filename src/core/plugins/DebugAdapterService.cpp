@@ -79,10 +79,34 @@ std::string DebugAdapterService::handleDebugStart(const std::string& payload) {
         m_sessions[sessionId] = session;
     }
 
-    // Spawn the adapter based on type (e.g. node, python)
-    std::string adapterCmd = (type == "node") ? "node" : "python";
-    std::vector<std::string> args = { /* adapter path */ };
-    
+    // The program of the adapter is the one that the request names. The
+    // editor does not guess a program: it does not ask for a Python to be
+    // installed to debug a file, and an adapter that is not there is a
+    // failure that is said out loud.
+    std::string adapterCmd;
+    std::vector<std::string> args;
+    for (auto& prop : reqNode->objectProperties) {
+        if ((prop.first == "program" || prop.first == "runtime") &&
+            prop.second->type == JsonNode::Type::String) {
+            adapterCmd = std::string(prop.second->stringValue);
+        } else if (prop.first == "args" && prop.second->type == JsonNode::Type::Array) {
+            for (const auto& item : prop.second->arrayElements) {
+                if (!item || item->type != JsonNode::Type::String) continue;
+                args.push_back(std::string(item->stringValue));
+            }
+        }
+    }
+
+    if (adapterCmd.empty()) {
+        session->active = false;
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            m_sessions.erase(sessionId);
+        }
+        delete session;
+        return "{\"status\": \"error\", \"message\": \"the debug adapter has no program\"}";
+    }
+
     spawnAdapterProcess(session, adapterCmd, args);
 
     return "{\"status\": \"success\", \"sessionId\": \"" + sessionId + "\"}";
